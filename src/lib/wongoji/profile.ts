@@ -45,6 +45,12 @@ export interface Profile {
 	 * 어느 자료에도 근거가 없는 구현 판단이다(docs E15). 끄면 줄을 넘어 쪼개진다.
 	 */
 	keepWidePunctTogether: boolean;
+
+	/**
+	 * 소속·이름을 오른쪽에 붙일 때 끝에서 비우는 칸 수.
+	 * 자료마다 1~3칸으로 갈린다. 2칸이 가장 흔하다(docs 2.4).
+	 */
+	affiliationTailGap: number;
 }
 
 export const TOPIK_PROFILE: Profile = {
@@ -55,6 +61,7 @@ export const TOPIK_PROFILE: Profile = {
 	dropSpaceAfterPeriod: true,
 	pushOpenerToNextLine: true,
 	keepWidePunctTogether: true,
+	affiliationTailGap: 2,
 };
 
 export const DEFAULT_PROFILE = TOPIK_PROFILE;

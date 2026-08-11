@@ -71,14 +71,16 @@ export function layoutBlocks(
 	blocks: Block[],
 	profile: Profile = DEFAULT_PROFILE,
 ): LayoutResult {
-	// 매수는 본문 글자 수로 센다. `---`는 지시자지 본문이 아니므로 빠진다.
+	// 매수는 쓴 글자 수로 센다. 빈 행은 지시자지 글자가 아니므로 빠진다.
 	const normalized = blocks
-		.filter((b) => b.type === "paragraph")
+		.filter((b) => b.type !== "blankRow")
 		.map((b) => b.text)
 		.join("\n");
 
 	const lines: Cell[][] = [];
 	let cur: Cell[] = [];
+	/** 헤더를 쓴 직후인가 — 본문이 시작될 때 한 줄 띄우려고 본다 */
+	let headerOpen = false;
 
 	const flush = () => {
 		lines.push(cur);
@@ -163,6 +165,30 @@ export function layoutBlocks(
 			continue;
 		}
 
+		if (block.type === "title") {
+			// 제목은 둘째 줄에 놓는 것이 관행이라 첫 줄을 비운다.
+			// 여기서는 blankRow와 달리 맨 위 빈 줄을 버리지 않는다.
+			if (lines.length === 0) lines.push([]);
+			for (const line of titleLines(block.text, profile)) lines.push(line);
+			headerOpen = true;
+			continue;
+		}
+
+		if (block.type === "affiliation") {
+			// 제목 다음이면 한 줄 띄우고, 헤더의 첫머리라면 관행대로 첫 줄을 비운다.
+			// 어느 쪽이든 빈 줄 하나가 앞에 온다.
+			lines.push([]);
+			lines.push(affiliationLine(block.text, profile));
+			headerOpen = true;
+			continue;
+		}
+
+		// 헤더와 본문 사이도 한 줄 띄운다
+		if (headerOpen) {
+			lines.push([]);
+			headerOpen = false;
+		}
+
 		// 문단은 첫 칸을 비우고 둘째 칸부터 (TOPIK 2항)
 		cur = [emptyCell()];
 		for (const token of tokenizeParagraph(block.text, profile)) place(token);
@@ -186,6 +212,50 @@ export function layoutBlocks(
 			sheets: Math.max(1, Math.ceil(normalized.length / CELLS_PER_SHEET)),
 		},
 	};
+}
+
+/** 헤더 한 줄을 칸으로 쪼갠다. 문단과 달리 들여쓰기가 없다. */
+function headerCells(text: string, profile: Profile): Cell[] {
+	return tokenizeParagraph(text, profile).flatMap((token) =>
+		token.role === "space"
+			? [spaceCell()]
+			: token.cells.map((c) => cloneCell(c)),
+	);
+}
+
+const padStart = (cells: Cell[], count: number): Cell[] => [
+	...Array.from({ length: Math.max(0, count) }, emptyCell),
+	...cells,
+];
+
+/**
+ * 제목 줄.
+ *
+ * "제목은 행의 중간쯤에 놓이도록" 쓴다. 20칸을 넘으면 두 줄로 나누되
+ * 가운데가 아니라 첫 행은 왼쪽, 둘째 행은 오른쪽에 붙인다(docs 2.2).
+ */
+function titleLines(text: string, profile: Profile): Cell[][] {
+	const cells = headerCells(text, profile);
+
+	if (cells.length <= COLS) {
+		return [padStart(cells, Math.floor((COLS - cells.length) / 2))];
+	}
+
+	const first = cells.slice(0, COLS);
+	const rest = cells.slice(COLS, COLS * 2);
+	return [first, padStart(rest, COLS - rest.length)];
+}
+
+/**
+ * 소속·이름 줄.
+ *
+ * 오른쪽에 붙이되 끝에서 몇 칸을 비운다. 몇 칸인지는 자료마다 다르므로
+ * 프로파일이 정한다(docs 2.4).
+ */
+function affiliationLine(text: string, profile: Profile): Cell[] {
+	const cells = headerCells(text, profile).slice(0, COLS);
+	const tail = Math.min(profile.affiliationTailGap, COLS - cells.length);
+	return padStart(cells, COLS - cells.length - tail);
 }
 
 /** 10줄씩 끊어 장으로 나눈다. 빈 문서도 빈 원고지 한 장은 나온다. */

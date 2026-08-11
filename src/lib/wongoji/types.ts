@@ -77,7 +77,11 @@ export interface LayoutResult {
 export type Block =
 	| { type: "paragraph"; text: string }
 	/** 20칸이 전부 빈 행 하나. 운문의 연 사이, 60자 이상 긴 인용의 위아래에 쓴다. */
-	| { type: "blankRow" };
+	| { type: "blankRow" }
+	/** 첫 장 제목. 줄 가운데에 놓는다. */
+	| { type: "title"; text: string }
+	/** 첫 장 소속·이름. 줄 오른쪽에 붙인다. */
+	| { type: "affiliation"; text: string };
 
 /** 토큰이 배치 단계에서 어떻게 취급되는지 */
 export type TokenRole =
