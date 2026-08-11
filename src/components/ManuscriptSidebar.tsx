@@ -5,6 +5,16 @@ import { FolderPicker } from "#/components/FolderPicker";
 import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
 import { NameDialog } from "#/components/NameDialog";
 import { TrashDialog } from "#/components/TrashDialog";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import {
 	ancestorIds,
@@ -35,6 +45,7 @@ type Sheet =
 	| { kind: "renameFolder"; folder: FolderEntry }
 	| { kind: "moveFolder"; folder: FolderEntry }
 	| { kind: "moveDoc"; doc: DocEntry }
+	| { kind: "resetDoc" }
 	| { kind: "trash" };
 
 const CLOSED: Sheet = { kind: "none" };
@@ -52,12 +63,20 @@ export function ManuscriptSidebar({
 	index,
 	currentDocId,
 	onReport,
+	onReset,
 	onNavigate,
 	inDrawer = false,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
 	onReport: (result: SaveResult) => void;
+	/**
+	 * 지금 열어 둔 원고를 비운다.
+	 *
+	 * 저장소만 고쳐서는 안 된다 — 에디터가 들고 있는 내용은 그대로 남아 곧바로
+	 * 다시 저장된다. 화면을 쥔 쪽이 함께 처리해야 한다.
+	 */
+	onReset: () => void;
 	onNavigate?: () => void;
 	/** 좁은 화면의 서랍 안인가. 서랍은 오른쪽 위에 제 닫기 단추를 그린다 */
 	inDrawer?: boolean;
@@ -121,6 +140,8 @@ export function ManuscriptSidebar({
 			// 보고 있던 원고를 버렸으면 열어 둘 수 없다
 			if (doc.id === currentDocId) navigate({ to: "/", replace: true });
 		},
+
+		resetDoc: () => setSheet({ kind: "resetDoc" }),
 
 		trashFolder: (folder) => {
 			change((current) => trashFolder(current, folder.id));
@@ -253,6 +274,35 @@ export function ManuscriptSidebar({
 				index={index}
 				onReport={onReport}
 			/>
+
+			{/*
+			 * 초기화는 휴지통을 거치지 않는다. 되돌릴 수 없으므로 묻는다 —
+			 * 버리기와 달리 물어야 하는 쪽이다.
+			 */}
+			<AlertDialog
+				open={sheet.kind === "resetDoc"}
+				onOpenChange={(open) => !open && setSheet(CLOSED)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>이 원고를 비울까요?</AlertDialogTitle>
+						<AlertDialogDescription>
+							하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고
+							빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저
+							내보내세요.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>취소</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={onReset}
+							className="bg-destructive text-white hover:bg-destructive/90"
+						>
+							비우기
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

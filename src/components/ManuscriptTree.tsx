@@ -8,6 +8,7 @@ import {
 	MoreHorizontalIcon,
 	PencilIcon,
 	PlusIcon,
+	RotateCcwIcon,
 	Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
@@ -40,6 +41,8 @@ export interface TreeActions {
 	moveDoc: (doc: DocEntry) => void;
 	duplicateDoc: (doc: DocEntry) => void;
 	trashDoc: (doc: DocEntry) => void;
+	/** 하나뿐인 원고를 비운다. 버리는 대신이다 */
+	resetDoc: (doc: DocEntry) => void;
 }
 
 /**
@@ -118,6 +121,15 @@ function Level({
 	const { folders, docs } = childrenOf(index, path);
 	// 깊이를 패딩으로 준다. 이름이 길어지면 부모가 가로로 스크롤한다
 	const indent = { paddingLeft: `${depth * 0.75 + 0.5}rem` };
+
+	/*
+	 * 마지막 하나는 버릴 수 없다.
+	 *
+	 * 원고가 없는 화면이 있을 수 없어 버리자마자 빈 원고가 새로 생긴다. 그러면
+	 * 목록에 그대로 "제목 없는 원고"가 남아 아무 일도 없었던 것처럼 보인다.
+	 * 버리는 시늉 대신 초기화라고 적고 실제로 비운다.
+	 */
+	const onlyOne = index.docs.length === 1;
 
 	return (
 		<>
@@ -221,13 +233,23 @@ function Level({
 								이동
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								variant="destructive"
-								onSelect={() => actions.trashDoc(doc)}
-							>
-								<Trash2Icon />
-								휴지통으로
-							</DropdownMenuItem>
+							{onlyOne ? (
+								<DropdownMenuItem
+									variant="destructive"
+									onSelect={() => actions.resetDoc(doc)}
+								>
+									<RotateCcwIcon />
+									초기화
+								</DropdownMenuItem>
+							) : (
+								<DropdownMenuItem
+									variant="destructive"
+									onSelect={() => actions.trashDoc(doc)}
+								>
+									<Trash2Icon />
+									휴지통으로
+								</DropdownMenuItem>
+							)}
 						</RowMenu>
 					</div>
 				</div>

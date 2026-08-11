@@ -358,6 +358,27 @@ function Editor() {
 		setEditorKey((k) => k + 1);
 	};
 
+	/**
+	 * 하나뿐인 원고를 비운다. 버리는 대신이다.
+	 *
+	 * 저장소만 비우면 안 된다 — 에디터가 옛 내용을 그대로 들고 있어서 다음 타이핑에
+	 * 다시 저장된다. 밀린 저장까지 걷어내고 화면을 함께 갈아 끼운다.
+	 */
+	const resetDoc = () => {
+		pending.current = null;
+		window.clearTimeout(saveTimer.current);
+		saveTimer.current = undefined;
+
+		const doc = blocksToDoc([]);
+		docRef.current = doc;
+		setTitle("");
+		setGoal(0);
+		setBlocks([]);
+		setLoad({ state: "ready", content: doc });
+		persist({ title: "", goal: 0, content: doc, blocks: [] });
+		setEditorKey((k) => k + 1);
+	};
+
 	/*
 	 * 제목은 조판에 넣지 않는다. 원고를 가리키는 이름일 뿐이라 원고지 칸을
 	 * 차지해서는 안 되고, 분량에도 세지 않는다.
@@ -374,6 +395,7 @@ function Editor() {
 			index={index}
 			currentDocId={docId}
 			onReport={report}
+			onReset={resetDoc}
 			// 서랍에서는 원고를 고르면 닫는다
 			onNavigate={inDrawer ? () => setDrawerOpen(false) : undefined}
 			inDrawer={inDrawer}
