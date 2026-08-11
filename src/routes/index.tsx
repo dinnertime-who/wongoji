@@ -7,7 +7,6 @@ import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
-import { useMediaQuery } from "#/hooks/useMediaQuery";
 import type { Manuscript } from "#/lib/export";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
@@ -101,8 +100,6 @@ function Home() {
 	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
 	const docRef = useRef<Content | null>(null);
 
-	const isDesktop = useMediaQuery("(min-width: 1024px)", true);
-
 	// localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
 	useEffect(() => {
 		const draft = loadDraft(window.localStorage.getItem(STORAGE_KEY));
@@ -170,13 +167,12 @@ function Home() {
 			? `${stats.sheets} / ${goal}매`
 			: `${stats.chars}자 · ${stats.sheets}매`;
 
-	const editor = (heightClass?: string, overlay?: React.ReactNode) =>
+	const editor = (overlay?: React.ReactNode) =>
 		initial && (
 			<WongojiEditor
 				key={editorKey}
 				initialContent={docRef.current ?? initial}
 				onChange={handleChange}
-				heightClass={heightClass}
 				overlay={overlay}
 			/>
 		);
@@ -212,67 +208,69 @@ function Home() {
 				goal={goal}
 				onGoalChange={changeGoal}
 				stats={stats}
+				toggle={
+					<div className="hidden shrink-0 rounded-full border border-[var(--hairline)] bg-[var(--paper)] p-1 lg:flex">
+						<PaneToggle mainPane={mainPane} onChoose={choosePane} />
+					</div>
+				}
 			/>
 
-			{isDesktop ? (
-				/*
-				 * w-full이 없으면 안 된다. 바깥이 flex 컨테이너라 mx-auto의 auto 마진이
-				 * stretch를 눌러, main이 늘어나지 않고 콘텐츠 크기로 줄어든다.
-				 */
-				<main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-4 pb-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-					<div className="no-print lg:sticky lg:top-20 lg:self-start">
-						{editor()}
-					</div>
-					<div className="min-w-0">{pager}</div>
-				</main>
-			) : (
-				<>
-					{/*
-					 * 원고지는 열 줄이라 화면 위쪽에 붙어 있으면 아래가 크게 빈다.
-					 * 남은 높이를 flex로 받아 세로 가운데에 놓는다 — 헤더 높이를 상수로
-					 * 박으면 글자 수가 늘어 헤더가 접힐 때 어긋난다.
-					 */}
-					<main className="flex flex-1 flex-col justify-center px-4">
-						{mainPane === "write" ? (
-							/* 아래 여백은 떠 있는 토글이 빈 행 추가 버튼을 가리지 않도록 둔다 */
-							<div className="no-print pt-4 pb-20">
-								{editor(
-									"h-[calc(100dvh-22rem)]",
-									<span className="rounded bg-[var(--canvas)]/85 px-1.5 py-0.5 text-[var(--muted)] text-[0.7rem] tabular-nums">
-										{statsText}
-									</span>,
-								)}
-							</div>
-						) : (
-							/*
-							 * 위아래 여백이 같아야 헤더 아래 영역의 한가운데에 온다.
-							 * 넉넉히 두는 쪽은 장이 많아 아래로 넘칠 때 장 번호 막대가
-							 * 떠 있는 토글에 가리지 않게 하려는 것이다.
-							 */
-							<div className="min-w-0 py-20">{pager}</div>
+			{/*
+			 * 한 번에 한 쪽만 전체 폭으로 보여준다. 쓰는 것이 주고 원고지는 확인이라
+			 * 나란히 두면 정작 글 쓰는 곳이 좁아진다.
+			 *
+			 * 덤으로 에디터가 항상 하나만 마운트되므로 화면 크기로 갈라줄 필요가 없다.
+			 * 토글은 상태가 없으니 CSS로 자리만 바꿔 준다.
+			 */}
+			<main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-4 pb-20 lg:pb-6">
+				{mainPane === "write" ? (
+					<div className="no-print flex min-h-0 flex-1 flex-col">
+						{editor(
+							<span className="rounded bg-[var(--canvas)]/85 px-1.5 py-0.5 text-[var(--muted)] text-[0.7rem] tabular-nums">
+								{statsText}
+							</span>,
 						)}
-					</main>
-
-					{/* 엄지가 닿는 자리에 둔다 */}
-					<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-[var(--hairline)] bg-[var(--canvas)] p-1 shadow-lg">
-						{(["write", "preview"] as const).map((pane) => (
-							<button
-								key={pane}
-								type="button"
-								onClick={() => choosePane(pane)}
-								aria-pressed={mainPane === pane}
-								className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
-									mainPane === pane
-										? "bg-[var(--ink)] text-[var(--paper)]"
-										: "text-[var(--muted)]"
-								}`}
-							>
-								{PANE_LABEL[pane]}
-							</button>
-						))}
 					</div>
-				</>
-			)}
+				) : (
+					/* 원고지는 열 줄이라 위에만 붙어 있으면 아래가 크게 빈다 */
+					<div className="flex min-h-0 flex-1 flex-col justify-center">
+						{pager}
+					</div>
+				)}
+			</main>
+
+			{/* 좁은 화면에서는 엄지가 닿는 자리에 띄운다 */}
+			<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-[var(--hairline)] bg-[var(--canvas)] p-1 shadow-lg lg:hidden">
+				<PaneToggle mainPane={mainPane} onChoose={choosePane} />
+			</div>
 		</div>
+	);
+}
+
+function PaneToggle({
+	mainPane,
+	onChoose,
+}: {
+	mainPane: Pane;
+	onChoose: (pane: Pane) => void;
+}) {
+	return (
+		<>
+			{(["write", "preview"] as const).map((pane) => (
+				<button
+					key={pane}
+					type="button"
+					onClick={() => onChoose(pane)}
+					aria-pressed={mainPane === pane}
+					className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
+						mainPane === pane
+							? "bg-[var(--ink)] text-[var(--paper)]"
+							: "text-[var(--muted)]"
+					}`}
+				>
+					{PANE_LABEL[pane]}
+				</button>
+			))}
+		</>
 	);
 }

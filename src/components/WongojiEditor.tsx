@@ -79,13 +79,10 @@ function docToBlocks(doc: PMNode): Block[] {
 export function WongojiEditor({
 	initialContent,
 	onChange,
-	heightClass = "h-[60vh]",
 	overlay,
 }: {
 	initialContent: Content;
 	onChange: (blocks: Block[], doc: PMNode) => void;
-	/** 좁은 화면에서는 본문 높이를 줄여 쓴다 */
-	heightClass?: string;
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
 }) {
@@ -106,7 +103,10 @@ export function WongojiEditor({
 		immediatelyRender: false,
 		editorProps: {
 			attributes: {
-				class: `wongoji-prose ${heightClass} w-full overflow-y-auto rounded border border-[var(--hairline)] bg-[var(--paper)] p-3 text-sm leading-7 outline-none focus:border-[var(--grid)]`,
+				// 글 쓰는 곳이므로 본문 활자를 크게, 명조로, 줄을 넉넉히 둔다.
+				// 높이는 부모가 준 만큼 채운다 — 상수로 박으면 화면 크기를 못 따라간다.
+				class:
+					"wongoji-prose h-full w-full overflow-y-auto rounded border border-[var(--hairline)] bg-[var(--paper)] px-5 py-4 text-base leading-8 outline-none focus:border-[var(--grid)]",
 				spellcheck: "false",
 			},
 		},
@@ -120,9 +120,13 @@ export function WongojiEditor({
 	}, [editor, onChange]);
 
 	return (
-		<div>
-			<div className="relative">
-				<EditorContent editor={editor} />
+		<div className="flex min-h-0 flex-1 flex-col">
+			{/*
+			 * 본문은 절대 배치로 이 상자를 꽉 채운다.
+			 * flex 아이템은 height가 auto라 그 안에서 height:100%가 잡히지 않는다.
+			 */}
+			<div className="relative min-h-0 flex-1">
+				<EditorContent editor={editor} className="absolute inset-0" />
 				{overlay && (
 					<div className="pointer-events-none absolute right-2 bottom-2">
 						{overlay}
@@ -138,7 +142,7 @@ export function WongojiEditor({
 				onClick={() => editor && insertBlankRow(editor)}
 				disabled={!editor}
 				title="Ctrl+Enter"
-				className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--grid)] bg-[var(--grid-soft)] py-2.5 text-[var(--ink)] text-xs transition-colors hover:bg-[var(--grid)] hover:text-[var(--paper)] disabled:opacity-40"
+				className="mt-2 flex w-full shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--grid)] bg-[var(--grid-soft)] py-2.5 text-[var(--ink)] text-xs transition-colors hover:bg-[var(--grid)] hover:text-[var(--paper)] disabled:opacity-40"
 			>
 				<span aria-hidden className="leading-none">
 					⏎

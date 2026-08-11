@@ -137,7 +137,8 @@ export function WongojiPager({ pages }: { pages: Page[] }) {
 						// biome-ignore lint/suspicious/noArrayIndexKey: 장은 순서가 곧 정체성이다. 몇째 장인지 말고는 구분할 것이 없다.
 						key={i}
 					>
-						<div className="mx-auto w-full max-w-3xl">
+						{/* 실물 200자 원고지가 174mm(약 660px)다. 그보다 조금 크게 둔다 */}
+						<div className="mx-auto w-full max-w-4xl">
 							<WongojiSheet page={page} index={i} />
 						</div>
 					</SwiperSlide>
