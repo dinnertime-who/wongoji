@@ -366,12 +366,14 @@ function Editor() {
 			? `${stats.sheets} / ${goal}매`
 			: `${stats.chars}자 · ${stats.sheets}매`;
 
-	const sidebar = (onNavigate?: () => void) => (
+	const sidebar = (inDrawer: boolean) => (
 		<ManuscriptSidebar
 			index={index}
 			currentDocId={docId}
 			onReport={report}
-			onNavigate={onNavigate}
+			// 서랍에서는 원고를 고르면 닫는다
+			onNavigate={inDrawer ? () => setDrawerOpen(false) : undefined}
+			inDrawer={inDrawer}
 		/>
 	);
 
@@ -387,7 +389,7 @@ function Editor() {
 			 */}
 			{sidebarOpen && (
 				<aside className="hidden w-60 shrink-0 border-border border-r bg-muted/40 lg:block">
-					{sidebar()}
+					{sidebar(false)}
 				</aside>
 			)}
 
@@ -419,7 +421,7 @@ function Editor() {
 							</SheetTrigger>
 							<SheetContent side="left" className="w-72 p-0">
 								<SheetTitle className="sr-only">보관함</SheetTitle>
-								{sidebar(() => setDrawerOpen(false))}
+								{sidebar(true)}
 							</SheetContent>
 						</Sheet>
 

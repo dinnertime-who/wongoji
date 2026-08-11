@@ -27,11 +27,14 @@ export function ManuscriptSidebar({
 	currentDocId,
 	onReport,
 	onNavigate,
+	inDrawer = false,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
 	onReport: (result: SaveResult) => void;
 	onNavigate?: () => void;
+	/** 좁은 화면의 서랍 안인가. 서랍은 오른쪽 위에 제 닫기 단추를 그린다 */
+	inDrawer?: boolean;
 }) {
 	const navigate = useNavigate();
 	const [naming, setNaming] = useState(false);
@@ -61,7 +64,12 @@ export function ManuscriptSidebar({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex shrink-0 items-center gap-1 px-2 py-2">
+			{/* 서랍의 닫기 X가 오른쪽 위에 겹쳐 앉는다. 그만큼 비켜 준다 */}
+			<div
+				className={`flex shrink-0 items-center gap-1 py-2 pl-2 ${
+					inDrawer ? "pr-12" : "pr-2"
+				}`}
+			>
 				<span className="flex-1 px-1 text-muted-foreground text-xs">원고</span>
 				<Button
 					variant="ghost"
