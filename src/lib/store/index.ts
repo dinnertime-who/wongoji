@@ -39,11 +39,13 @@ export {
 export {
 	type DocContent,
 	hasDoc,
+	INDEX_KEY,
 	mutateIndex,
 	readDoc,
 	readIndex,
 	readLastOpened,
 	removeDoc,
+	subscribeToIndex,
 	tidy,
 	writeDoc,
 	writeIndex,
@@ -57,3 +59,4 @@ export {
 	type StoreIndex,
 	type TrashEntry,
 } from "./types";
+export { useStoreIndex } from "./useStoreIndex";

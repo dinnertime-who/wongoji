@@ -14,7 +14,7 @@ import { emptyIndex, type StoreIndex } from "./types";
  * 전체를 다시 쓴다. 원고별로 나누면 그 원고만 쓴다.
  */
 
-const INDEX_KEY = "wongoji:v1:index";
+export const INDEX_KEY = "wongoji:v1:index";
 const LAST_KEY = "wongoji:v1:last";
 const docKey = (id: string) => `wongoji:v1:doc:${id}`;
 
@@ -41,8 +41,23 @@ export function readIndex(): StoreIndex {
 	return parseIndex(safeGetItem(INDEX_KEY)) ?? emptyIndex();
 }
 
+/**
+ * 색인이 바뀌었다고 알린다.
+ *
+ * 브라우저는 자기가 쓴 것에 `storage` 이벤트를 주지 않으므로, 같은 탭 안에서는
+ * 이쪽으로 알려야 사이드바가 따라온다.
+ */
+const listeners = new Set<() => void>();
+
+export function subscribeToIndex(listener: () => void): () => void {
+	listeners.add(listener);
+	return () => void listeners.delete(listener);
+}
+
 export function writeIndex(index: StoreIndex): SaveResult {
-	return safeSetItem(INDEX_KEY, JSON.stringify(index));
+	const result = safeSetItem(INDEX_KEY, JSON.stringify(index));
+	if (result.ok) for (const listener of listeners) listener();
+	return result;
 }
 
 /**
