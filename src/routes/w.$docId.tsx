@@ -38,6 +38,7 @@ import {
 	writeDoc,
 	writeLastOpened,
 } from "#/lib/store";
+import { LG, useMediaQuery } from "#/lib/useMediaQuery";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/w/$docId")({ component: Editor });
@@ -127,6 +128,8 @@ function Editor() {
 	const { docId } = Route.useParams();
 	const navigate = useNavigate();
 	const index = useStoreIndex();
+	// 넓은 화면인가. 보관함을 옆에 두느냐 서랍에 넣느냐가 갈린다
+	const wide = useMediaQuery(LG);
 
 	const [load, setLoad] = useState<Load>({ state: "loading" });
 	const [blocks, setBlocks] = useState<Block[]>([]);
@@ -386,9 +389,13 @@ function Editor() {
 			{/*
 			 * 보관함은 가운데 정렬된 본문 바깥에 둔다. 안에 넣으면 원고 폭을 깎는다.
 			 * 좁은 화면에서는 자리를 내줄 수 없어 서랍으로 뺀다.
+			 *
+			 * 가리지 않고 아예 그리지 않는다. `hidden lg:block`으로 두면 좁은 화면에서도
+			 * 트리가 통째로 한 벌 더 그려진다 — 서랍에 있는 것과 같은 것을 눈에서만
+			 * 지운 꼴이다.
 			 */}
-			{sidebarOpen && (
-				<aside className="hidden w-60 shrink-0 border-border border-r bg-muted/40 lg:block">
+			{wide && sidebarOpen && (
+				<aside className="w-60 shrink-0 border-border border-r bg-muted/40">
 					{sidebar(false)}
 				</aside>
 			)}
@@ -408,7 +415,15 @@ function Editor() {
 						>
 							<PanelLeftIcon />
 						</Button>
-						<Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+						{/*
+						 * 단추는 CSS로 가린다. 몇 개 되지 않아 그려 두는 값이 싸고, 첫
+						 * 그림에 바로 자리를 잡는다. 서랍 속 내용은 열기 전에는 아예
+						 * 만들어지지 않는다.
+						 *
+						 * 넓어지면 닫는다. 좁을 때 열어 둔 채 창을 키우면 옆에 펼친
+						 * 보관함과 서랍이 같은 것을 두 번 그린다.
+						 */}
+						<Sheet open={drawerOpen && !wide} onOpenChange={setDrawerOpen}>
 							<SheetTrigger asChild>
 								<Button
 									variant="ghost"
