@@ -108,7 +108,7 @@ export function WongojiEditor({
 				// 글 쓰는 곳이므로 본문 활자를 크게, 명조로, 줄을 넉넉히 둔다.
 				// 높이는 부모가 준 만큼 채운다 — 상수로 박으면 화면 크기를 못 따라간다.
 				class:
-					"wongoji-prose h-full w-full overflow-y-auto rounded border border-[var(--hairline)] bg-[var(--paper)] px-5 py-4 text-base leading-8 outline-none focus:border-[var(--grid)]",
+					"wongoji-prose h-full w-full overflow-y-auto rounded border border-border bg-[var(--paper)] px-5 py-4 text-base leading-8 outline-none focus:border-[var(--grid)]",
 				spellcheck: "false",
 			},
 		},
@@ -145,7 +145,7 @@ export function WongojiEditor({
 				onClick={() => editor && insertBlankRow(editor)}
 				disabled={!editor}
 				title="Ctrl+Enter"
-				className="mt-2 w-full border-[var(--grid)] bg-[var(--grid-soft)] text-xs hover:bg-[var(--grid)] hover:text-[var(--paper)]"
+				className="mt-2 w-full border-[var(--grid)] bg-[var(--grid-soft)] text-xs hover:bg-[var(--grid)] hover:text-primary-foreground"
 			>
 				<CornerDownLeftIcon />빈 행 추가
 				<span className="text-muted-foreground">⌃↵</span>

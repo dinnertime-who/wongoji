@@ -59,7 +59,7 @@ export function WongojiSheet({ page, index }: { page: Page; index: number }) {
 					)),
 				)}
 			</div>
-			<footer className="mt-2 text-right text-[0.7rem] text-[var(--muted)] tabular-nums">
+			<footer className="mt-2 text-right text-[0.7rem] text-muted-foreground tabular-nums">
 				{index + 1}
 			</footer>
 		</section>

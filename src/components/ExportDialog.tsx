@@ -85,7 +85,7 @@ export function ExportDialog({
 							<span className="block font-medium text-sm">
 								Word (.docx){busy && " — 만드는 중…"}
 							</span>
-							<span className="block text-[var(--muted)] text-xs leading-5">
+							<span className="block text-muted-foreground text-xs leading-5">
 								제출용. 바탕체 11pt, 줄간격 160%, A4에 여백 20·15·30·30mm.
 								공모전마다 서식이 다르니 요강을 확인하세요.
 							</span>
@@ -102,7 +102,7 @@ export function ExportDialog({
 						</span>
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">백업 (.json)</span>
-							<span className="block text-[var(--muted)] text-xs leading-5">
+							<span className="block text-muted-foreground text-xs leading-5">
 								제목과 빈 행까지 그대로 되살릴 수 있는 완전한 사본.
 							</span>
 						</span>
@@ -118,7 +118,7 @@ export function ExportDialog({
 						</span>
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">텍스트 (.txt)</span>
-							<span className="block text-[var(--muted)] text-xs leading-5">
+							<span className="block text-muted-foreground text-xs leading-5">
 								어디서나 열리는 평문. 빈 행 표시는 남지 않습니다.
 							</span>
 						</span>
@@ -134,7 +134,7 @@ export function ExportDialog({
 						</span>
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">불러오기</span>
-							<span className="block text-[var(--muted)] text-xs leading-5">
+							<span className="block text-muted-foreground text-xs leading-5">
 								.json 또는 .txt. <strong>지금 원고를 덮어씁니다.</strong>
 							</span>
 						</span>
@@ -151,11 +151,7 @@ export function ExportDialog({
 					/>
 				</div>
 
-				{error && (
-					<p className="mt-3 text-[var(--destructive,#b3261e)] text-xs">
-						{error}
-					</p>
-				)}
+				{error && <p className="mt-3 text-destructive text-xs">{error}</p>}
 			</DialogContent>
 		</Dialog>
 	);

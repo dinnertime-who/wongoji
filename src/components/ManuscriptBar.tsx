@@ -64,17 +64,17 @@ export function ManuscriptBar({
 			</div>
 
 			<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
-				<span className={over ? "text-[var(--ink)]" : "text-[var(--muted)]"}>
+				<span className={over ? "text-foreground" : "text-muted-foreground"}>
 					{goal > 0 ? `${stats.sheets} / ${goal}매` : `${stats.sheets}매`}
 				</span>
 				{goal > 0 && (
-					<span className="text-[var(--muted)]">
+					<span className="text-muted-foreground">
 						{over
 							? `${(-remaining).toLocaleString()}자 초과`
 							: `${remaining.toLocaleString()}자 남음`}
 					</span>
 				)}
-				<span className="text-[var(--muted)]">
+				<span className="text-muted-foreground">
 					{stats.chars.toLocaleString()}자 · {stats.pages}장
 				</span>
 			</div>
@@ -83,7 +83,7 @@ export function ManuscriptBar({
 				<Progress
 					value={ratio * 100}
 					aria-label="분량 목표 진행"
-					className={`mt-1.5 h-1 bg-[var(--surface-muted)] ${
+					className={`mt-1.5 h-1 bg-muted ${
 						over
 							? "[&>[data-slot=progress-indicator]]:bg-[var(--ink)]"
 							: "[&>[data-slot=progress-indicator]]:bg-[var(--grid)]"

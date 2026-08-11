@@ -54,7 +54,7 @@ export function RulesDialog() {
 				<ol className="mt-2 space-y-2.5 text-sm leading-6">
 					{TOPIK_RULES.map((rule, i) => (
 						<li key={rule} className="flex gap-2.5">
-							<span className="shrink-0 text-[var(--muted)] tabular-nums">
+							<span className="shrink-0 text-muted-foreground tabular-nums">
 								{i + 1}.
 							</span>
 							<span>{rule}</span>
@@ -62,8 +62,8 @@ export function RulesDialog() {
 					))}
 				</ol>
 
-				<div className="mt-4 space-y-2 border-[var(--hairline)] border-t pt-4 text-[var(--muted)] text-xs leading-5">
-					<p className="text-[var(--ink)]">
+				<div className="mt-4 space-y-2 border-border border-t pt-4 text-muted-foreground text-xs leading-5">
+					<p className="text-foreground">
 						<strong className="font-medium">7개 항 밖의 규칙 하나</strong> —
 						대화문은 따옴표가 끝날 때까지 모든 줄의 첫 칸을 비웁니다. TOPIK에는
 						없지만 학교 글짓기 계열 자료가 일치해서 말하는 관행이고, 대화가 많은
@@ -81,7 +81,7 @@ export function RulesDialog() {
 							href={TOPIK_PDF}
 							target="_blank"
 							rel="noreferrer"
-							className="underline underline-offset-2 hover:text-[var(--ink)]"
+							className="underline underline-offset-2 hover:text-foreground"
 						>
 							TOPIK 원문 PDF
 						</a>
@@ -89,7 +89,7 @@ export function RulesDialog() {
 							href={NIKL_QNA}
 							target="_blank"
 							rel="noreferrer"
-							className="underline underline-offset-2 hover:text-[var(--ink)]"
+							className="underline underline-offset-2 hover:text-foreground"
 						>
 							국립국어원 답변
 						</a>

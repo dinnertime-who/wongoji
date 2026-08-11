@@ -1,154 +1,201 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
 /*
- * 다크 변형은 `.dark` 조상이 있을 때만 켠다.
- *
- * Tailwind 기본값은 OS 설정(prefers-color-scheme)을 따르는데, 이 앱은 종이 팔레트
- * 하나뿐이라 다크 정의가 없다. 그대로 두면 OS가 다크인 사람에게만 shadcn 컴포넌트의
- * `dark:` 클래스가 켜져 배경이 반투명해지는 등 어긋난다.
+ * shadcn 컴포넌트가 쓰는 상태 변형(`data-checked:` 등)이 여기 들어 있다.
+ * 빠뜨리면 스위치 배경처럼 상태에 따라 달라져야 할 것이 조용히 적용되지 않는다.
  */
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
 @custom-variant dark (&:is(.dark *));
 
+@theme inline {
+	--font-heading: var(--font-sans);
+	--font-sans:
+		"Geist Variable", "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR",
+		system-ui, sans-serif;
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
 :root {
-  /* 폼 컨트롤도 밝은 쪽으로 그린다 */
-  color-scheme: light;
-  --canvas: #f4f2ec;
-  --paper: #fffdf6;
-  --grid: #8aa87b;
-  --hairline: #d9d4c7;
-  --ink: #23211c;
-  --muted: #857f72;
-  --surface-muted: #ebe8e0;
-  /* 원고지 격자색을 옅게 깐 것 — 빈 행 추가 버튼처럼 본문과 구분해야 할 때 쓴다 */
-  --grid-soft: #e8efe3;
+	/* 폼 컨트롤도 밝은 쪽으로 그린다 */
+	color-scheme: light;
+
+	/*
+	 * 원고지 팔레트. 종이와 격자는 이 앱 고유의 것이라 shadcn 토큰에 대응물이 없다.
+	 */
+	--canvas: #f4f2ec;
+	--paper: #fffdf6;
+	--grid: #8aa87b;
+	/* 격자색을 옅게 깐 것 — 빈 행 추가 버튼처럼 본문과 구분해야 할 때 */
+	--grid-soft: #e8efe3;
+	--hairline: #d9d4c7;
+	--ink: #23211c;
+	--ink-muted: #857f72;
+	--surface-muted: #ebe8e0;
+
+	/*
+	 * shadcn 토큰을 원고지 팔레트에 잇는다.
+	 * 매핑(@theme inline)은 정본 그대로 두고 값만 갈아끼운다.
+	 */
+	--background: var(--canvas);
+	--foreground: var(--ink);
+	--card: var(--paper);
+	--card-foreground: var(--ink);
+	--popover: var(--paper);
+	--popover-foreground: var(--ink);
+	--primary: var(--ink);
+	--primary-foreground: var(--paper);
+	--secondary: var(--surface-muted);
+	--secondary-foreground: var(--ink);
+	--muted: var(--surface-muted);
+	--muted-foreground: var(--ink-muted);
+	--accent: var(--surface-muted);
+	--accent-foreground: var(--ink);
+	--destructive: #b3261e;
+	--border: var(--hairline);
+	--input: var(--hairline);
+	--ring: var(--grid);
+	--radius: 0.5rem;
 }
 
 /*
- * shadcn(drawer·dialog)이 쓰는 색 유틸을 원고지 팔레트에 잇는다.
- *
- * shadcn 기본 테마를 통째로 들이면 `--muted`가 겹친다. 이쪽은 배경색,
- * 우리 것은 글자색이라 뜻이 다르다. 그래서 변수를 덮어쓰지 않고
- * 유틸 이름(`--color-*`)만 우리 변수에 매핑한다.
+ * 다크 모드는 지원하지 않는다. 종이 팔레트 하나뿐이라 대응하는 어두운 값이 없다.
+ * `dark` 변형 정의는 남겨 두어 shadcn 컴포넌트의 `dark:` 클래스가 컴파일은 되게 하되,
+ * `.dark` 조상을 두지 않으므로 실제로 켜지지는 않는다.
  */
-@theme inline {
-  --color-background: var(--canvas);
-  --color-foreground: var(--ink);
-  --color-popover: var(--paper);
-  --color-popover-foreground: var(--ink);
-  --color-muted: var(--surface-muted);
-  --color-muted-foreground: var(--muted);
-  --color-border: var(--hairline);
-  --color-input: var(--hairline);
-  --color-ring: var(--grid);
-  --color-primary: var(--ink);
-  --color-primary-foreground: var(--paper);
-  --color-secondary: var(--surface-muted);
-  --color-secondary-foreground: var(--ink);
-  --color-accent: var(--surface-muted);
-  --color-accent-foreground: var(--ink);
-  --color-destructive: #b3261e;
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
 }
 
 * {
-  box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 html,
 body,
 #app {
-  min-height: 100%;
+	min-height: 100%;
 }
 
 body {
-  margin: 0;
-  font-family:
-    "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+	margin: 0;
 }
 
 /* 원고지 칸 안의 글자는 본문 활자와 구분되게 명조 계열로 */
 .wongoji-sheet {
-  font-family: "Apple Myungjo", "Nanum Myeongjo", "Noto Serif KR", serif;
+	font-family: "Apple Myungjo", "Nanum Myeongjo", "Noto Serif KR", serif;
 }
 
 /* Tiptap 에디터 */
 .wongoji-prose p {
-  margin: 0;
+	margin: 0;
 }
 
-/* `---`로 넣은 빈 행. 원고지의 빈 줄을 뜻하므로 선을 옅게 둔다. */
+/* 빈 행. 원고지의 빈 줄을 뜻하므로 선을 옅게 둔다. */
 .wongoji-prose hr {
-  border: none;
-  border-top: 1px dashed var(--grid);
-  margin: 0.6rem 0;
+	border: none;
+	border-top: 1px dashed var(--grid);
+	margin: 0.6rem 0;
 }
 
 .wongoji-prose hr.ProseMirror-selectednode {
-  border-top-color: var(--ink);
+	border-top-color: var(--ink);
 }
 
 .wongoji-prose p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-  white-space: pre-line;
-  color: var(--muted);
+	content: attr(data-placeholder);
+	float: left;
+	height: 0;
+	pointer-events: none;
+	white-space: pre-line;
+	color: var(--ink-muted);
 }
 
-/* 장 이동은 Swiper 기본 UI 대신 직접 만든 번호 막대를 쓴다 */
-
 @media print {
-  @page {
-    margin: 12mm;
-  }
+	@page {
+		margin: 12mm;
+	}
 
-  /*
-   * 인쇄할 때는 슬라이더를 풀어 전 장이 세로로 이어지게 한다.
-   * Swiper가 wrapper에 인라인 transform을, 슬라이드에 인라인 width를 걸기 때문에
-   * `!important` 없이는 덮이지 않는다.
-   */
-  .swiper {
-    overflow: visible !important;
-  }
+	/*
+	 * 인쇄할 때는 슬라이더를 풀어 전 장이 세로로 이어지게 한다.
+	 * Swiper가 wrapper에 인라인 transform을, 슬라이드에 인라인 width를 걸기 때문에
+	 * `!important` 없이는 덮이지 않는다.
+	 */
+	.swiper {
+		overflow: visible !important;
+	}
 
-  .swiper-wrapper {
-    display: block !important;
-    width: auto !important;
-    transform: none !important;
-  }
+	.swiper-wrapper {
+		display: block !important;
+		width: auto !important;
+		transform: none !important;
+	}
 
-  .swiper-slide {
-    width: 100% !important;
-    margin: 0 0 8mm 0 !important;
-    transform: none !important;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+	.swiper-slide {
+		width: 100% !important;
+		margin: 0 0 8mm 0 !important;
+		transform: none !important;
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
 
-  /* 슬라이드를 풀면 폭 제한이 인쇄 여백을 좁힌다 */
-  .swiper-slide > div {
-    max-width: none !important;
-  }
+	/* 슬라이드를 풀면 폭 제한이 인쇄 여백을 좁힌다 */
+	.swiper-slide > div {
+		max-width: none !important;
+	}
 
-  body {
-    background: #fff;
-  }
+	body {
+		background: #fff;
+	}
 
-  .no-print {
-    display: none !important;
-  }
+	.no-print {
+		display: none !important;
+	}
 
-  main {
-    display: block !important;
-    max-width: none !important;
-    padding: 0 !important;
-  }
+	main {
+		display: block !important;
+		max-width: none !important;
+		padding: 0 !important;
+	}
 
-  .wongoji-sheet {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    box-shadow: none;
-    margin-bottom: 8mm;
-  }
+	.wongoji-sheet {
+		break-inside: avoid;
+		page-break-inside: avoid;
+		box-shadow: none;
+		margin-bottom: 8mm;
+	}
 }
