@@ -21,6 +21,17 @@ import {
 	type Token,
 } from "./types";
 
+/**
+ * 여는 따옴표로 시작하는 문단은 대화문으로 본다.
+ *
+ * "대화는 딴 줄을 잡아 쓰되"가 관행이므로, 대화는 제 문단을 갖는다.
+ * 따옴표로 시작하는지만 보면 가려낼 수 있다.
+ */
+const DIALOGUE_START = /^["'“‘]/;
+
+/** 글자가 하나라도 든 줄인가. 들여쓰기 칸만 있는 줄은 빈 줄이다. */
+const hasContent = (cells: Cell[]) => cells.some((c) => c.glyphs.length > 0);
+
 const emptyCell = (): Cell => ({ glyphs: [], kind: "empty" });
 const spaceCell = (): Cell => ({ glyphs: [], kind: "space" });
 const cloneCell = (c: Cell): Cell => ({ ...c, glyphs: [...c.glyphs] });
@@ -81,10 +92,17 @@ export function layoutBlocks(
 	let cur: Cell[] = [];
 	/** 헤더를 쓴 직후인가 — 본문이 시작될 때 한 줄 띄우려고 본다 */
 	let headerOpen = false;
+	/**
+	 * 줄이 바뀔 때마다 앞에 비울 칸 수.
+	 *
+	 * 보통 문단은 0이다 — 첫 줄만 들여쓰고 둘째 줄부터는 첫 칸을 채운다.
+	 * 대화문은 1이다 — 따옴표가 끝날 때까지 모든 줄의 첫 칸을 비운다(docs 4.7).
+	 */
+	let lineIndent = 0;
 
 	const flush = () => {
 		lines.push(cur);
-		cur = [];
+		cur = Array.from({ length: lineIndent }, emptyCell);
 	};
 
 	const pushCells = (cells: Cell[]) => {
@@ -118,8 +136,9 @@ export function layoutBlocks(
 					flush();
 					return;
 				}
-				// 줄 첫 칸을 비우면 문단 첫머리와 혼동된다
-				if (cur.length === 0) return;
+				// 줄 첫 칸을 비우면 문단 첫머리와 혼동된다.
+				// 대화문은 들여쓴 칸 바로 뒤도 줄 첫머리로 본다.
+				if (cur.length <= lineIndent) return;
 				cur.push(spaceCell());
 				return;
 			}
@@ -157,7 +176,11 @@ export function layoutBlocks(
 	};
 
 	for (const block of blocks) {
-		if (cur.length > 0) flush();
+		// 쓰던 줄을 닫는다. flush()와 달리 다음 줄을 미리 만들지 않는다 —
+		// 이어질 블록이 들여쓰기를 새로 정하기 때문이다.
+		if (hasContent(cur)) lines.push(cur);
+		cur = [];
+		lineIndent = 0;
 
 		if (block.type === "blankRow") {
 			// 장의 맨 위에 오는 빈 행은 버린다. 새 장이 빈 줄로 시작하면 낭비다.
@@ -189,14 +212,17 @@ export function layoutBlocks(
 			headerOpen = false;
 		}
 
-		// 문단은 첫 칸을 비우고 둘째 칸부터 (TOPIK 2항)
+		// 대화문은 따옴표가 끝날 때까지 모든 줄의 첫 칸을 비운다 (docs 4.7).
+		// 보통 문단은 첫 줄만 비운다 (TOPIK 2항).
+		lineIndent =
+			profile.dialogueHangingIndent && DIALOGUE_START.test(block.text) ? 1 : 0;
 		cur = [emptyCell()];
 		for (const token of tokenizeParagraph(block.text, profile)) place(token);
 	}
-	if (cur.length > 0) flush();
+	if (hasContent(cur)) lines.push(cur);
 
-	// 끝에 매달린 빈 행은 장 수만 부풀린다
-	while (lines.length > 0 && lines[lines.length - 1].length === 0) lines.pop();
+	// 끝에 매달린 빈 줄은 장 수만 부풀린다. 들여쓰기 칸만 남은 줄도 빈 줄이다.
+	while (lines.length > 0 && !hasContent(lines[lines.length - 1])) lines.pop();
 
 	const filledCells = lines.flat().filter((c) => c.glyphs.length > 0).length;
 

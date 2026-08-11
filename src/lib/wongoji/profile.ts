@@ -51,6 +51,16 @@ export interface Profile {
 	 * 자료마다 1~3칸으로 갈린다. 2칸이 가장 흔하다(docs 2.4).
 	 */
 	affiliationTailGap: number;
+
+	/**
+	 * 대화문은 블록 전체를 한 칸 들여쓴다 — 따옴표가 끝날 때까지 모든 줄의 첫 칸을
+	 * 비운다(docs 4.7).
+	 *
+	 * TOPIK 7개 항에는 없다. 학교 글짓기 계열 자료(글나라·EBS·한하운문학관)가
+	 * 일치해서 말하는 관행이고, 소설처럼 대화가 많은 글에서는 이것 없이는
+	 * 조판이 실제와 크게 달라진다.
+	 */
+	dialogueHangingIndent: boolean;
 }
 
 export const TOPIK_PROFILE: Profile = {
@@ -62,6 +72,7 @@ export const TOPIK_PROFILE: Profile = {
 	pushOpenerToNextLine: true,
 	keepWidePunctTogether: true,
 	affiliationTailGap: 2,
+	dialogueHangingIndent: true,
 };
 
 export const DEFAULT_PROFILE = TOPIK_PROFILE;

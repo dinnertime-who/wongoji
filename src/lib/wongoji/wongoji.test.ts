@@ -288,4 +288,43 @@ describe("대화문", () => {
 	it("아포스트로피는 따옴표로 세지 않는다", () => {
 		expect(lines("don't")[0]).toBe("·|do|n|'|t");
 	});
+
+	it("대화문은 줄이 바뀌어도 첫 칸을 계속 비운다", () => {
+		// 따옴표 1 + 22자 → 두 줄에 걸친다
+		const out = lines(`"${"가".repeat(22)}"`);
+		expect(out[0]).toBe(["·", '"', ...Array(18).fill("가")].join("|"));
+		// 둘째 줄도 첫 칸이 비어 있다 — 보통 문단이면 첫 칸부터 채운다
+		expect(out[1]).toBe(["·", "가", "가", "가", "가", '"'].join("|"));
+	});
+
+	it("보통 문단은 둘째 줄부터 첫 칸을 채운다", () => {
+		const out = lines("가".repeat(23));
+		expect(out[1].startsWith("·")).toBe(false);
+	});
+
+	it("작은따옴표로 시작해도 대화문이다", () => {
+		const out = lines(`'${"나".repeat(22)}'`);
+		expect(out[1].startsWith("·")).toBe(true);
+	});
+
+	it("대화문이 끝나면 다음 문단은 보통 문단으로 돌아간다", () => {
+		const out = lines(`"짧은 대화."\n${"다".repeat(23)}`);
+		expect(out[1]).toBe(["·", ...Array(19).fill("다")].join("|"));
+		expect(out[2].startsWith("·")).toBe(false);
+	});
+
+	it("들여쓴 칸 바로 뒤의 띄어쓰기는 버린다", () => {
+		// 줄이 넘어간 자리에 공백이 오면 들여쓰기 뒤에 빈 칸이 하나 더 생기면 안 된다
+		const out = lines(`"${"가".repeat(18)} 나다라"`);
+		expect(out[1]).toBe(["·", "나", "다", "라", '"'].join("|"));
+	});
+
+	it("대화가 많으면 조판 줄 수가 늘어난다 — 매수 계산에 영향을 준다", () => {
+		const dialogue = Array.from(
+			{ length: 10 },
+			() => '"짧은 대화입니다."',
+		).join("\n");
+		const { stats } = layout(dialogue);
+		expect(stats.lines).toBe(10);
+	});
 });
