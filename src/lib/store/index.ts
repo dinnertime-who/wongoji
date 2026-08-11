@@ -12,6 +12,7 @@ export {
 	createDoc,
 	createFolder,
 	daysLeft,
+	displayTitle,
 	makeId,
 	moveDoc,
 	moveFolder,

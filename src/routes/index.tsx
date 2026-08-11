@@ -11,19 +11,25 @@ import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import { exportBackup, type Manuscript } from "#/lib/export";
 import {
+	type DocContent,
+	mutateIndex,
+	readDoc,
 	requestPersistentStorage,
 	type SaveFailure,
+	type SaveResult,
 	safeGetItem,
 	safeSetItem,
-} from "#/lib/store/local";
+	updateDoc,
+	writeDoc,
+	writeLastOpened,
+} from "#/lib/store";
+import { bootstrap } from "#/lib/store/bootstrap";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/")({ component: Home });
 
-const STORAGE_KEY = "wongoji:draft";
+/** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
 const PANE_KEY = "wongoji:mainPane";
-const TITLE_KEY = "wongoji:title";
-const GOAL_KEY = "wongoji:goal";
 
 const SAMPLE = `가을이 깊었다. 마당의 감나무가 잎을 다 떨구고 나서야 나는 그 사실을 알아차렸다.
 "올해도 감은 안 열리려나?" 어머니가 물으셨다.
@@ -80,19 +86,20 @@ function contentToBlocks(content: Content): Block[] {
 }
 
 /**
- * 저장된 원고를 읽는다.
+ * 보관함에서 읽은 본문을 에디터가 받을 수 있는 꼴로 만든다.
  *
- * 예전에는 평문 문자열을 저장했으므로 JSON이 아니면 평문으로 보고 옮겨 담는다.
+ * 새 원고면 비어 있고, 아주 예전에는 평문으로 저장했으므로 셋을 모두 가린다.
  */
-function loadDraft(raw: string | null): Content {
-	if (!raw) return blocksToDoc(parseBlocks(SAMPLE));
-	try {
-		const parsed = JSON.parse(raw);
-		if (parsed?.type === "doc") return parsed as Content;
-	} catch {
-		// 평문이었다는 뜻이다
+function toEditorContent(content: DocContent | null): Content {
+	if (content == null) return blocksToDoc(parseBlocks(SAMPLE));
+	if (typeof content === "string") return blocksToDoc(parseBlocks(content));
+	if (
+		typeof content === "object" &&
+		(content as { type?: string }).type === "doc"
+	) {
+		return content as Content;
 	}
-	return blocksToDoc(parseBlocks(raw));
+	return blocksToDoc(parseBlocks(SAMPLE));
 }
 
 function Home() {
@@ -106,20 +113,29 @@ function Home() {
 	const [editorKey, setEditorKey] = useState(0);
 	// 저장이 실패하면 다시 성공할 때까지 화면에 남긴다
 	const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
+	/** 지금 열어 둔 원고 */
+	const [docId, setDocId] = useState("");
 	const saveTimer = useRef<number | undefined>(undefined);
 	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
 	const docRef = useRef<Content | null>(null);
 
 	// localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
 	useEffect(() => {
-		const draft = loadDraft(safeGetItem(STORAGE_KEY));
-		setInitial(draft);
-		docRef.current = draft;
-		// 에디터를 기다리지 않고 바로 조판한다
-		setBlocks(contentToBlocks(draft));
+		// 보관함을 다듬고, 옛 원고를 옮겨 오거나 없으면 새로 만들고, 열 원고를 고른다
+		const opened = bootstrap();
+		if (!opened.result.ok) setSaveFailure(opened.result);
 
-		setTitle(safeGetItem(TITLE_KEY) ?? "");
-		setGoal(Number(safeGetItem(GOAL_KEY)) || 0);
+		const entry = opened.index.docs.find((d) => d.id === opened.docId);
+		const content = toEditorContent(readDoc(opened.docId));
+
+		setDocId(opened.docId);
+		setInitial(content);
+		docRef.current = content;
+		// 에디터를 기다리지 않고 바로 조판한다
+		setBlocks(contentToBlocks(content));
+		setTitle(entry?.title ?? "");
+		setGoal(entry?.goal ?? 0);
+		writeLastOpened(opened.docId);
 
 		const savedPane = safeGetItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
@@ -130,11 +146,32 @@ function Home() {
 		void requestPersistentStorage();
 	}, []);
 
-	/** 저장하고 실패를 화면에 반영한다 */
-	const save = useCallback((key: string, value: string) => {
-		const result = safeSetItem(key, value);
-		setSaveFailure(result.ok ? null : result);
+	/** 저장 결과를 화면에 반영한다. 하나라도 실패하면 배너가 남는다 */
+	const report = useCallback((...results: SaveResult[]) => {
+		const failed = results.find((r) => !r.ok);
+		setSaveFailure(failed && !failed.ok ? failed : null);
 	}, []);
+
+	/**
+	 * 본문과 색인을 함께 저장한다.
+	 *
+	 * 분량과 제목이 색인에도 있어서 저장이 두 키를 건드린다. 목록을 그릴 때 문서를
+	 * 열지 않아도 되도록 치른 값이다. 같은 디바운스로 묶어 한 번에 쓴다.
+	 */
+	const persist = useCallback(
+		(patch: { title?: string; goal?: number; content?: Content }) => {
+			if (!docId) return;
+			const results: SaveResult[] = [];
+			if (patch.content !== undefined) {
+				results.push(writeDoc(docId, patch.content));
+			}
+			results.push(
+				mutateIndex((index) => updateDoc(index, docId, patch)).result,
+			);
+			report(...results);
+		},
+		[docId, report],
+	);
 
 	const handleChange = useCallback(
 		(next: Block[], doc: PMNode) => {
@@ -142,34 +179,34 @@ function Home() {
 			docRef.current = doc.toJSON() as Content;
 			window.clearTimeout(saveTimer.current);
 			saveTimer.current = window.setTimeout(() => {
-				save(STORAGE_KEY, JSON.stringify(docRef.current));
+				persist({ content: docRef.current ?? undefined });
 			}, 300);
 		},
-		[save],
+		[persist],
 	);
 
 	const choosePane = (pane: Pane) => {
 		setMainPane(pane);
-		save(PANE_KEY, pane);
+		report(safeSetItem(PANE_KEY, pane));
 	};
 
 	const changeTitle = (value: string) => {
 		setTitle(value);
-		save(TITLE_KEY, value);
+		persist({ title: value });
 	};
 
 	const changeGoal = (value: number) => {
 		setGoal(value);
-		save(GOAL_KEY, String(value));
+		persist({ goal: value });
 	};
 
 	const handleImport = (next: Manuscript) => {
 		const doc = blocksToDoc(next.blocks);
-		changeTitle(next.title);
+		setTitle(next.title);
 		docRef.current = doc;
 		setInitial(doc);
 		setBlocks(next.blocks);
-		save(STORAGE_KEY, JSON.stringify(doc));
+		persist({ title: next.title, content: doc });
 		setEditorKey((k) => k + 1);
 	};
 

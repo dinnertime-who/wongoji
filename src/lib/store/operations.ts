@@ -44,7 +44,7 @@ export function createFolder(
 
 export function createDoc(
 	index: StoreIndex,
-	{ title = "제목 없는 원고", path = ROOT, now = Date.now() } = {},
+	{ title = "", path = ROOT, now = Date.now() } = {},
 	newId: NewId = makeId,
 ): { index: StoreIndex; doc: DocEntry } {
 	const doc: DocEntry = {
@@ -246,7 +246,7 @@ function reviveDoc(id: string, path: Path): DocEntry {
 	const now = Date.now();
 	return {
 		id,
-		title: "제목 없는 원고",
+		title: "",
 		path,
 		goal: 0,
 		chars: 0,
@@ -321,6 +321,15 @@ export function repairPaths(index: StoreIndex): StoreIndex {
 }
 
 // ─── 읽기 ───
+
+/**
+ * 목록에 보여줄 이름.
+ *
+ * 제목은 비어 있을 수 있다 — 원고지 첫 장에 조판되는 값이라, 사용자가 적지 않았는데
+ * 자리를 채워 넣으면 쓰지도 않은 제목이 원고에 찍힌다. 빈 것은 목록에서만 메운다.
+ */
+export const displayTitle = (entry: { title: string }): string =>
+	entry.title.trim() || "제목 없는 원고";
 
 /** 그 폴더 바로 아래 것들. 폴더가 먼저, 이름순 · 원고는 최근 수정순 */
 export function childrenOf(index: StoreIndex, path: Path) {
