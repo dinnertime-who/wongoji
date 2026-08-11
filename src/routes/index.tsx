@@ -134,7 +134,7 @@ function Home() {
 	const pager = <WongojiPager pages={pages} />;
 
 	return (
-		<div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
+		<div className="flex min-h-[100dvh] flex-col bg-[var(--canvas)] text-[var(--ink)]">
 			<header className="no-print sticky top-0 z-10 border-b border-[var(--hairline)] bg-[var(--canvas)]/90 backdrop-blur">
 				<div className="mx-auto flex max-w-6xl flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<h1 className="font-semibold text-lg tracking-tight">200자 원고지</h1>
@@ -163,11 +163,24 @@ function Home() {
 				</main>
 			) : (
 				<>
-					<main className="px-4 py-4 pb-24">
+					{/*
+					 * 원고지는 열 줄이라 화면 위쪽에 붙어 있으면 아래가 크게 빈다.
+					 * 남은 높이를 flex로 받아 세로 가운데에 놓는다 — 헤더 높이를 상수로
+					 * 박으면 글자 수가 늘어 헤더가 접힐 때 어긋난다.
+					 */}
+					<main className="flex flex-1 flex-col justify-center px-4">
 						{mainPane === "write" ? (
-							<div className="no-print">{editor("h-[calc(100vh-14rem)]")}</div>
+							/* 아래 여백은 떠 있는 토글이 빈 행 추가 버튼을 가리지 않도록 둔다 */
+							<div className="no-print pt-4 pb-20">
+								{editor("h-[calc(100dvh-17rem)]")}
+							</div>
 						) : (
-							<div className="min-w-0">{pager}</div>
+							/*
+							 * 위아래 여백이 같아야 헤더 아래 영역의 한가운데에 온다.
+							 * 넉넉히 두는 쪽은 장이 많아 아래로 넘칠 때 장 번호 막대가
+							 * 떠 있는 토글에 가리지 않게 하려는 것이다.
+							 */
+							<div className="min-w-0 py-20">{pager}</div>
 						)}
 					</main>
 
