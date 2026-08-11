@@ -1,7 +1,15 @@
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Keyboard } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { Swiper as SwiperClass } from "swiper/types";
+import { Button } from "#/components/ui/button";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+} from "#/components/ui/pagination";
 import type { Page } from "#/lib/wongoji";
 import { WongojiSheet } from "./WongojiSheet";
 
@@ -42,57 +50,58 @@ function PageNav({
 	const step = (delta: number) =>
 		onSelect(Math.min(total - 1, Math.max(0, current + delta)));
 
+	/*
+	 * shadcn Pagination의 구조만 쓰고 항목은 Button으로 둔다.
+	 * PaginationLink는 <a>라서 이동이 아니라 슬라이드를 넘기는 여기에는 맞지 않는다.
+	 */
 	return (
-		<nav
-			className="no-print mt-4 flex flex-wrap items-center justify-center gap-1 text-xs tabular-nums"
-			aria-label="원고지 장 이동"
-		>
-			<button
-				type="button"
-				onClick={() => step(-1)}
-				disabled={current === 0}
-				className="rounded border border-[var(--hairline)] px-2 py-1 transition-colors hover:bg-[var(--paper)] disabled:opacity-30"
-				aria-label="이전 장"
-			>
-				←
-			</button>
+		<Pagination className="no-print mt-4">
+			<PaginationContent className="tabular-nums">
+				<PaginationItem>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={() => step(-1)}
+						disabled={current === 0}
+						aria-label="이전 장"
+					>
+						<ChevronLeftIcon />
+					</Button>
+				</PaginationItem>
 
-			{pageItems(total, current).map((item, i) =>
-				item === "gap" ? (
-					<span
+				{pageItems(total, current).map((item, i) =>
+					item === "gap" ? (
 						// biome-ignore lint/suspicious/noArrayIndexKey: 생략 기호는 위치 말고 구분할 것이 없다.
-						key={`gap-${i}`}
-						className="px-1 text-[var(--muted)]"
-					>
-						…
-					</span>
-				) : (
-					<button
-						key={item}
-						type="button"
-						onClick={() => onSelect(item)}
-						aria-current={item === current ? "page" : undefined}
-						className={`min-w-7 rounded border px-2 py-1 transition-colors ${
-							item === current
-								? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]"
-								: "border-[var(--hairline)] hover:bg-[var(--paper)]"
-						}`}
-					>
-						{item + 1}
-					</button>
-				),
-			)}
+						<PaginationItem key={`gap-${i}`}>
+							<PaginationEllipsis />
+						</PaginationItem>
+					) : (
+						<PaginationItem key={item}>
+							<Button
+								variant={item === current ? "default" : "ghost"}
+								size="icon-sm"
+								onClick={() => onSelect(item)}
+								aria-current={item === current ? "page" : undefined}
+							>
+								{item + 1}
+							</Button>
+						</PaginationItem>
+					),
+				)}
 
-			<button
-				type="button"
-				onClick={() => step(1)}
-				disabled={current === total - 1}
-				className="rounded border border-[var(--hairline)] px-2 py-1 transition-colors hover:bg-[var(--paper)] disabled:opacity-30"
-				aria-label="다음 장"
-			>
-				→
-			</button>
-		</nav>
+				<PaginationItem>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={() => step(1)}
+						disabled={current === total - 1}
+						aria-label="다음 장"
+					>
+						<ChevronRightIcon />
+					</Button>
+				</PaginationItem>
+			</PaginationContent>
+		</Pagination>
 	);
 }
 

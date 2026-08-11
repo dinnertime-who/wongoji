@@ -1,3 +1,6 @@
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
+import { Progress } from "#/components/ui/progress";
 import { CELLS_PER_SHEET, type LayoutStats } from "#/lib/wongoji";
 
 /**
@@ -34,27 +37,29 @@ export function ManuscriptBar({
 	return (
 		<div className="no-print mx-auto w-full max-w-6xl px-4 pt-4">
 			<div className="flex flex-wrap items-center gap-2">
-				<input
+				<Input
 					value={title}
 					onChange={(e) => onTitleChange(e.target.value)}
 					placeholder="제목"
 					aria-label="제목"
-					className="min-w-0 flex-1 rounded border border-[var(--hairline)] bg-[var(--paper)] px-3 py-2 text-center text-lg outline-none placeholder:text-[var(--muted)] focus:border-[var(--grid)]"
+					className="h-10 min-w-0 flex-1 bg-[var(--paper)] text-center text-lg"
 				/>
-				<label className="flex shrink-0 items-center gap-1.5 rounded border border-[var(--hairline)] bg-[var(--paper)] px-2.5 py-2 text-xs">
-					<span className="text-[var(--muted)]">목표</span>
-					<input
+				<div className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--paper)] px-2.5 text-xs">
+					<Label htmlFor="goal" className="text-muted-foreground">
+						목표
+					</Label>
+					<Input
+						id="goal"
 						type="number"
 						min={0}
 						max={9999}
 						value={goal || ""}
 						onChange={(e) => onGoalChange(Number(e.target.value) || 0)}
 						placeholder="—"
-						aria-label="목표 매수"
-						className="w-12 bg-transparent text-right tabular-nums outline-none placeholder:text-[var(--muted)]"
+						className="h-auto w-11 border-0 bg-transparent p-0 text-right text-xs tabular-nums shadow-none focus-visible:ring-0"
 					/>
-					<span className="text-[var(--muted)]">매</span>
-				</label>
+					<span className="text-muted-foreground">매</span>
+				</div>
 				{toggle}
 			</div>
 
@@ -75,21 +80,15 @@ export function ManuscriptBar({
 			</div>
 
 			{goal > 0 && (
-				<div
-					className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]"
-					role="progressbar"
-					aria-valuenow={Math.round(ratio * 100)}
-					aria-valuemin={0}
-					aria-valuemax={100}
+				<Progress
+					value={ratio * 100}
 					aria-label="분량 목표 진행"
-				>
-					<div
-						className={`h-full rounded-full transition-[width] ${
-							over ? "bg-[var(--ink)]" : "bg-[var(--grid)]"
-						}`}
-						style={{ width: `${ratio * 100}%` }}
-					/>
-				</div>
+					className={`mt-1.5 h-1 bg-[var(--surface-muted)] ${
+						over
+							? "[&>[data-slot=progress-indicator]]:bg-[var(--ink)]"
+							: "[&>[data-slot=progress-indicator]]:bg-[var(--grid)]"
+					}`}
+				/>
 			)}
 		</div>
 	);

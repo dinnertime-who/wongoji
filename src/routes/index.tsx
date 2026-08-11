@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
+import { Button } from "#/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "#/components/ui/toggle-group";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import type { Manuscript } from "#/lib/export";
@@ -190,13 +192,9 @@ function Home() {
 							manuscript={{ title, blocks }}
 							onImport={handleImport}
 						/>
-						<button
-							type="button"
-							onClick={() => window.print()}
-							className="rounded border border-[var(--hairline)] px-3 py-1 transition-colors hover:bg-[var(--paper)]"
-						>
+						<Button variant="outline" size="sm" onClick={() => window.print()}>
 							인쇄
-						</button>
+						</Button>
 					</div>
 				</div>
 			</header>
@@ -255,22 +253,22 @@ function PaneToggle({
 	onChoose: (pane: Pane) => void;
 }) {
 	return (
-		<>
+		<ToggleGroup
+			type="single"
+			value={mainPane}
+			// 라디오처럼 늘 하나가 눌려 있어야 한다. 빈 값이 오면 무시한다.
+			onValueChange={(value) => value && onChoose(value as Pane)}
+			className="rounded-full"
+		>
 			{(["write", "preview"] as const).map((pane) => (
-				<button
+				<ToggleGroupItem
 					key={pane}
-					type="button"
-					onClick={() => onChoose(pane)}
-					aria-pressed={mainPane === pane}
-					className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
-						mainPane === pane
-							? "bg-[var(--ink)] text-[var(--paper)]"
-							: "text-[var(--muted)]"
-					}`}
+					value={pane}
+					className="rounded-full px-3.5 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
 				>
 					{PANE_LABEL[pane]}
-				</button>
+				</ToggleGroupItem>
 			))}
-		</>
+		</ToggleGroup>
 	);
 }

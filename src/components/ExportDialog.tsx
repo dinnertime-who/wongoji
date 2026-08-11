@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Button } from "#/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -16,8 +17,9 @@ import {
 } from "#/lib/export";
 import { parseBlocks } from "#/lib/wongoji";
 
+/** 여러 줄짜리 항목이라 버튼 기본 높이를 풀고 왼쪽 정렬로 둔다 */
 const ROW =
-	"flex w-full items-start gap-3 rounded-md border border-[var(--hairline)] bg-[var(--paper)] p-3 text-left transition-colors hover:border-[var(--grid)] disabled:opacity-50";
+	"h-auto w-full items-start justify-start gap-3 bg-[var(--paper)] p-3 text-left whitespace-normal hover:border-[var(--grid)]";
 
 export function ExportDialog({
 	manuscript,
@@ -57,12 +59,9 @@ export function ExportDialog({
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
-				<button
-					type="button"
-					className="rounded border border-[var(--hairline)] px-3 py-1 text-xs transition-colors hover:bg-[var(--paper)]"
-				>
+				<Button variant="outline" size="sm">
 					파일
-				</button>
+				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-md">
 				<DialogHeader>
@@ -73,8 +72,8 @@ export function ExportDialog({
 				</DialogHeader>
 
 				<div className="mt-2 space-y-2">
-					<button
-						type="button"
+					<Button
+						variant="outline"
 						onClick={runDocx}
 						disabled={busy}
 						className={ROW}
@@ -91,10 +90,10 @@ export function ExportDialog({
 								공모전마다 서식이 다르니 요강을 확인하세요.
 							</span>
 						</span>
-					</button>
+					</Button>
 
-					<button
-						type="button"
+					<Button
+						variant="outline"
 						onClick={() => exportBackup(manuscript)}
 						className={ROW}
 					>
@@ -107,10 +106,10 @@ export function ExportDialog({
 								제목과 빈 행까지 그대로 되살릴 수 있는 완전한 사본.
 							</span>
 						</span>
-					</button>
+					</Button>
 
-					<button
-						type="button"
+					<Button
+						variant="outline"
 						onClick={() => exportText(manuscript)}
 						className={ROW}
 					>
@@ -123,10 +122,10 @@ export function ExportDialog({
 								어디서나 열리는 평문. 빈 행 표시는 남지 않습니다.
 							</span>
 						</span>
-					</button>
+					</Button>
 
-					<button
-						type="button"
+					<Button
+						variant="outline"
 						onClick={() => fileInput.current?.click()}
 						className={`${ROW} border-dashed`}
 					>
@@ -139,7 +138,7 @@ export function ExportDialog({
 								.json 또는 .txt. <strong>지금 원고를 덮어씁니다.</strong>
 							</span>
 						</span>
-					</button>
+					</Button>
 					<input
 						ref={fileInput}
 						type="file"

@@ -11,7 +11,9 @@ import {
 	EditorContent,
 	useEditor,
 } from "@tiptap/react";
+import { CornerDownLeftIcon } from "lucide-react";
 import { useEffect } from "react";
+import { Button } from "#/components/ui/button";
 import type { Block } from "#/lib/wongoji";
 
 /**
@@ -137,19 +139,17 @@ export function WongojiEditor({
 			 * 빈 행을 넣는 유일한 길이다. 모바일에서 엄지가 닿도록 본문 바로 아래에
 			 * 가로로 꽉 채워 둔다.
 			 */}
-			<button
-				type="button"
+			<Button
+				variant="outline"
+				size="lg"
 				onClick={() => editor && insertBlankRow(editor)}
 				disabled={!editor}
 				title="Ctrl+Enter"
-				className="mt-2 flex w-full shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--grid)] bg-[var(--grid-soft)] py-2.5 text-[var(--ink)] text-xs transition-colors hover:bg-[var(--grid)] hover:text-[var(--paper)] disabled:opacity-40"
+				className="mt-2 w-full border-[var(--grid)] bg-[var(--grid-soft)] text-xs hover:bg-[var(--grid)] hover:text-[var(--paper)]"
 			>
-				<span aria-hidden className="leading-none">
-					⏎
-				</span>
-				빈 행 추가
-				<span className="opacity-50">⌃↵</span>
-			</button>
+				<CornerDownLeftIcon />빈 행 추가
+				<span className="text-muted-foreground">⌃↵</span>
+			</Button>
 		</div>
 	);
 }

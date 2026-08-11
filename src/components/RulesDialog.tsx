@@ -1,3 +1,4 @@
+import { Button } from "#/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -34,12 +35,13 @@ export function RulesDialog() {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
-				<button
-					type="button"
-					className="rounded text-[var(--muted)] text-xs underline decoration-dotted underline-offset-4 transition-colors hover:text-[var(--ink)]"
+				<Button
+					variant="link"
+					size="xs"
+					className="text-muted-foreground underline decoration-dotted underline-offset-4 hover:text-foreground"
 				>
 					TOPIK 공식 규칙
-				</button>
+				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
 				<DialogHeader>
