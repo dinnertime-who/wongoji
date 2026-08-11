@@ -83,11 +83,7 @@ body {
   color: var(--muted);
 }
 
-.wongoji-pager {
-  --swiper-theme-color: var(--grid);
-  --swiper-navigation-size: 1.75rem;
-  --swiper-pagination-bullet-inactive-color: var(--muted);
-}
+/* 장 이동은 Swiper 기본 UI 대신 직접 만든 번호 막대를 쓴다 */
 
 @media print {
   @page {
@@ -117,10 +113,9 @@ body {
     page-break-inside: avoid;
   }
 
-  .swiper-pagination,
-  .swiper-button-next,
-  .swiper-button-prev {
-    display: none !important;
+  /* 슬라이드를 풀면 폭 제한이 인쇄 여백을 좁힌다 */
+  .swiper-slide > div {
+    max-width: none !important;
   }
 
   body {
