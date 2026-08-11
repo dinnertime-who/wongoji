@@ -12,6 +12,8 @@ export const Route = createFileRoute("/")({ component: Home });
 
 const STORAGE_KEY = "wongoji:draft";
 const PANE_KEY = "wongoji:mainPane";
+const TITLE_KEY = "wongoji:title";
+const AFFILIATION_KEY = "wongoji:affiliation";
 
 const SAMPLE = `가을이 깊었다. 마당의 감나무가 잎을 다 떨구고 나서야 나는 그 사실을 알아차렸다.
 "올해도 감은 안 열리려나?" 어머니가 물으셨다.
@@ -86,6 +88,8 @@ function loadDraft(raw: string | null): Content {
 function Home() {
 	const [initial, setInitial] = useState<Content | null>(null);
 	const [blocks, setBlocks] = useState<Block[]>([]);
+	const [title, setTitle] = useState("");
+	const [affiliation, setAffiliation] = useState("");
 	const [mainPane, setMainPane] = useState<Pane>("write");
 	const saveTimer = useRef<number | undefined>(undefined);
 	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
@@ -100,6 +104,9 @@ function Home() {
 		docRef.current = draft;
 		// 에디터를 기다리지 않고 바로 조판한다
 		setBlocks(contentToBlocks(draft));
+
+		setTitle(window.localStorage.getItem(TITLE_KEY) ?? "");
+		setAffiliation(window.localStorage.getItem(AFFILIATION_KEY) ?? "");
 
 		const savedPane = window.localStorage.getItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
@@ -120,14 +127,44 @@ function Home() {
 		window.localStorage.setItem(PANE_KEY, pane);
 	};
 
-	const { pages, stats } = useMemo(() => layoutBlocks(blocks), [blocks]);
+	const changeTitle = (value: string) => {
+		setTitle(value);
+		window.localStorage.setItem(TITLE_KEY, value);
+	};
 
-	const editor = (heightClass?: string) =>
+	const changeAffiliation = (value: string) => {
+		setAffiliation(value);
+		window.localStorage.setItem(AFFILIATION_KEY, value);
+	};
+
+	// 제목·소속은 첫 장 헤더라 본문 앞에 붙는다. 비어 있으면 아예 넣지 않는다.
+	const { pages, stats } = useMemo(
+		() =>
+			layoutBlocks([
+				...(title.trim()
+					? [{ type: "title" as const, text: title.trim() }]
+					: []),
+				...(affiliation.trim()
+					? [{ type: "affiliation" as const, text: affiliation.trim() }]
+					: []),
+				...blocks,
+			]),
+		[blocks, title, affiliation],
+	);
+
+	const statsText = `${stats.chars}자 · ${stats.sheets}매 · ${stats.pages}장`;
+
+	const editor = (heightClass?: string, overlay?: React.ReactNode) =>
 		initial && (
 			<WongojiEditor
 				initialContent={docRef.current ?? initial}
 				onChange={handleChange}
 				heightClass={heightClass}
+				title={title}
+				onTitleChange={changeTitle}
+				affiliation={affiliation}
+				onAffiliationChange={changeAffiliation}
+				overlay={overlay}
 			/>
 		);
 
@@ -140,9 +177,10 @@ function Home() {
 					<h1 className="font-semibold text-lg tracking-tight">200자 원고지</h1>
 					<RulesDialog />
 					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-						<span className="text-[var(--muted)]">
-							{stats.chars}자 · {stats.sheets}매 · {stats.pages}장
-						</span>
+						{/* 모바일에서는 본문 오른쪽 아래에 겹쳐 띄우므로 헤더에서 뺀다 */}
+						{isDesktop && (
+							<span className="text-[var(--muted)]">{statsText}</span>
+						)}
 						<button
 							type="button"
 							onClick={() => window.print()}
@@ -176,7 +214,12 @@ function Home() {
 						{mainPane === "write" ? (
 							/* 아래 여백은 떠 있는 토글이 빈 행 추가 버튼을 가리지 않도록 둔다 */
 							<div className="no-print pt-4 pb-20">
-								{editor("h-[calc(100dvh-17rem)]")}
+								{editor(
+									"h-[calc(100dvh-22rem)]",
+									<span className="rounded bg-[var(--canvas)]/85 px-1.5 py-0.5 text-[var(--muted)] text-[0.7rem] tabular-nums">
+										{statsText}
+									</span>,
+								)}
 							</div>
 						) : (
 							/*
