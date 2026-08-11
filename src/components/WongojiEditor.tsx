@@ -12,7 +12,7 @@ import {
 	useEditor,
 } from "@tiptap/react";
 import { CornerDownLeftIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "#/components/ui/button";
 import type { Block } from "#/lib/wongoji";
 
@@ -88,6 +88,17 @@ export function WongojiEditor({
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
 }) {
+	/*
+	 * 알림 창구를 ref로 붙든다.
+	 *
+	 * onChange는 부모가 다시 그릴 때마다 새 함수가 된다. 이것을 아래 effect의
+	 * 의존값으로 두면, 내용이 그대로인데도 "처음 조판" 알림이 다시 나간다. 원고를
+	 * 바꾸는 순간이 특히 위험하다 — 아직 갈리지 않은 옛 에디터가 새 원고의 이름으로
+	 * 옛 내용을 알려, 그 내용이 새 원고에 저장된다.
+	 */
+	const notify = useRef(onChange);
+	notify.current = onChange;
+
 	const editor = useEditor({
 		extensions: [
 			Document,
@@ -113,13 +124,13 @@ export function WongojiEditor({
 			},
 		},
 		onUpdate: ({ editor }) =>
-			onChange(docToBlocks(editor.state.doc), editor.state.doc),
+			notify.current(docToBlocks(editor.state.doc), editor.state.doc),
 	});
 
 	// 최초 마운트 시에도 한 번 조판한다 (onUpdate는 편집이 있어야 발생한다)
 	useEffect(() => {
-		if (editor) onChange(docToBlocks(editor.state.doc), editor.state.doc);
-	}, [editor, onChange]);
+		if (editor) notify.current(docToBlocks(editor.state.doc), editor.state.doc);
+	}, [editor]);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">

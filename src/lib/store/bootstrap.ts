@@ -18,6 +18,16 @@ import type { StoreIndex } from "./types";
  * 3. 열 원고를 고른다
  */
 
+/**
+ * 처음 오는 사람이 보게 될 원고.
+ *
+ * 빈 화면보다 낫다 — 조판이 어떻게 되는지, 대화가 어떻게 들어가는지 한눈에
+ * 보인다. 평문으로 넣으면 읽는 쪽에서 문단으로 나눈다.
+ */
+const WELCOME = `가을이 깊었다. 마당의 감나무가 잎을 다 떨구고 나서야 나는 그 사실을 알아차렸다.
+"올해도 감은 안 열리려나?" 어머니가 물으셨다.
+나는 대답 대신 하늘을 올려다보았다. 2024년의 마지막 가을이 그렇게 지나가고 있었다……`;
+
 /** 새 구조 이전에 쓰던 키들 */
 const LEGACY = {
 	draft: "wongoji:draft",
@@ -47,6 +57,10 @@ export function bootstrap(now = Date.now()): Bootstrap {
 		});
 		index = created.index;
 
+		/*
+		 * 본문을 반드시 써 둔다. 색인에만 있고 본문 키가 없는 원고는 "본문을 잃었다"는
+		 * 뜻으로 읽히므로, 갓 만든 원고가 그렇게 보여서는 안 된다.
+		 */
 		if (legacy) {
 			// 옛 값을 그대로 옮긴다. 평문이든 Tiptap 문서든 읽는 쪽이 가린다.
 			writeDoc(created.doc.id, legacy.content);
@@ -59,6 +73,8 @@ export function bootstrap(now = Date.now()): Bootstrap {
 				};
 			}
 			migrated = true;
+		} else {
+			writeDoc(created.doc.id, WELCOME);
 		}
 	}
 
