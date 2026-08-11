@@ -35,7 +35,7 @@ export function ManuscriptBar({
 	const over = remaining < 0;
 
 	return (
-		<div className="no-print mx-auto w-full max-w-6xl px-4 pt-4">
+		<div className="mx-auto w-full max-w-6xl px-4 pt-4">
 			<div className="flex flex-wrap items-center gap-2">
 				<Input
 					value={title}

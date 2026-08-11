@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
-import { Button } from "#/components/ui/button";
 import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
@@ -182,8 +181,12 @@ function Home() {
 	const pager = <WongojiPager pages={pages} />;
 
 	return (
-		<div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
-			<header className="no-print sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
+		/*
+		 * 화면 높이에 못박는다. min-h로 두면 위쪽 한계가 없어 안쪽 스크롤 영역이
+		 * 자기 높이를 정하지 못하고, 원고지가 길어질 때 페이지 전체가 늘어난다.
+		 */
+		<div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
+			<header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
 				<div className="mx-auto flex max-w-6xl flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<h1 className="font-semibold text-lg tracking-tight">200자 원고지</h1>
 					<RulesDialog />
@@ -192,9 +195,6 @@ function Home() {
 							manuscript={{ title, blocks }}
 							onImport={handleImport}
 						/>
-						<Button variant="outline" size="sm" onClick={() => window.print()}>
-							인쇄
-						</Button>
 					</div>
 				</div>
 			</header>
@@ -214,31 +214,34 @@ function Home() {
 			/>
 
 			{/*
-			 * 한 번에 한 쪽만 전체 폭으로 보여준다. 쓰는 것이 주고 원고지는 확인이라
-			 * 나란히 두면 정작 글 쓰는 곳이 좁아진다.
+			 * 넓은 화면에서는 원고와 원고지를 나란히, 좁은 화면에서는 한 쪽만 보여준다.
 			 *
-			 * 덤으로 에디터가 항상 하나만 마운트되므로 화면 크기로 갈라줄 필요가 없다.
-			 * 토글은 상태가 없으니 CSS로 자리만 바꿔 준다.
+			 * DOM은 한 벌만 두고 CSS로 가린다. 그래야 에디터가 늘 한 번만 마운트되어
+			 * 쪽을 오가도 다시 만들어지지 않는다 — undo 히스토리도 살아남는다.
 			 */}
-			<main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-4 pb-20 lg:pb-6">
-				{mainPane === "write" ? (
-					<div className="no-print flex min-h-0 flex-1 flex-col">
-						{editor(
-							<span className="rounded bg-background/85 px-1.5 py-0.5 text-muted-foreground text-[0.7rem] tabular-nums">
-								{statsText}
-							</span>,
-						)}
-					</div>
-				) : (
-					/* 원고지는 열 줄이라 위에만 붙어 있으면 아래가 크게 빈다 */
-					<div className="flex min-h-0 flex-1 flex-col justify-center">
-						{pager}
-					</div>
-				)}
+			<main className="mx-auto grid min-h-0 w-full max-w-6xl flex-1 gap-6 px-4 pt-4 pb-20 lg:grid-cols-2 lg:pb-6">
+				<div
+					className={`flex min-h-0 flex-col ${
+						mainPane === "write" ? "" : "hidden lg:flex"
+					}`}
+				>
+					{editor(
+						<span className="rounded bg-background/85 px-1.5 py-0.5 text-[0.7rem] text-muted-foreground tabular-nums">
+							{statsText}
+						</span>,
+					)}
+				</div>
+				<div
+					className={`flex min-h-0 flex-col ${
+						mainPane === "preview" ? "" : "hidden lg:flex"
+					}`}
+				>
+					{pager}
+				</div>
 			</main>
 
-			{/* 좁은 화면에서는 엄지가 닿는 자리에 띄운다 */}
-			<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
+			{/* 좁은 화면에서만 고른다. 넓은 화면에서는 둘 다 보이니 고를 것이 없다 */}
+			<div className="fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
 				<PaneToggle mainPane={mainPane} onChoose={choosePane} />
 			</div>
 		</div>
