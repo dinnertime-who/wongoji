@@ -8,11 +8,13 @@ export {
 } from "./local";
 export {
 	childrenOf,
+	copyTitle,
 	countDocsUnder,
 	createDoc,
 	createFolder,
 	daysLeft,
 	displayTitle,
+	duplicateDoc,
 	makeId,
 	moveDoc,
 	moveFolder,

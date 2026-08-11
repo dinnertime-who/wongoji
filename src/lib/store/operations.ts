@@ -60,6 +60,56 @@ export function createDoc(
 	return { index: { ...index, docs: [...index.docs, doc] }, doc };
 }
 
+/** 끝에 붙은 사본 표시 — `(사본)`, `(사본 2)` */
+const COPY_SUFFIX = /\s*\(사본(?: \d+)?\)$/;
+
+/**
+ * 사본에 붙일 제목.
+ *
+ * 같은 폴더에 이미 같은 이름이 있으면 번호를 올린다. 이미 사본인 것을 또 복제할
+ * 때 `(사본) (사본)`으로 늘어지지 않게 꼬리를 떼고 다시 붙인다.
+ */
+export function copyTitle(title: string, taken: readonly string[]): string {
+	const base = title.trim();
+	// 제목이 없으면 사본도 없는 채로 둔다. 없던 제목을 지어내면 내보낸 문서에 찍힌다
+	if (!base) return "";
+
+	const stem = base.replace(COPY_SUFFIX, "");
+	const used = new Set(taken.map((t) => t.trim()));
+
+	let name = `${stem} (사본)`;
+	for (let n = 2; used.has(name); n += 1) name = `${stem} (사본 ${n})`;
+	return name;
+}
+
+/**
+ * 원고를 복제한다. 같은 폴더에 사본 제목으로 넣는다.
+ *
+ * 본문은 여기서 옮기지 않는다 — 색인에 없는 값이라 부르는 쪽이 키를 복사한다.
+ * 없는 원고면 null을 돌려준다.
+ */
+export function duplicateDoc(
+	index: StoreIndex,
+	id: string,
+	now = Date.now(),
+	newId: NewId = makeId,
+): { index: StoreIndex; doc: DocEntry } | null {
+	const source = index.docs.find((d) => d.id === id);
+	if (!source) return null;
+
+	const doc: DocEntry = {
+		...source,
+		id: newId(),
+		title: copyTitle(
+			source.title,
+			index.docs.filter((d) => d.path === source.path).map((d) => d.title),
+		),
+		createdAt: now,
+		updatedAt: now,
+	};
+	return { index: { ...index, docs: [...index.docs, doc] }, doc };
+}
+
 // ─── 고치기 ───
 
 export function updateDoc(

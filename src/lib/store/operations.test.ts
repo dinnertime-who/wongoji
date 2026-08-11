@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	childrenOf,
+	copyTitle,
 	countDocsUnder,
 	createDoc,
 	createFolder,
 	daysLeft,
+	duplicateDoc,
 	moveDoc,
 	moveFolder,
 	purgeExpired,
@@ -240,5 +242,57 @@ describe("목록용 값", () => {
 		expect(doc?.chars).toBe(14007);
 		expect(doc?.updatedAt).toBe(NOW + 1000);
 		expect(doc?.createdAt).toBe(NOW); // 만든 때는 그대로
+	});
+});
+
+describe("복제", () => {
+	it("제목에 사본을 붙인다", () => {
+		expect(copyTitle("감나무 있는 마당", [])).toBe("감나무 있는 마당 (사본)");
+	});
+
+	it("같은 이름이 있으면 번호를 올린다", () => {
+		const taken = ["감나무", "감나무 (사본)"];
+		expect(copyTitle("감나무", taken)).toBe("감나무 (사본 2)");
+		expect(copyTitle("감나무", [...taken, "감나무 (사본 2)"])).toBe(
+			"감나무 (사본 3)",
+		);
+	});
+
+	it("사본의 사본이 늘어지지 않는다", () => {
+		expect(copyTitle("감나무 (사본)", ["감나무 (사본)"])).toBe(
+			"감나무 (사본 2)",
+		);
+		expect(copyTitle("감나무 (사본 2)", [])).toBe("감나무 (사본)");
+	});
+
+	it("제목이 없으면 사본도 없는 채로 둔다", () => {
+		// 없던 제목을 지어내면 내보낸 워드 문서에 찍힌다
+		expect(copyTitle("", [])).toBe("");
+		expect(copyTitle("   ", [])).toBe("");
+	});
+
+	it("같은 폴더에 목표와 함께 복제된다", () => {
+		let index = emptyIndex();
+		const folder = createFolder(index, "2026", ROOT);
+		index = folder.index;
+		const made = createDoc(index, {
+			title: "감나무",
+			path: fullPath(folder.folder),
+		});
+		index = updateDoc(made.index, made.doc.id, { goal: 30 });
+
+		const copy = duplicateDoc(index, made.doc.id);
+		expect(copy).not.toBeNull();
+		if (!copy) return;
+
+		expect(copy.doc.id).not.toBe(made.doc.id);
+		expect(copy.doc.title).toBe("감나무 (사본)");
+		expect(copy.doc.path).toBe(fullPath(folder.folder));
+		expect(copy.doc.goal).toBe(30);
+		expect(copy.index.docs).toHaveLength(2);
+	});
+
+	it("없는 원고는 null", () => {
+		expect(duplicateDoc(emptyIndex(), "없음")).toBeNull();
 	});
 });
