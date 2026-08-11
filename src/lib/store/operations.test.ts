@@ -169,7 +169,14 @@ describe("휴지통", () => {
 			{
 				...next,
 				trash: [
-					{ kind: "doc", id: 감나무.id, path: 감나무.path, deletedAt: NOW },
+					{
+						kind: "doc",
+						id: 감나무.id,
+						title: 감나무.title,
+						goal: 감나무.goal,
+						path: 감나무.path,
+						deletedAt: NOW,
+					},
 				],
 			},
 			감나무.id,
@@ -193,6 +200,8 @@ describe("휴지통", () => {
 		const entry = {
 			kind: "doc" as const,
 			id: "d1",
+			title: "",
+			goal: 0,
 			path: ROOT,
 			deletedAt: NOW,
 		};
@@ -294,5 +303,38 @@ describe("복제", () => {
 
 	it("없는 원고는 null", () => {
 		expect(duplicateDoc(emptyIndex(), "없음")).toBeNull();
+	});
+});
+
+describe("휴지통이 들고 가는 값", () => {
+	it("되살리면 제목과 목표가 돌아온다", () => {
+		let index = emptyIndex();
+		const made = createDoc(index, { title: "감나무 있는 마당" });
+		index = updateDoc(made.index, made.doc.id, { goal: 80 });
+
+		const revived = restore(trashDoc(index, made.doc.id), made.doc.id);
+		const back = revived.docs.find((d) => d.id === made.doc.id);
+
+		expect(back?.title).toBe("감나무 있는 마당");
+		expect(back?.goal).toBe(80);
+	});
+
+	it("폴더째 버려도 안의 원고가 제목을 들고 간다", () => {
+		let index = emptyIndex();
+		const folder = createFolder(index, "2026", ROOT);
+		const made = createDoc(folder.index, {
+			title: "눈 오는 날",
+			path: fullPath(folder.folder),
+		});
+		index = made.index;
+
+		const trashed = trashFolder(index, folder.folder.id);
+		const entry = trashed.trash.find((t) => t.id === made.doc.id);
+		expect(entry?.kind === "doc" && entry.title).toBe("눈 오는 날");
+
+		const revived = restore(trashed, folder.folder.id);
+		expect(revived.docs.find((d) => d.id === made.doc.id)?.title).toBe(
+			"눈 오는 날",
+		);
 	});
 });

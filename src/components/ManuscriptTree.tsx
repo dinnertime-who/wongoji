@@ -2,21 +2,45 @@ import { Link } from "@tanstack/react-router";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
+	CopyIcon,
 	FileTextIcon,
 	FolderIcon,
+	MoreHorizontalIcon,
+	PencilIcon,
 	PlusIcon,
+	Trash2Icon,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "#/components/ui/dropdown-menu";
+import {
 	ancestorIds,
 	childrenOf,
+	type DocEntry,
 	displayTitle,
+	type FolderEntry,
 	fullPath,
 	type Path,
 	ROOT,
 	type StoreIndex,
 } from "#/lib/store";
+
+/** 트리에서 걸 수 있는 일들. 실제 처리는 사이드바가 한다 */
+export interface TreeActions {
+	addDoc: (path: Path) => void;
+	renameFolder: (folder: FolderEntry) => void;
+	moveFolder: (folder: FolderEntry) => void;
+	trashFolder: (folder: FolderEntry) => void;
+	moveDoc: (doc: DocEntry) => void;
+	duplicateDoc: (doc: DocEntry) => void;
+	trashDoc: (doc: DocEntry) => void;
+}
 
 /**
  * 폴더 트리.
@@ -27,13 +51,12 @@ import {
 export function ManuscriptTree({
 	index,
 	currentDocId,
-	onAddDoc,
+	actions,
 	onNavigate,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
-	/** 이 폴더 안에 원고를 하나 만든다 */
-	onAddDoc: (path: Path) => void;
+	actions: TreeActions;
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
 }) {
@@ -59,10 +82,13 @@ export function ManuscriptTree({
 				open={open}
 				onToggle={toggle}
 				currentDocId={currentDocId}
-				onAddDoc={(path) => {
-					// 만들자마자 그 안이 보여야 한다
-					setOpen((prev) => new Set(prev).add(path.split("/").at(-2) ?? ""));
-					onAddDoc(path);
+				actions={{
+					...actions,
+					addDoc: (path) => {
+						// 만들자마자 그 안이 보여야 한다
+						setOpen((prev) => new Set(prev).add(path.split("/").at(-2) ?? ""));
+						actions.addDoc(path);
+					},
 				}}
 				onNavigate={onNavigate}
 			/>
@@ -77,7 +103,7 @@ function Level({
 	open,
 	onToggle,
 	currentDocId,
-	onAddDoc,
+	actions,
 	onNavigate,
 }: {
 	index: StoreIndex;
@@ -86,7 +112,7 @@ function Level({
 	open: Set<string>;
 	onToggle: (id: string) => void;
 	currentDocId: string;
-	onAddDoc: (path: Path) => void;
+	actions: TreeActions;
 	onNavigate?: () => void;
 }) {
 	const { folders, docs } = childrenOf(index, path);
@@ -99,10 +125,6 @@ function Level({
 				const expanded = open.has(folder.id);
 				return (
 					<div key={folder.id}>
-						{/*
-						 * 폴더 줄 오른쪽 끝에 +를 붙인다. 없으면 갓 만든 폴더에 원고를 넣을
-						 * 길이 없다 — 머리말의 새 원고는 지금 보고 있는 원고 옆에 만든다.
-						 */}
 						<div className="group flex items-center">
 							<button
 								type="button"
@@ -118,18 +140,42 @@ function Level({
 								<FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								<span className="whitespace-nowrap">{folder.name}</span>
 							</button>
-							<Button
-								variant="ghost"
-								size="icon-xs"
-								// 가로 스크롤을 따라 흘러가지 않게 오른쪽에 붙여 둔다
-								className="sticky right-1 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-								onClick={() => onAddDoc(fullPath(folder))}
-								title={`${folder.name}에 새 원고`}
-								aria-label={`${folder.name}에 새 원고`}
-							>
-								<PlusIcon />
-							</Button>
+
+							{/*
+							 * 가로 스크롤을 따라 흘러가지 않게 오른쪽에 붙여 둔다.
+							 * +가 없으면 갓 만든 폴더에 원고를 넣을 길이 없다 — 머리말의
+							 * 새 원고는 지금 보고 있는 원고 옆에 만든다.
+							 */}
+							<div className="sticky right-1 flex shrink-0 items-center bg-inherit">
+								<RowButton
+									label={`${folder.name}에 새 원고`}
+									onClick={() => actions.addDoc(fullPath(folder))}
+								>
+									<PlusIcon />
+								</RowButton>
+								<RowMenu label={`${folder.name} 메뉴`}>
+									<DropdownMenuItem
+										onSelect={() => actions.renameFolder(folder)}
+									>
+										<PencilIcon />
+										이름 바꾸기
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => actions.moveFolder(folder)}>
+										<FolderIcon />
+										이동
+									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem
+										variant="destructive"
+										onSelect={() => actions.trashFolder(folder)}
+									>
+										<Trash2Icon />
+										휴지통으로
+									</DropdownMenuItem>
+								</RowMenu>
+							</div>
 						</div>
+
 						{expanded && (
 							<Level
 								index={index}
@@ -138,7 +184,7 @@ function Level({
 								open={open}
 								onToggle={onToggle}
 								currentDocId={currentDocId}
-								onAddDoc={onAddDoc}
+								actions={actions}
 								onNavigate={onNavigate}
 							/>
 						)}
@@ -147,20 +193,112 @@ function Level({
 			})}
 
 			{docs.map((doc) => (
-				<Link
+				<div
 					key={doc.id}
-					to="/w/$docId"
-					params={{ docId: doc.id }}
-					onClick={onNavigate}
-					style={{ paddingLeft: `${depth * 0.75 + 1.6}rem` }}
-					className={`flex items-center gap-1 rounded py-1 pr-2 text-sm hover:bg-muted ${
-						doc.id === currentDocId ? "bg-muted font-medium" : ""
+					className={`group flex items-center rounded ${
+						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
 					}`}
 				>
-					<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-					<span className="whitespace-nowrap">{displayTitle(doc)}</span>
-				</Link>
+					<Link
+						to="/w/$docId"
+						params={{ docId: doc.id }}
+						onClick={onNavigate}
+						style={{ paddingLeft: `${depth * 0.75 + 1.6}rem` }}
+						className="flex flex-1 items-center gap-1 py-1 pr-2 text-sm"
+					>
+						<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
+						<span className="whitespace-nowrap">{displayTitle(doc)}</span>
+					</Link>
+
+					<div className="sticky right-1 flex shrink-0 items-center bg-inherit">
+						<RowMenu label={`${displayTitle(doc)} 메뉴`}>
+							<DropdownMenuItem onSelect={() => actions.duplicateDoc(doc)}>
+								<CopyIcon />
+								복제
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => actions.moveDoc(doc)}>
+								<FolderIcon />
+								이동
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onSelect={() => actions.trashDoc(doc)}
+							>
+								<Trash2Icon />
+								휴지통으로
+							</DropdownMenuItem>
+						</RowMenu>
+					</div>
+				</div>
 			))}
 		</>
+	);
+}
+
+/**
+ * 줄에 붙는 단추가 드러나는 조건.
+ *
+ * 넓은 화면에서는 그 줄에 마우스를 올려야 보인다 — 목록이 단추로 뒤덮이면 제목이
+ * 안 읽힌다. 좁은 화면에서는 늘 보인다. 손가락에는 hover가 없어서, 숨겨 두면
+ * 이동도 복제도 삭제도 닿을 길이 없다.
+ */
+const REVEAL =
+	"opacity-100 lg:opacity-0 lg:focus-visible:opacity-100 lg:group-hover:opacity-100 lg:data-open:opacity-100";
+
+/** 줄 위에 겹쳐 두는 단추 */
+function RowButton({
+	label,
+	onClick,
+	children,
+}: {
+	label: string;
+	onClick: () => void;
+	children: React.ReactNode;
+}) {
+	return (
+		<Button
+			variant="ghost"
+			size="icon-xs"
+			className={REVEAL}
+			onClick={onClick}
+			title={label}
+			aria-label={label}
+		>
+			{children}
+		</Button>
+	);
+}
+
+/**
+ * 줄마다 붙는 ⋯ 메뉴.
+ *
+ * 메뉴가 열려 있는 동안에는 마우스가 떠나도 단추가 남아 있어야 한다. 사라지면
+ * 메뉴만 허공에 뜬 꼴이 된다.
+ */
+function RowMenu({
+	label,
+	children,
+}: {
+	label: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					className={REVEAL}
+					title={label}
+					aria-label={label}
+				>
+					<MoreHorizontalIcon />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-40">
+				{children}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

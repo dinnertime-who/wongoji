@@ -30,8 +30,22 @@ export interface DocEntry {
 	updatedAt: number;
 }
 
+/**
+ * 버려진 것.
+ *
+ * 원고는 제목과 목표를 함께 들고 간다. 되살릴 때 돌려주어야 하고, 휴지통 목록에서
+ * 어느 원고인지 알아볼 유일한 단서이기도 하다. 본문과 달리 짧은 값이라 색인에
+ * 두어도 무겁지 않다.
+ */
 export type TrashEntry =
-	| { kind: "doc"; id: string; path: Path; deletedAt: number }
+	| {
+			kind: "doc";
+			id: string;
+			title: string;
+			goal: number;
+			path: Path;
+			deletedAt: number;
+	  }
 	| { kind: "folder"; id: string; name: string; path: Path; deletedAt: number };
 
 export interface StoreIndex {

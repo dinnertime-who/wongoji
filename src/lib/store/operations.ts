@@ -211,6 +211,8 @@ export function trashFolder(
 				(d): TrashEntry => ({
 					kind: "doc",
 					id: d.id,
+					title: d.title,
+					goal: d.goal,
 					path: d.path,
 					deletedAt: now,
 				}),
@@ -237,7 +239,14 @@ export function trashDoc(
 		docs: index.docs.filter((d) => d.id !== id),
 		trash: [
 			...index.trash,
-			{ kind: "doc", id, path: doc.path, deletedAt: now },
+			{
+				kind: "doc",
+				id,
+				title: doc.title,
+				goal: doc.goal,
+				path: doc.path,
+				deletedAt: now,
+			},
 		],
 	};
 }
@@ -281,7 +290,7 @@ export function restore(index: StoreIndex, id: string): StoreIndex {
 		if (item.kind === "folder") {
 			folders.push({ id: item.id, name: item.name, path: settle(item.path) });
 		} else {
-			docs.push(reviveDoc(item.id, settle(item.path)));
+			docs.push(reviveDoc(item, settle(item.path)));
 		}
 	}
 
@@ -289,16 +298,21 @@ export function restore(index: StoreIndex, id: string): StoreIndex {
 }
 
 /**
- * 되살린 원고의 목록용 값은 알 수 없다 — 본문을 다시 읽어야 나온다.
- * 0으로 두고 열릴 때 채운다.
+ * 되살린 원고.
+ *
+ * 제목과 목표는 버릴 때 들고 갔으므로 그대로 돌려준다. 분량은 본문을 다시 읽어야
+ * 나오는 값이라 0으로 두고, 원고를 열 때 채운다.
  */
-function reviveDoc(id: string, path: Path): DocEntry {
-	const now = Date.now();
+function reviveDoc(
+	entry: Extract<TrashEntry, { kind: "doc" }>,
+	path: Path,
+	now = Date.now(),
+): DocEntry {
 	return {
-		id,
-		title: "",
+		id: entry.id,
+		title: entry.title,
 		path,
-		goal: 0,
+		goal: entry.goal,
 		chars: 0,
 		sheets: 1,
 		createdAt: now,

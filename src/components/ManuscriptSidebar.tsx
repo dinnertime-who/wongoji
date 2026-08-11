@@ -1,20 +1,46 @@
 import { useNavigate } from "@tanstack/react-router";
-import { FilePlusIcon, FolderPlusIcon } from "lucide-react";
+import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { ManuscriptTree } from "#/components/ManuscriptTree";
+import { FolderPicker } from "#/components/FolderPicker";
+import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
 import { NameDialog } from "#/components/NameDialog";
+import { TrashDialog } from "#/components/TrashDialog";
 import { Button } from "#/components/ui/button";
 import {
 	ancestorIds,
 	createDoc,
 	createFolder,
+	type DocEntry,
+	displayTitle,
+	duplicateDoc,
+	type FolderEntry,
+	moveDoc,
+	moveFolder,
 	mutateIndex,
 	type Path,
 	ROOT,
+	readDoc,
+	renameFolder,
 	type SaveResult,
 	type StoreIndex,
+	trashDoc,
+	trashFolder,
 	writeDoc,
 } from "#/lib/store";
+
+/** 어떤 창을 열어 두었는가. 한 번에 하나만 뜬다 */
+type Sheet =
+	| { kind: "none" }
+	| { kind: "newFolder" }
+	| { kind: "renameFolder"; folder: FolderEntry }
+	| { kind: "moveFolder"; folder: FolderEntry }
+	| { kind: "moveDoc"; doc: DocEntry }
+	| { kind: "trash" };
+
+const CLOSED: Sheet = { kind: "none" };
+
+/** 새 원고의 빈 본문. 키가 아예 없으면 "본문을 잃었다"는 뜻이 된다 */
+const EMPTY_BODY = { type: "doc", content: [{ type: "paragraph" }] };
 
 /**
  * 원고 보관함.
@@ -37,29 +63,72 @@ export function ManuscriptSidebar({
 	inDrawer?: boolean;
 }) {
 	const navigate = useNavigate();
-	const [naming, setNaming] = useState(false);
+	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 	const here = index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT;
+
+	/** 색인을 고치고 결과를 알린다. 성공했는지 돌려준다 */
+	const change = (edit: (index: StoreIndex) => StoreIndex): boolean => {
+		const { result } = mutateIndex(edit);
+		onReport(result);
+		return result.ok;
+	};
 
 	const addDoc = (path: Path) => {
 		let createdId = "";
-		const { result } = mutateIndex((current) => {
+		const ok = change((current) => {
 			const made = createDoc(current, { path });
 			createdId = made.doc.id;
 			return made.index;
 		});
-		onReport(result);
-		if (!result.ok) return;
-		// 본문 자리를 비워 둔 채로 만든다 — 없으면 "본문을 찾을 수 없다"로 보인다
-		writeDoc(createdId, { type: "doc", content: [{ type: "paragraph" }] });
+		if (!ok) return;
+
+		writeDoc(createdId, EMPTY_BODY);
 		navigate({ to: "/w/$docId", params: { docId: createdId } });
 		onNavigate?.();
 	};
 
-	const addFolder = (name: string) => {
-		const { result } = mutateIndex(
-			(current) => createFolder(current, name, here).index,
-		);
-		onReport(result);
+	const actions: TreeActions = {
+		addDoc,
+
+		renameFolder: (folder) => setSheet({ kind: "renameFolder", folder }),
+		moveFolder: (folder) => setSheet({ kind: "moveFolder", folder }),
+		moveDoc: (doc) => setSheet({ kind: "moveDoc", doc }),
+
+		duplicateDoc: (doc) => {
+			// 본문을 먼저 읽는다. 색인만 늘려 놓고 본문을 못 읽으면 빈 사본이 남는다
+			const body = readDoc(doc.id);
+			let copyId = "";
+			const ok = change((current) => {
+				const made = duplicateDoc(current, doc.id);
+				if (!made) return current;
+				copyId = made.doc.id;
+				return made.index;
+			});
+			if (!ok || !copyId) return;
+
+			onReport(writeDoc(copyId, body ?? EMPTY_BODY));
+			navigate({ to: "/w/$docId", params: { docId: copyId } });
+			onNavigate?.();
+		},
+
+		/*
+		 * 버릴 때 확인을 받지 않는다. 30일 동안 휴지통에 있으므로 되돌릴 수 있고,
+		 * 되돌릴 수 있는 일에 확인을 받으면 확인 자체가 값싸진다. 영영 지우는 것은
+		 * 휴지통 안에서만 할 수 있고, 거기서는 묻는다.
+		 */
+		trashDoc: (doc) => {
+			change((current) => trashDoc(current, doc.id));
+			// 보고 있던 원고를 버렸으면 열어 둘 수 없다
+			if (doc.id === currentDocId) navigate({ to: "/", replace: true });
+		},
+
+		trashFolder: (folder) => {
+			change((current) => trashFolder(current, folder.id));
+			const gone = ancestorIds(
+				index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT,
+			).includes(folder.id);
+			if (gone) navigate({ to: "/", replace: true });
+		},
 	};
 
 	return (
@@ -74,7 +143,7 @@ export function ManuscriptSidebar({
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					onClick={() => setNaming(true)}
+					onClick={() => setSheet({ kind: "newFolder" })}
 					title="새 폴더"
 					aria-label="새 폴더"
 				>
@@ -102,18 +171,87 @@ export function ManuscriptSidebar({
 				<ManuscriptTree
 					index={index}
 					currentDocId={currentDocId}
-					onAddDoc={addDoc}
+					actions={actions}
 					onNavigate={onNavigate}
 				/>
 			</nav>
 
+			<div className="shrink-0 border-border border-t px-1 py-1">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="w-full justify-start text-muted-foreground"
+					onClick={() => setSheet({ kind: "trash" })}
+				>
+					<Trash2Icon />
+					휴지통
+					{index.trash.length > 0 && (
+						<span className="ml-auto tabular-nums">{index.trash.length}</span>
+					)}
+				</Button>
+			</div>
+
 			<NameDialog
-				open={naming}
-				onOpenChange={setNaming}
+				open={sheet.kind === "newFolder"}
+				onOpenChange={(open) => !open && setSheet(CLOSED)}
 				title="새 폴더"
 				description="지금 보고 있는 원고와 같은 자리에 만듭니다."
 				initial="새 폴더"
-				onConfirm={addFolder}
+				onConfirm={(name) =>
+					change((current) => createFolder(current, name, here).index)
+				}
+			/>
+
+			<NameDialog
+				open={sheet.kind === "renameFolder"}
+				onOpenChange={(open) => !open && setSheet(CLOSED)}
+				title="폴더 이름 바꾸기"
+				initial={sheet.kind === "renameFolder" ? sheet.folder.name : ""}
+				confirmLabel="바꾸기"
+				onConfirm={(name) => {
+					if (sheet.kind !== "renameFolder") return;
+					const { id } = sheet.folder;
+					change((current) => renameFolder(current, id, name));
+				}}
+			/>
+
+			<FolderPicker
+				open={sheet.kind === "moveFolder" || sheet.kind === "moveDoc"}
+				onOpenChange={(open) => !open && setSheet(CLOSED)}
+				index={index}
+				title={
+					sheet.kind === "moveFolder"
+						? `'${sheet.folder.name}' 이동`
+						: sheet.kind === "moveDoc"
+							? `'${displayTitle(sheet.doc)}' 이동`
+							: "이동"
+				}
+				movingFolderId={
+					sheet.kind === "moveFolder" ? sheet.folder.id : undefined
+				}
+				currentPath={
+					sheet.kind === "moveFolder"
+						? sheet.folder.path
+						: sheet.kind === "moveDoc"
+							? sheet.doc.path
+							: ROOT
+				}
+				onPick={(path) => {
+					if (sheet.kind === "moveFolder") {
+						const { id } = sheet.folder;
+						change((current) => moveFolder(current, id, path));
+					} else if (sheet.kind === "moveDoc") {
+						const { id } = sheet.doc;
+						change((current) => moveDoc(current, id, path));
+					}
+				}}
+			/>
+
+			<TrashDialog
+				open={sheet.kind === "trash"}
+				onOpenChange={(open) => !open && setSheet(CLOSED)}
+				index={index}
+				onReport={onReport}
 			/>
 		</div>
 	);

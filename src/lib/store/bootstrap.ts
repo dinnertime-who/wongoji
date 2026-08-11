@@ -74,7 +74,14 @@ export function bootstrap(now = Date.now()): Bootstrap {
 			}
 			migrated = true;
 		} else {
-			writeDoc(created.doc.id, WELCOME);
+			/*
+			 * 예시 원고는 정말 처음 온 사람에게만 보인다.
+			 *
+			 * 쓰던 사람이 마지막 원고를 버려도 여기로 온다. 그때 예시가 다시 깔리면
+			 * 방금 버린 자리에 낯선 글이 들어앉는다. 한 번이라도 원고를 연 적이
+			 * 있으면 빈 원고로 시작한다.
+			 */
+			writeDoc(created.doc.id, isFirstVisit(index) ? WELCOME : "");
 		}
 	}
 
@@ -113,6 +120,20 @@ function readLegacy(): {
 		title: safeGetItem(LEGACY.title) ?? "",
 		goal: Number(safeGetItem(LEGACY.goal)) || 0,
 	};
+}
+
+/**
+ * 이 브라우저에서 원고지를 써 본 적이 없는가.
+ *
+ * 원고를 한 번이라도 열면 `last`가 남는다. 폴더나 휴지통에 흔적이 있어도 쓰던
+ * 사람이다. 셋 다 비어 있을 때만 처음으로 본다.
+ */
+function isFirstVisit(index: StoreIndex): boolean {
+	return (
+		readLastOpened() === null &&
+		index.folders.length === 0 &&
+		index.trash.length === 0
+	);
 }
 
 /** 마지막으로 열었던 것. 사라졌으면 가장 최근에 고친 것 */
