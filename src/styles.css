@@ -1,0 +1,146 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --canvas: #f4f2ec;
+  --paper: #fffdf6;
+  --grid: #8aa87b;
+  --hairline: #d9d4c7;
+  --ink: #23211c;
+  --muted: #857f72;
+  --surface-muted: #ebe8e0;
+}
+
+/*
+ * shadcn(drawer·dialog)이 쓰는 색 유틸을 원고지 팔레트에 잇는다.
+ *
+ * shadcn 기본 테마를 통째로 들이면 `--muted`가 겹친다. 이쪽은 배경색,
+ * 우리 것은 글자색이라 뜻이 다르다. 그래서 변수를 덮어쓰지 않고
+ * 유틸 이름(`--color-*`)만 우리 변수에 매핑한다.
+ */
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--ink);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--muted);
+  --color-border: var(--hairline);
+  --color-input: var(--hairline);
+  --color-ring: var(--grid);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--ink);
+  --color-accent: var(--surface-muted);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: #b3261e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+}
+
+/* 원고지 칸 안의 글자는 본문 활자와 구분되게 명조 계열로 */
+.wongoji-sheet {
+  font-family: "Apple Myungjo", "Nanum Myeongjo", "Noto Serif KR", serif;
+}
+
+/* Tiptap 에디터 */
+.wongoji-prose p {
+  margin: 0;
+}
+
+/* `---`로 넣은 빈 행. 원고지의 빈 줄을 뜻하므로 선을 옅게 둔다. */
+.wongoji-prose hr {
+  border: none;
+  border-top: 1px dashed var(--grid);
+  margin: 0.6rem 0;
+}
+
+.wongoji-prose hr.ProseMirror-selectednode {
+  border-top-color: var(--ink);
+}
+
+.wongoji-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  white-space: pre-line;
+  color: var(--muted);
+}
+
+.wongoji-pager {
+  --swiper-theme-color: var(--grid);
+  --swiper-navigation-size: 1.75rem;
+  --swiper-pagination-bullet-inactive-color: var(--muted);
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  /*
+   * 인쇄할 때는 슬라이더를 풀어 전 장이 세로로 이어지게 한다.
+   * Swiper가 wrapper에 인라인 transform을, 슬라이드에 인라인 width를 걸기 때문에
+   * `!important` 없이는 덮이지 않는다.
+   */
+  .swiper {
+    overflow: visible !important;
+  }
+
+  .swiper-wrapper {
+    display: block !important;
+    width: auto !important;
+    transform: none !important;
+  }
+
+  .swiper-slide {
+    width: 100% !important;
+    margin: 0 0 8mm 0 !important;
+    transform: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .swiper-pagination,
+  .swiper-button-next,
+  .swiper-button-prev {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .wongoji-sheet {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none;
+    margin-bottom: 8mm;
+  }
+}
