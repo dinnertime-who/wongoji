@@ -1,0 +1,58 @@
+export {
+	requestPersistentStorage,
+	type SaveFailure,
+	type SaveResult,
+	safeGetItem,
+	safeRemoveItem,
+	safeSetItem,
+} from "./local";
+export {
+	childrenOf,
+	countDocsUnder,
+	createDoc,
+	createFolder,
+	daysLeft,
+	makeId,
+	moveDoc,
+	moveFolder,
+	purge,
+	purgeExpired,
+	renameFolder,
+	repairPaths,
+	restore,
+	TRASH_DAYS,
+	trashDoc,
+	trashFolder,
+	updateDoc,
+} from "./operations";
+export {
+	ancestorIds,
+	canMoveFolder,
+	fullPath,
+	isUnder,
+	parentId,
+	pathNames,
+	ROOT,
+	reparent,
+} from "./path";
+export {
+	type DocContent,
+	hasDoc,
+	mutateIndex,
+	readDoc,
+	readIndex,
+	readLastOpened,
+	removeDoc,
+	tidy,
+	writeDoc,
+	writeIndex,
+	writeLastOpened,
+} from "./store";
+export {
+	type DocEntry,
+	emptyIndex,
+	type FolderEntry,
+	type Path,
+	type StoreIndex,
+	type TrashEntry,
+} from "./types";
