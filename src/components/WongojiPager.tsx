@@ -2,36 +2,16 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationEllipsis,
-	PaginationItem,
-} from "#/components/ui/pagination";
+import { Input } from "#/components/ui/input";
 import type { Page } from "#/lib/wongoji";
 import { WongojiSheet } from "./WongojiSheet";
 
 /**
- * 장이 많아지면 점을 하나씩 세는 것보다 번호를 직접 누르는 편이 빠르다.
- * 장이 많을 때는 처음·끝·현재 주변만 남기고 나머지는 생략한다.
+ * 장 이동 막대.
+ *
+ * 번호를 다 늘어놓으면 장이 많아질수록 감당이 안 된다. PDF 미리보기처럼
+ * `현재 / 총`으로 두고 현재 칸에 직접 적어 넣게 한다.
  */
-function pageItems(total: number, current: number): (number | "gap")[] {
-	if (total <= 7) return Array.from({ length: total }, (_, i) => i);
-
-	const kept = new Set<number>([0, total - 1]);
-	for (let i = current - 1; i <= current + 1; i++) {
-		if (i >= 0 && i < total) kept.add(i);
-	}
-
-	const sorted = [...kept].sort((a, b) => a - b);
-	const out: (number | "gap")[] = [];
-	for (const [i, n] of sorted.entries()) {
-		if (i > 0 && n - sorted[i - 1] > 1) out.push("gap");
-		out.push(n);
-	}
-	return out;
-}
-
 function PageNav({
 	total,
 	current,
@@ -41,63 +21,64 @@ function PageNav({
 	current: number;
 	onSelect: (index: number) => void;
 }) {
+	// 타이핑 중에는 그대로 두어야 해서 입력값을 따로 붙든다. 비어 있으면 current를 쓴다.
+	const [draft, setDraft] = useState<string | null>(null);
+
 	if (total <= 1) return null;
 
 	const step = (delta: number) =>
 		onSelect(Math.min(total - 1, Math.max(0, current + delta)));
 
-	/*
-	 * shadcn Pagination의 구조만 쓰고 항목은 Button으로 둔다.
-	 * PaginationLink는 <a>라서 이동이 아니라 스크롤을 옮기는 여기에는 맞지 않는다.
-	 */
+	const commit = () => {
+		const wanted = Number(draft);
+		setDraft(null);
+		if (!Number.isFinite(wanted) || wanted < 1) return;
+		onSelect(Math.min(total, Math.max(1, Math.round(wanted))) - 1);
+	};
+
 	return (
-		<Pagination className="mt-2 shrink-0">
-			<PaginationContent className="tabular-nums">
-				<PaginationItem>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						onClick={() => step(-1)}
-						disabled={current === 0}
-						aria-label="이전 장"
-					>
-						<ChevronLeftIcon />
-					</Button>
-				</PaginationItem>
+		<nav
+			className="mt-2 flex shrink-0 items-center justify-center gap-1 text-xs tabular-nums"
+			aria-label="원고지 장 이동"
+		>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => step(-1)}
+				disabled={current === 0}
+				aria-label="이전 장"
+			>
+				<ChevronLeftIcon />
+			</Button>
 
-				{pageItems(total, current).map((item, i) =>
-					item === "gap" ? (
-						// biome-ignore lint/suspicious/noArrayIndexKey: 생략 기호는 위치 말고 구분할 것이 없다.
-						<PaginationItem key={`gap-${i}`}>
-							<PaginationEllipsis />
-						</PaginationItem>
-					) : (
-						<PaginationItem key={item}>
-							<Button
-								variant={item === current ? "default" : "ghost"}
-								size="icon-sm"
-								onClick={() => onSelect(item)}
-								aria-current={item === current ? "page" : undefined}
-							>
-								{item + 1}
-							</Button>
-						</PaginationItem>
-					),
-				)}
+			<Input
+				value={draft ?? String(current + 1)}
+				onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+				onFocus={(e) => e.currentTarget.select()}
+				onBlur={commit}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") e.currentTarget.blur();
+					if (e.key === "Escape") {
+						setDraft(null);
+						e.currentTarget.blur();
+					}
+				}}
+				inputMode="numeric"
+				aria-label="현재 장"
+				className="h-7 w-12 px-1 text-center text-xs tabular-nums"
+			/>
+			<span className="text-muted-foreground">/ {total}</span>
 
-				<PaginationItem>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						onClick={() => step(1)}
-						disabled={current === total - 1}
-						aria-label="다음 장"
-					>
-						<ChevronRightIcon />
-					</Button>
-				</PaginationItem>
-			</PaginationContent>
-		</Pagination>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => step(1)}
+				disabled={current === total - 1}
+				aria-label="다음 장"
+			>
+				<ChevronRightIcon />
+			</Button>
+		</nav>
 	);
 }
 
