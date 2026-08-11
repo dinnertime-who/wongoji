@@ -210,17 +210,11 @@ function Home() {
 		setEditorKey((k) => k + 1);
 	};
 
-	// 제목은 첫 장 헤더라 본문 앞에 붙는다. 비어 있으면 아예 넣지 않는다.
-	const { pages, stats } = useMemo(
-		() =>
-			layoutBlocks([
-				...(title.trim()
-					? [{ type: "title" as const, text: title.trim() }]
-					: []),
-				...blocks,
-			]),
-		[blocks, title],
-	);
+	/*
+	 * 제목은 조판에 넣지 않는다. 원고를 가리키는 이름일 뿐이라 원고지 칸을
+	 * 차지해서는 안 되고, 분량에도 세지 않는다.
+	 */
+	const { pages, stats } = useMemo(() => layoutBlocks(blocks), [blocks]);
 
 	const statsText =
 		goal > 0
