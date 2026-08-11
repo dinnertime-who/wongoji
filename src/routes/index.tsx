@@ -155,7 +155,11 @@ function Home() {
 			</header>
 
 			{isDesktop ? (
-				<main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+				/*
+				 * w-full이 없으면 안 된다. 바깥이 flex 컨테이너라 mx-auto의 auto 마진이
+				 * stretch를 눌러, main이 늘어나지 않고 콘텐츠 크기로 줄어든다.
+				 */
+				<main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
 					<div className="no-print lg:sticky lg:top-20 lg:self-start">
 						{editor()}
 					</div>
