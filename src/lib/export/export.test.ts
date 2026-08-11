@@ -9,7 +9,6 @@ import { type Block, parseBlocks } from "#/lib/wongoji";
 
 const SAMPLE: Manuscript = {
 	title: "감나무 있는 마당",
-	affiliation: "홍길동",
 	blocks: [
 		{ type: "paragraph", text: "가을이 깊었다." },
 		{ type: "blankRow" },
@@ -53,11 +52,11 @@ async function docxXml(manuscript: Manuscript): Promise<string> {
 describe("평문 · 백업", () => {
 	it("평문에는 제목과 소속이 앞에 붙는다", () => {
 		const text = toPlainText(SAMPLE);
-		expect(text.startsWith("감나무 있는 마당\n홍길동")).toBe(true);
+		expect(text.startsWith("감나무 있는 마당")).toBe(true);
 		expect(text).toContain("가을이 깊었다.");
 	});
 
-	it("백업 JSON을 다시 읽으면 제목·소속·빈 행이 살아난다", () => {
+	it("백업 JSON을 다시 읽으면 제목과 빈 행이 살아난다", () => {
 		const restored = parseImported(
 			JSON.stringify({ version: 1, ...SAMPLE }),
 			parseBlocks,
@@ -93,15 +92,14 @@ describe("Word 내보내기", () => {
 		expect(xml).toContain('w:left="1701"'); // 좌 여백 30mm
 	});
 
-	it("제목·소속·본문이 그대로 담긴다", async () => {
+	it("제목과 본문이 그대로 담긴다", async () => {
 		const xml = await docxXml(SAMPLE);
 		expect(xml).toContain("감나무 있는 마당");
-		expect(xml).toContain("홍길동");
 		expect(xml).toContain("가을이 깊었다.");
 	});
 
 	it("제목이 없으면 제목 문단을 넣지 않는다", async () => {
-		const blob = await buildDocxBlob({ ...SAMPLE, title: "", affiliation: "" });
+		const blob = await buildDocxBlob({ ...SAMPLE, title: "" });
 		expect(blob.size).toBeGreaterThan(0);
 	});
 });

@@ -104,7 +104,7 @@ export function ExportDialog({
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">백업 (.json)</span>
 							<span className="block text-[var(--muted)] text-xs leading-5">
-								제목·소속·빈 행까지 그대로 되살릴 수 있는 완전한 사본.
+								제목과 빈 행까지 그대로 되살릴 수 있는 완전한 사본.
 							</span>
 						</span>
 					</button>

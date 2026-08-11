@@ -10,7 +10,6 @@ import type { Block } from "#/lib/wongoji";
 
 export interface Manuscript {
 	title: string;
-	affiliation: string;
 	blocks: Block[];
 }
 
@@ -33,14 +32,10 @@ function download(blob: Blob, filename: string) {
 }
 
 /** 사람이 읽는 평문. 빈 행은 빈 줄로 나가지만 다시 읽어들이면 사라진다 */
-export function toPlainText({
-	title,
-	affiliation,
-	blocks,
-}: Manuscript): string {
-	const head = [title.trim(), affiliation.trim()].filter(Boolean);
+export function toPlainText({ title, blocks }: Manuscript): string {
+	const head = title.trim() ? [title.trim(), ""] : [];
 	const body = blocks.map((b) => (b.type === "paragraph" ? b.text : ""));
-	return [...head, "", ...body].join("\n").trim();
+	return [...head, ...body].join("\n").trim();
 }
 
 export function exportText(manuscript: Manuscript) {
@@ -50,7 +45,7 @@ export function exportText(manuscript: Manuscript) {
 	download(blob, `${safeFileName(manuscript.title)}.txt`);
 }
 
-/** 되살릴 수 있는 완전한 사본. 빈 행과 제목·소속까지 그대로 남는다 */
+/** 되살릴 수 있는 완전한 사본. 제목과 빈 행까지 그대로 남는다 */
 export function exportBackup(manuscript: Manuscript) {
 	const payload = { version: 1, ...manuscript };
 	const blob = new Blob([JSON.stringify(payload, null, 1)], {
@@ -73,15 +68,13 @@ export function parseImported(
 		if (parsed && Array.isArray(parsed.blocks)) {
 			return {
 				title: typeof parsed.title === "string" ? parsed.title : "",
-				affiliation:
-					typeof parsed.affiliation === "string" ? parsed.affiliation : "",
 				blocks: parsed.blocks as Block[],
 			};
 		}
 	} catch {
 		// 평문이라는 뜻이다
 	}
-	return { title: "", affiliation: "", blocks: parseBlocks(raw) };
+	return { title: "", blocks: parseBlocks(raw) };
 }
 
 /**
@@ -110,15 +103,6 @@ export async function buildDocxBlob(manuscript: Manuscript): Promise<Blob> {
 				children: [
 					new TextRun({ text: manuscript.title.trim(), bold: true, size: 32 }),
 				],
-			}),
-		);
-	}
-
-	if (manuscript.affiliation.trim()) {
-		children.push(
-			new Paragraph({
-				alignment: AlignmentType.RIGHT,
-				children: [new TextRun(manuscript.affiliation.trim())],
 			}),
 		);
 	}

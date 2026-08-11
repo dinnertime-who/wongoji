@@ -80,20 +80,12 @@ export function WongojiEditor({
 	initialContent,
 	onChange,
 	heightClass = "h-[60vh]",
-	title,
-	onTitleChange,
-	affiliation,
-	onAffiliationChange,
 	overlay,
 }: {
 	initialContent: Content;
 	onChange: (blocks: Block[], doc: PMNode) => void;
 	/** 좁은 화면에서는 본문 높이를 줄여 쓴다 */
 	heightClass?: string;
-	title: string;
-	onTitleChange: (value: string) => void;
-	affiliation: string;
-	onAffiliationChange: (value: string) => void;
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
 }) {
@@ -129,26 +121,6 @@ export function WongojiEditor({
 
 	return (
 		<div>
-			{/*
-			 * 제목과 소속은 본문과 규칙이 다르다 — 제목은 줄 가운데, 소속은 오른쪽에
-			 * 놓인다. 본문에 섞어 쓰면 구분할 방법이 없으므로 따로 받는다.
-			 * 입력칸 자체도 원고지에 놓일 모양대로 정렬해 둔다.
-			 */}
-			<input
-				value={title}
-				onChange={(e) => onTitleChange(e.target.value)}
-				placeholder="제목"
-				aria-label="제목"
-				className="mb-1.5 w-full rounded border border-[var(--hairline)] bg-[var(--paper)] px-3 py-2 text-center text-lg outline-none placeholder:text-[var(--muted)] focus:border-[var(--grid)]"
-			/>
-			<input
-				value={affiliation}
-				onChange={(e) => onAffiliationChange(e.target.value)}
-				placeholder="소속·이름"
-				aria-label="소속·이름"
-				className="mb-2 w-full rounded border border-[var(--hairline)] bg-[var(--paper)] px-3 py-1.5 text-right text-xs outline-none placeholder:text-[var(--muted)] focus:border-[var(--grid)]"
-			/>
-
 			<div className="relative">
 				<EditorContent editor={editor} />
 				{overlay && (

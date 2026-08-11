@@ -3,6 +3,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportDialog } from "#/components/ExportDialog";
+import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/")({ component: Home });
 const STORAGE_KEY = "wongoji:draft";
 const PANE_KEY = "wongoji:mainPane";
 const TITLE_KEY = "wongoji:title";
-const AFFILIATION_KEY = "wongoji:affiliation";
+const GOAL_KEY = "wongoji:goal";
 
 const SAMPLE = `가을이 깊었다. 마당의 감나무가 잎을 다 떨구고 나서야 나는 그 사실을 알아차렸다.
 "올해도 감은 안 열리려나?" 어머니가 물으셨다.
@@ -91,7 +92,7 @@ function Home() {
 	const [initial, setInitial] = useState<Content | null>(null);
 	const [blocks, setBlocks] = useState<Block[]>([]);
 	const [title, setTitle] = useState("");
-	const [affiliation, setAffiliation] = useState("");
+	const [goal, setGoal] = useState(0);
 	const [mainPane, setMainPane] = useState<Pane>("write");
 	// 불러오기로 내용을 갈아끼울 때 에디터를 다시 마운트시키는 열쇠.
 	// Tiptap은 만들어진 뒤 content 옵션을 다시 보지 않는다.
@@ -111,7 +112,7 @@ function Home() {
 		setBlocks(contentToBlocks(draft));
 
 		setTitle(window.localStorage.getItem(TITLE_KEY) ?? "");
-		setAffiliation(window.localStorage.getItem(AFFILIATION_KEY) ?? "");
+		setGoal(Number(window.localStorage.getItem(GOAL_KEY)) || 0);
 
 		const savedPane = window.localStorage.getItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
@@ -137,15 +138,14 @@ function Home() {
 		window.localStorage.setItem(TITLE_KEY, value);
 	};
 
-	const changeAffiliation = (value: string) => {
-		setAffiliation(value);
-		window.localStorage.setItem(AFFILIATION_KEY, value);
+	const changeGoal = (value: number) => {
+		setGoal(value);
+		window.localStorage.setItem(GOAL_KEY, String(value));
 	};
 
 	const handleImport = (next: Manuscript) => {
 		const doc = blocksToDoc(next.blocks);
 		changeTitle(next.title);
-		changeAffiliation(next.affiliation);
 		docRef.current = doc;
 		setInitial(doc);
 		setBlocks(next.blocks);
@@ -153,22 +153,22 @@ function Home() {
 		setEditorKey((k) => k + 1);
 	};
 
-	// 제목·소속은 첫 장 헤더라 본문 앞에 붙는다. 비어 있으면 아예 넣지 않는다.
+	// 제목은 첫 장 헤더라 본문 앞에 붙는다. 비어 있으면 아예 넣지 않는다.
 	const { pages, stats } = useMemo(
 		() =>
 			layoutBlocks([
 				...(title.trim()
 					? [{ type: "title" as const, text: title.trim() }]
 					: []),
-				...(affiliation.trim()
-					? [{ type: "affiliation" as const, text: affiliation.trim() }]
-					: []),
 				...blocks,
 			]),
-		[blocks, title, affiliation],
+		[blocks, title],
 	);
 
-	const statsText = `${stats.chars}자 · ${stats.sheets}매 · ${stats.pages}장`;
+	const statsText =
+		goal > 0
+			? `${stats.sheets} / ${goal}매`
+			: `${stats.chars}자 · ${stats.sheets}매`;
 
 	const editor = (heightClass?: string, overlay?: React.ReactNode) =>
 		initial && (
@@ -177,10 +177,6 @@ function Home() {
 				initialContent={docRef.current ?? initial}
 				onChange={handleChange}
 				heightClass={heightClass}
-				title={title}
-				onTitleChange={changeTitle}
-				affiliation={affiliation}
-				onAffiliationChange={changeAffiliation}
 				overlay={overlay}
 			/>
 		);
@@ -194,12 +190,8 @@ function Home() {
 					<h1 className="font-semibold text-lg tracking-tight">200자 원고지</h1>
 					<RulesDialog />
 					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-						{/* 모바일에서는 본문 오른쪽 아래에 겹쳐 띄우므로 헤더에서 뺀다 */}
-						{isDesktop && (
-							<span className="text-[var(--muted)]">{statsText}</span>
-						)}
 						<ExportDialog
-							manuscript={{ title, affiliation, blocks }}
+							manuscript={{ title, blocks }}
 							onImport={handleImport}
 						/>
 						<button
@@ -213,12 +205,21 @@ function Home() {
 				</div>
 			</header>
 
+			{/* 제목과 분량은 원고·원고지 어느 쪽을 보고 있든 늘 보여야 한다 */}
+			<ManuscriptBar
+				title={title}
+				onTitleChange={changeTitle}
+				goal={goal}
+				onGoalChange={changeGoal}
+				stats={stats}
+			/>
+
 			{isDesktop ? (
 				/*
 				 * w-full이 없으면 안 된다. 바깥이 flex 컨테이너라 mx-auto의 auto 마진이
 				 * stretch를 눌러, main이 늘어나지 않고 콘텐츠 크기로 줄어든다.
 				 */
-				<main className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+				<main className="mx-auto grid w-full max-w-6xl gap-6 px-4 pt-4 pb-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
 					<div className="no-print lg:sticky lg:top-20 lg:self-start">
 						{editor()}
 					</div>
