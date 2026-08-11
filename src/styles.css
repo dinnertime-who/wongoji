@@ -1,7 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * 다크 변형은 `.dark` 조상이 있을 때만 켠다.
+ *
+ * Tailwind 기본값은 OS 설정(prefers-color-scheme)을 따르는데, 이 앱은 종이 팔레트
+ * 하나뿐이라 다크 정의가 없다. 그대로 두면 OS가 다크인 사람에게만 shadcn 컴포넌트의
+ * `dark:` 클래스가 켜져 배경이 반투명해지는 등 어긋난다.
+ */
+@custom-variant dark (&:is(.dark *));
+
 :root {
+  /* 폼 컨트롤도 밝은 쪽으로 그린다 */
+  color-scheme: light;
   --canvas: #f4f2ec;
   --paper: #fffdf6;
   --grid: #8aa87b;
