@@ -1,8 +1,6 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Keyboard } from "swiper/modules";
-import { Swiper, SwiperSlide } from "swiper/react";
-import type { Swiper as SwiperClass } from "swiper/types";
+import { useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
 	Pagination,
@@ -12,8 +10,6 @@ import {
 } from "#/components/ui/pagination";
 import type { Page } from "#/lib/wongoji";
 import { WongojiSheet } from "./WongojiSheet";
-
-import "swiper/css";
 
 /**
  * 장이 많아지면 점을 하나씩 세는 것보다 번호를 직접 누르는 편이 빠르다.
@@ -52,10 +48,10 @@ function PageNav({
 
 	/*
 	 * shadcn Pagination의 구조만 쓰고 항목은 Button으로 둔다.
-	 * PaginationLink는 <a>라서 이동이 아니라 슬라이드를 넘기는 여기에는 맞지 않는다.
+	 * PaginationLink는 <a>라서 이동이 아니라 스크롤을 옮기는 여기에는 맞지 않는다.
 	 */
 	return (
-		<Pagination className="no-print mt-4">
+		<Pagination className="mt-2 shrink-0">
 			<PaginationContent className="tabular-nums">
 				<PaginationItem>
 					<Button
@@ -105,56 +101,82 @@ function PageNav({
 	);
 }
 
+/** 장 높이를 처음 어림잡는 값. 실측으로 곧 교정된다 */
+const ESTIMATED_SHEET_HEIGHT = 560;
+
 /**
- * 원고지를 한 장씩 넘겨 본다.
+ * 원고지를 세로로 이어 보여준다.
  *
- * 인쇄할 때는 슬라이더를 풀어 전 장이 세로로 이어지도록 styles.css에서 되돌린다.
- * Swiper가 wrapper에 인라인 transform을 걸기 때문에 `!important`로만 덮을 수 있다.
+ * 보이는 장과 그 앞뒤만 DOM에 둔다. 한 장이 200칸이라 장 수에 그대로 비례해서
+ * 무거워지는데, 단편소설 한 편이 80장을 넘으면 16,000칸이 되어 화면이 멈춘다.
+ * 창 렌더링으로 DOM에 남는 칸을 몇 장치로 붙들어 둔다.
  */
 export function WongojiPager({ pages }: { pages: Page[] }) {
-	const [swiper, setSwiper] = useState<SwiperClass | null>(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	const virtualizer = useVirtualizer({
+		count: pages.length,
+		getScrollElement: () => scrollRef.current,
+		estimateSize: () => ESTIMATED_SHEET_HEIGHT,
+		overscan: 2,
+	});
+
+	/*
+	 * 지금 보고 있는 장 — 맨 위에 걸친 장으로 센다.
+	 *
+	 * 번호를 누르면 그 장을 영역 맨 위에 붙이므로(align: start) 같은 기준으로 세야
+	 * 누른 번호와 표시가 어긋나지 않는다.
+	 *
+	 * 다만 마지막 장은 스크롤이 더 내려갈 데가 없어 맨 위에 오지 못한다.
+	 * 바닥에 닿으면 마지막 장으로 본다.
+	 *
+	 * 렌더 중에 virtualizer.scrollOffset을 읽으면 갱신 시점이 어긋나므로 스크롤
+	 * 핸들러에서 번호만 붙든다. 장이 바뀔 때만 다시 그려진다.
+	 */
 	const [current, setCurrent] = useState(0);
 
-	// 글을 지워 장이 줄면 없는 장에 남아 있을 수 있다
-	useEffect(() => {
-		if (current > pages.length - 1) {
-			const last = Math.max(0, pages.length - 1);
-			setCurrent(last);
-			swiper?.slideTo(last);
-		}
-	}, [pages.length, current, swiper]);
+	const trackCurrent = (el: HTMLDivElement) => {
+		const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+		const next = atBottom
+			? pages.length - 1
+			: (virtualizer.getVirtualItemForOffset(el.scrollTop + 8)?.index ?? 0);
+		if (next !== current) setCurrent(next);
+	};
 
-	const goTo = (index: number) => {
+	const jumpTo = (index: number) => {
 		setCurrent(index);
-		swiper?.slideTo(index);
+		virtualizer.scrollToIndex(index, { align: "start" });
 	};
 
 	return (
-		<div>
-			<Swiper
-				modules={[Keyboard]}
-				slidesPerView={1}
-				spaceBetween={32}
-				keyboard={{ enabled: true }}
-				watchOverflow
-				onSwiper={setSwiper}
-				onSlideChange={(s) => setCurrent(s.activeIndex)}
-				className="wongoji-pager w-full"
+		<div className="flex min-h-0 flex-1 flex-col">
+			<div
+				ref={scrollRef}
+				onScroll={(e) => trackCurrent(e.currentTarget)}
+				className="min-h-0 flex-1 overflow-y-auto"
 			>
-				{pages.map((page, i) => (
-					<SwiperSlide
-						// biome-ignore lint/suspicious/noArrayIndexKey: 장은 순서가 곧 정체성이다. 몇째 장인지 말고는 구분할 것이 없다.
-						key={i}
-					>
-						{/* 실물 200자 원고지가 174mm(약 660px)다. 그보다 조금 크게 둔다 */}
-						<div className="mx-auto w-full max-w-4xl">
-							<WongojiSheet page={page} index={i} />
+				<div
+					className="relative w-full"
+					style={{ height: virtualizer.getTotalSize() }}
+				>
+					{virtualizer.getVirtualItems().map((item) => (
+						<div
+							key={item.key}
+							data-index={item.index}
+							// 장 높이는 화면 폭에 따라 변하므로 실측한다
+							ref={virtualizer.measureElement}
+							className="absolute top-0 left-0 w-full"
+							style={{ transform: `translateY(${item.start}px)` }}
+						>
+							<div className="mx-auto w-full max-w-4xl pb-4">
+								<WongojiSheet page={pages[item.index]} index={item.index} />
+							</div>
 						</div>
-					</SwiperSlide>
-				))}
-			</Swiper>
+					))}
+				</div>
+			</div>
 
-			<PageNav total={pages.length} current={current} onSelect={goTo} />
+			<PageNav total={pages.length} current={current} onSelect={jumpTo} />
 		</div>
 	);
 }
