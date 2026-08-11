@@ -3,12 +3,6 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RulesDialog } from "#/components/RulesDialog";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-} from "#/components/ui/drawer";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import { useMediaQuery } from "#/hooks/useMediaQuery";
@@ -45,6 +39,35 @@ function blocksToDoc(blocks: Block[]): Content {
 }
 
 /**
+ * Tiptap 문서에서 조판할 블록을 뽑는다.
+ *
+ * 에디터가 마운트되어 있지 않아도 조판할 수 있어야 한다. 모바일에서 원고지 쪽을
+ * 보고 있으면 에디터는 렌더되지 않으므로, 에디터의 onChange만 믿으면 원고지가
+ * 빈 채로 뜬다.
+ */
+function contentToBlocks(content: Content): Block[] {
+	const nodes =
+		content && typeof content === "object" && "content" in content
+			? ((content.content ?? []) as Array<Record<string, unknown>>)
+			: [];
+
+	const blocks: Block[] = [];
+	for (const node of nodes) {
+		if (node.type === "horizontalRule") {
+			blocks.push({ type: "blankRow" });
+			continue;
+		}
+		const inline = (node.content ?? []) as Array<{ text?: string }>;
+		const text = inline
+			.map((n) => n.text ?? "")
+			.join("")
+			.trim();
+		if (text) blocks.push({ type: "paragraph", text });
+	}
+	return blocks;
+}
+
+/**
  * 저장된 원고를 읽는다.
  *
  * 예전에는 평문 문자열을 저장했으므로 JSON이 아니면 평문으로 보고 옮겨 담는다.
@@ -64,16 +87,20 @@ function Home() {
 	const [initial, setInitial] = useState<Content | null>(null);
 	const [blocks, setBlocks] = useState<Block[]>([]);
 	const [mainPane, setMainPane] = useState<Pane>("write");
-	const [drawerOpen, setDrawerOpen] = useState(false);
 	const saveTimer = useRef<number | undefined>(undefined);
-	// 에디터는 서랍과 본문 사이를 오갈 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
+	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
 	const docRef = useRef<Content | null>(null);
 
 	const isDesktop = useMediaQuery("(min-width: 1024px)", true);
 
 	// localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
 	useEffect(() => {
-		setInitial(loadDraft(window.localStorage.getItem(STORAGE_KEY)));
+		const draft = loadDraft(window.localStorage.getItem(STORAGE_KEY));
+		setInitial(draft);
+		docRef.current = draft;
+		// 에디터를 기다리지 않고 바로 조판한다
+		setBlocks(contentToBlocks(draft));
+
 		const savedPane = window.localStorage.getItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
 			setMainPane(savedPane);
@@ -90,13 +117,10 @@ function Home() {
 
 	const choosePane = (pane: Pane) => {
 		setMainPane(pane);
-		setDrawerOpen(false);
 		window.localStorage.setItem(PANE_KEY, pane);
 	};
 
 	const { pages, stats } = useMemo(() => layoutBlocks(blocks), [blocks]);
-
-	const otherPane: Pane = mainPane === "write" ? "preview" : "write";
 
 	const editor = (heightClass?: string) =>
 		initial && (
@@ -128,89 +152,45 @@ function Home() {
 						</button>
 					</div>
 				</div>
-
-				{/* 모바일: 어느 쪽을 전체 화면에 둘지 고르고, 나머지는 서랍으로 본다 */}
-				{!isDesktop && (
-					<div className="flex items-center gap-2 px-4 pb-2">
-						<div className="flex rounded border border-[var(--hairline)] p-0.5">
-							{(["write", "preview"] as const).map((pane) => (
-								<button
-									key={pane}
-									type="button"
-									onClick={() => choosePane(pane)}
-									className={`rounded px-2.5 py-1 text-xs transition-colors ${
-										mainPane === pane
-											? "bg-[var(--ink)] text-[var(--paper)]"
-											: "text-[var(--muted)]"
-									}`}
-								>
-									{PANE_LABEL[pane]}
-								</button>
-							))}
-						</div>
-						<button
-							type="button"
-							onClick={() => setDrawerOpen(true)}
-							className="ml-auto rounded border border-[var(--hairline)] px-3 py-1 text-xs transition-colors hover:bg-[var(--paper)]"
-						>
-							{PANE_LABEL[otherPane]} 열기
-						</button>
-					</div>
-				)}
 			</header>
 
 			{isDesktop ? (
 				<main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
 					<div className="no-print lg:sticky lg:top-20 lg:self-start">
 						{editor()}
-						<EditorHint />
 					</div>
 					<div className="min-w-0">{pager}</div>
 				</main>
 			) : (
 				<>
-					<main className="px-4 py-4">
+					<main className="px-4 py-4 pb-24">
 						{mainPane === "write" ? (
-							<div className="no-print">
-								{editor("h-[calc(100vh-16rem)]")}
-								<EditorHint />
-							</div>
+							<div className="no-print">{editor("h-[calc(100vh-14rem)]")}</div>
 						) : (
 							<div className="min-w-0">{pager}</div>
 						)}
 					</main>
 
-					<Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-						<DrawerContent className="max-h-[85vh]">
-							<DrawerHeader>
-								<DrawerTitle className="text-sm">
-									{PANE_LABEL[otherPane]}
-								</DrawerTitle>
-							</DrawerHeader>
-							<div className="overflow-y-auto px-4 pb-6">
-								{otherPane === "write" ? (
-									<div className="no-print">
-										{editor("h-[50vh]")}
-										<EditorHint />
-									</div>
-								) : (
-									pager
-								)}
-							</div>
-						</DrawerContent>
-					</Drawer>
+					{/* 엄지가 닿는 자리에 둔다 */}
+					<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-[var(--hairline)] bg-[var(--canvas)] p-1 shadow-lg">
+						{(["write", "preview"] as const).map((pane) => (
+							<button
+								key={pane}
+								type="button"
+								onClick={() => choosePane(pane)}
+								aria-pressed={mainPane === pane}
+								className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${
+									mainPane === pane
+										? "bg-[var(--ink)] text-[var(--paper)]"
+										: "text-[var(--muted)]"
+								}`}
+							>
+								{PANE_LABEL[pane]}
+							</button>
+						))}
+					</div>
 				</>
 			)}
 		</div>
-	);
-}
-
-function EditorHint() {
-	return (
-		<p className="mt-2 text-[var(--muted)] text-xs leading-5">
-			줄바꿈이 문단이 됩니다. 원고지에서 문단은 들여쓰기로 표시하므로 빈 줄을
-			쳐도 빈 행이 생기지 않습니다. 빈 행이 필요하면 <code>---</code> 또는
-			Ctrl+Enter — 운문의 연 사이나 긴 인용의 위아래에 씁니다.
-		</p>
 	);
 }
