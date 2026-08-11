@@ -42,7 +42,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				{children}
 				<TanStackDevtools
 					config={{
-						position: "bottom-right",
+						// 오른쪽 아래는 앱의 원고/원고지 토글 자리다
+						position: "bottom-left",
 					}}
 					plugins={[
 						{
