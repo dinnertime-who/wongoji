@@ -2,10 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ExportDialog } from "#/components/ExportDialog";
 import { RulesDialog } from "#/components/RulesDialog";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import { useMediaQuery } from "#/hooks/useMediaQuery";
+import type { Manuscript } from "#/lib/export";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -91,6 +93,9 @@ function Home() {
 	const [title, setTitle] = useState("");
 	const [affiliation, setAffiliation] = useState("");
 	const [mainPane, setMainPane] = useState<Pane>("write");
+	// 불러오기로 내용을 갈아끼울 때 에디터를 다시 마운트시키는 열쇠.
+	// Tiptap은 만들어진 뒤 content 옵션을 다시 보지 않는다.
+	const [editorKey, setEditorKey] = useState(0);
 	const saveTimer = useRef<number | undefined>(undefined);
 	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
 	const docRef = useRef<Content | null>(null);
@@ -137,6 +142,17 @@ function Home() {
 		window.localStorage.setItem(AFFILIATION_KEY, value);
 	};
 
+	const handleImport = (next: Manuscript) => {
+		const doc = blocksToDoc(next.blocks);
+		changeTitle(next.title);
+		changeAffiliation(next.affiliation);
+		docRef.current = doc;
+		setInitial(doc);
+		setBlocks(next.blocks);
+		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+		setEditorKey((k) => k + 1);
+	};
+
 	// 제목·소속은 첫 장 헤더라 본문 앞에 붙는다. 비어 있으면 아예 넣지 않는다.
 	const { pages, stats } = useMemo(
 		() =>
@@ -157,6 +173,7 @@ function Home() {
 	const editor = (heightClass?: string, overlay?: React.ReactNode) =>
 		initial && (
 			<WongojiEditor
+				key={editorKey}
 				initialContent={docRef.current ?? initial}
 				onChange={handleChange}
 				heightClass={heightClass}
@@ -181,6 +198,10 @@ function Home() {
 						{isDesktop && (
 							<span className="text-[var(--muted)]">{statsText}</span>
 						)}
+						<ExportDialog
+							manuscript={{ title, affiliation, blocks }}
+							onImport={handleImport}
+						/>
 						<button
 							type="button"
 							onClick={() => window.print()}
