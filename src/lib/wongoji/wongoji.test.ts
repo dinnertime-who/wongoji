@@ -195,46 +195,41 @@ describe("문단·페이지", () => {
 	});
 });
 
-describe("빈 행 — `---`", () => {
-	it("`---`만 있는 줄은 빈 행이 된다", () => {
-		const { pages } = layout("가나\n---\n다라");
+describe("빈 행", () => {
+	const para = (text: string) => ({ type: "paragraph", text }) as const;
+	const blank = { type: "blankRow" } as const;
+
+	it("빈 행 블록은 20칸이 모두 빈 줄이 된다", () => {
+		const { pages } = layoutBlocks([para("가나"), blank, para("다라")]);
 		expect(pages[0].lines[0].cells.length).toBeGreaterThan(0);
 		expect(pages[0].lines[1].cells).toHaveLength(0);
 		expect(pages[0].lines[2].cells.length).toBeGreaterThan(0);
 	});
 
 	it("빈 행은 줄 하나를 소모한다", () => {
-		expect(layout("가\n다").stats.lines).toBe(2);
-		expect(layout("가\n---\n다").stats.lines).toBe(3);
+		expect(layoutBlocks([para("가"), para("다")]).stats.lines).toBe(2);
+		expect(layoutBlocks([para("가"), blank, para("다")]).stats.lines).toBe(3);
 	});
 
 	it("장의 맨 위에 오는 빈 행은 버린다", () => {
 		// 10줄을 채운 직후의 빈 행은 다음 장 첫 줄이 되므로 사라진다
-		const { stats } = layout(`${"가".repeat(199)}\n---\n다`);
+		const { stats } = layoutBlocks([para("가".repeat(199)), blank, para("다")]);
 		expect(stats.lines).toBe(11);
 	});
 
 	it("끝에 매달린 빈 행은 장 수를 부풀리지 않는다", () => {
-		expect(layout("가\n---\n---").stats.lines).toBe(1);
+		expect(layoutBlocks([para("가"), blank, blank]).stats.lines).toBe(1);
 	});
 
-	it("하이픈 3개 미만은 빈 행이 아니다", () => {
-		expect(parseBlocks("--")).toEqual([{ type: "paragraph", text: "--" }]);
-		expect(parseBlocks("----")).toEqual([{ type: "blankRow" }]);
+	it("빈 행은 글자 수에 세지 않는다", () => {
+		expect(layoutBlocks([para("가나"), blank, para("다라")]).stats.chars).toBe(
+			layoutBlocks([para("가나"), para("다라")]).stats.chars,
+		);
 	});
 
-	it("문장 안의 줄표는 빈 행으로 오해되지 않는다", () => {
+	it("평문에는 빈 행 표기법이 없다 — 하이픈은 본문 그대로다", () => {
+		expect(parseBlocks("---")).toEqual([{ type: "paragraph", text: "---" }]);
 		expect(lines("가--나")[0]).toBe("·|가|―|―|나");
-	});
-
-	it("layoutBlocks는 같은 결과를 낸다", () => {
-		const viaText = layout("가나\n---\n다라");
-		const viaBlocks = layoutBlocks([
-			{ type: "paragraph", text: "가나" },
-			{ type: "blankRow" },
-			{ type: "paragraph", text: "다라" },
-		]);
-		expect(viaBlocks.pages).toEqual(viaText.pages);
 	});
 });
 

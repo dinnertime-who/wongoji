@@ -20,9 +20,18 @@ import type { Block } from "#/lib/wongoji";
  * 원고지에는 굵게·제목·목록 같은 것이 없으므로 스키마도 문단과 글자만 둔다.
  * 스키마에 없는 마크는 붙여넣기 단계에서 자동으로 떨어져 나가므로,
  * 서식 있는 글을 붙여 넣어도 평문으로 들어온다.
- *
- * `---`는 Tiptap의 HorizontalRule 입력 규칙을 그대로 쓰되 의미만 빈 행으로 바꿔 읽는다.
  */
+
+/**
+ * 빈 행 노드.
+ *
+ * HorizontalRule을 쓰되 `---` 자동 변환은 뺀다. 빈 행을 넣는 길은 버튼 하나뿐이어야
+ * 배울 것이 없다. 마침 `--`는 줄표(―)로 조판되므로, 자동 변환이 없어야
+ * 본문에 하이픈을 쓰는 것과도 부딪히지 않는다.
+ */
+const BlankRow = HorizontalRule.extend({
+	addInputRules: () => [],
+});
 
 /**
  * 빈 행을 넣는다.
@@ -56,7 +65,7 @@ const BlankRowShortcut = Extension.create({
 function docToBlocks(doc: PMNode): Block[] {
 	const blocks: Block[] = [];
 	doc.forEach((node) => {
-		if (node.type.name === HorizontalRule.name) {
+		if (node.type.name === BlankRow.name) {
 			blocks.push({ type: "blankRow" });
 			return;
 		}
@@ -82,12 +91,11 @@ export function WongojiEditor({
 			Document,
 			Paragraph,
 			Text,
-			HorizontalRule,
+			BlankRow,
 			BlankRowShortcut,
 			UndoRedo,
 			Placeholder.configure({
-				placeholder:
-					"여기에 글을 쓰면 오른쪽 원고지에 규칙대로 조판됩니다.\n빈 행이 필요하면 --- 또는 Ctrl+Enter.",
+				placeholder: "여기에 글을 쓰면 원고지에 규칙대로 조판됩니다.",
 			}),
 		],
 		content: initialContent,
@@ -110,19 +118,25 @@ export function WongojiEditor({
 
 	return (
 		<div>
-			<div className="mb-2 flex items-baseline justify-between">
-				<span className="text-[var(--muted)] text-xs">원고</span>
-				<button
-					type="button"
-					onClick={() => editor && insertBlankRow(editor)}
-					disabled={!editor}
-					title="Ctrl+Enter"
-					className="rounded border border-[var(--hairline)] px-2 py-0.5 text-[var(--muted)] text-xs transition-colors hover:bg-[var(--paper)] disabled:opacity-40"
-				>
-					빈 행 삽입 <span className="opacity-60">⌃↵</span>
-				</button>
-			</div>
+			<div className="mb-2 text-[var(--muted)] text-xs">원고</div>
 			<EditorContent editor={editor} />
+			{/*
+			 * 빈 행을 넣는 유일한 길이다. 모바일에서 엄지가 닿도록 본문 바로 아래에
+			 * 가로로 꽉 채워 둔다.
+			 */}
+			<button
+				type="button"
+				onClick={() => editor && insertBlankRow(editor)}
+				disabled={!editor}
+				title="Ctrl+Enter"
+				className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--grid)] bg-[var(--grid-soft)] py-2.5 text-[var(--ink)] text-xs transition-colors hover:bg-[var(--grid)] hover:text-[var(--paper)] disabled:opacity-40"
+			>
+				<span aria-hidden className="leading-none">
+					⏎
+				</span>
+				빈 행 추가
+				<span className="opacity-50">⌃↵</span>
+			</button>
 		</div>
 	);
 }

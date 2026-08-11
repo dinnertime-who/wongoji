@@ -25,15 +25,15 @@ const emptyCell = (): Cell => ({ glyphs: [], kind: "empty" });
 const spaceCell = (): Cell => ({ glyphs: [], kind: "space" });
 const cloneCell = (c: Cell): Cell => ({ ...c, glyphs: [...c.glyphs] });
 
-/** `---`만 있는 줄은 빈 행 지시자다 */
-const BLANK_ROW_MARKER = /^-{3,}$/;
-
 /**
  * 평문을 블록 배열로 파싱한다.
  *
  * 줄바꿈 한 번도, 빈 줄도 모두 문단 구분으로 본다. Enter를 한 번 치든 두 번 치든
  * 결과가 같다는 뜻이다. 원고지에서 문단은 들여쓰기로 표시하지 빈 줄로 표시하지 않으므로
- * 빈 줄 자체는 원고지 위에 남지 않는다. 빈 행이 필요하면 `---`로 명시한다.
+ * 빈 줄 자체는 원고지 위에 남지 않는다.
+ *
+ * 평문에는 빈 행을 나타낼 방법이 없다. 빈 행은 에디터에서 버튼으로만 넣으며
+ * `layoutBlocks`로 직접 넘어온다. 평문에 표기법을 두면 본문에 쓴 하이픈과 부딪힌다.
  *
  * 문단 앞뒤 공백은 버린다. 남겨두면 들여쓴 첫 칸 다음에 빈 칸이 하나 더 생긴다.
  */
@@ -43,11 +43,7 @@ export function parseBlocks(text: string): Block[] {
 		.split("\n")
 		.map((line) => line.trim())
 		.filter((line) => line !== "")
-		.map((line) =>
-			BLANK_ROW_MARKER.test(line)
-				? ({ type: "blankRow" } as const)
-				: ({ type: "paragraph", text: line } as const),
-		);
+		.map((line) => ({ type: "paragraph", text: line }) as const);
 }
 
 /** 평문에서 문단 텍스트만 뽑는다. */
