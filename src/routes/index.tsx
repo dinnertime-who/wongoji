@@ -206,11 +206,6 @@ function Home() {
 				goal={goal}
 				onGoalChange={changeGoal}
 				stats={stats}
-				toggle={
-					<div className="hidden h-10 shrink-0 items-center rounded-lg border border-border bg-[var(--paper)] px-3 lg:flex">
-						<PaneToggle mainPane={mainPane} onChoose={choosePane} />
-					</div>
-				}
 			/>
 
 			{/*

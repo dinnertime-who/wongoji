@@ -18,7 +18,6 @@ export function ManuscriptBar({
 	goal,
 	onGoalChange,
 	stats,
-	toggle,
 }: {
 	title: string;
 	onTitleChange: (value: string) => void;
@@ -26,8 +25,6 @@ export function ManuscriptBar({
 	goal: number;
 	onGoalChange: (value: number) => void;
 	stats: LayoutStats;
-	/** 넓은 화면에서 제목 옆에 놓는 원고/원고지 토글 */
-	toggle?: React.ReactNode;
 }) {
 	const remaining = goal > 0 ? goal * CELLS_PER_SHEET - stats.chars : 0;
 	const ratio =
@@ -60,7 +57,6 @@ export function ManuscriptBar({
 					/>
 					<span className="text-muted-foreground">매</span>
 				</div>
-				{toggle}
 			</div>
 
 			<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
