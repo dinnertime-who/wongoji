@@ -5,10 +5,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
+import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
-import type { Manuscript } from "#/lib/export";
+import { exportBackup, type Manuscript } from "#/lib/export";
+import {
+	requestPersistentStorage,
+	type SaveFailure,
+	safeGetItem,
+	safeSetItem,
+} from "#/lib/store/local";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -97,48 +104,63 @@ function Home() {
 	// 불러오기로 내용을 갈아끼울 때 에디터를 다시 마운트시키는 열쇠.
 	// Tiptap은 만들어진 뒤 content 옵션을 다시 보지 않는다.
 	const [editorKey, setEditorKey] = useState(0);
+	// 저장이 실패하면 다시 성공할 때까지 화면에 남긴다
+	const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
 	const saveTimer = useRef<number | undefined>(undefined);
 	// 에디터는 쪽을 바꿀 때 다시 마운트된다. 그때 최신 내용으로 되살리려고 붙든다.
 	const docRef = useRef<Content | null>(null);
 
 	// localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
 	useEffect(() => {
-		const draft = loadDraft(window.localStorage.getItem(STORAGE_KEY));
+		const draft = loadDraft(safeGetItem(STORAGE_KEY));
 		setInitial(draft);
 		docRef.current = draft;
 		// 에디터를 기다리지 않고 바로 조판한다
 		setBlocks(contentToBlocks(draft));
 
-		setTitle(window.localStorage.getItem(TITLE_KEY) ?? "");
-		setGoal(Number(window.localStorage.getItem(GOAL_KEY)) || 0);
+		setTitle(safeGetItem(TITLE_KEY) ?? "");
+		setGoal(Number(safeGetItem(GOAL_KEY)) || 0);
 
-		const savedPane = window.localStorage.getItem(PANE_KEY);
+		const savedPane = safeGetItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
 			setMainPane(savedPane);
+
+		// 용량이 부족할 때 브라우저가 원고를 먼저 지우지 않게 요청한다.
+		// 거절되어도 알리지 않는다 — 사용자가 할 수 있는 조치가 없다.
+		void requestPersistentStorage();
 	}, []);
 
-	const handleChange = useCallback((next: Block[], doc: PMNode) => {
-		setBlocks(next);
-		docRef.current = doc.toJSON() as Content;
-		window.clearTimeout(saveTimer.current);
-		saveTimer.current = window.setTimeout(() => {
-			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(docRef.current));
-		}, 300);
+	/** 저장하고 실패를 화면에 반영한다 */
+	const save = useCallback((key: string, value: string) => {
+		const result = safeSetItem(key, value);
+		setSaveFailure(result.ok ? null : result);
 	}, []);
+
+	const handleChange = useCallback(
+		(next: Block[], doc: PMNode) => {
+			setBlocks(next);
+			docRef.current = doc.toJSON() as Content;
+			window.clearTimeout(saveTimer.current);
+			saveTimer.current = window.setTimeout(() => {
+				save(STORAGE_KEY, JSON.stringify(docRef.current));
+			}, 300);
+		},
+		[save],
+	);
 
 	const choosePane = (pane: Pane) => {
 		setMainPane(pane);
-		window.localStorage.setItem(PANE_KEY, pane);
+		save(PANE_KEY, pane);
 	};
 
 	const changeTitle = (value: string) => {
 		setTitle(value);
-		window.localStorage.setItem(TITLE_KEY, value);
+		save(TITLE_KEY, value);
 	};
 
 	const changeGoal = (value: number) => {
 		setGoal(value);
-		window.localStorage.setItem(GOAL_KEY, String(value));
+		save(GOAL_KEY, String(value));
 	};
 
 	const handleImport = (next: Manuscript) => {
@@ -147,7 +169,7 @@ function Home() {
 		docRef.current = doc;
 		setInitial(doc);
 		setBlocks(next.blocks);
-		window.localStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+		save(STORAGE_KEY, JSON.stringify(doc));
 		setEditorKey((k) => k + 1);
 	};
 
@@ -198,6 +220,13 @@ function Home() {
 					</div>
 				</div>
 			</header>
+
+			{saveFailure && (
+				<SaveErrorBanner
+					failure={saveFailure}
+					onBackup={() => exportBackup({ title, blocks })}
+				/>
+			)}
 
 			{/* 제목과 분량은 원고·원고지 어느 쪽을 보고 있든 늘 보여야 한다 */}
 			<ManuscriptBar
