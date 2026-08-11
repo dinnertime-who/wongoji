@@ -6,7 +6,7 @@ import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { Button } from "#/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "#/components/ui/toggle-group";
+import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import type { Manuscript } from "#/lib/export";
@@ -182,8 +182,8 @@ function Home() {
 	const pager = <WongojiPager pages={pages} />;
 
 	return (
-		<div className="flex min-h-[100dvh] flex-col bg-[var(--canvas)] text-[var(--ink)]">
-			<header className="no-print sticky top-0 z-10 border-b border-[var(--hairline)] bg-[var(--canvas)]/90 backdrop-blur">
+		<div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
+			<header className="no-print sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
 				<div className="mx-auto flex max-w-6xl flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3">
 					<h1 className="font-semibold text-lg tracking-tight">200자 원고지</h1>
 					<RulesDialog />
@@ -207,7 +207,7 @@ function Home() {
 				onGoalChange={changeGoal}
 				stats={stats}
 				toggle={
-					<div className="hidden shrink-0 rounded-full border border-[var(--hairline)] bg-[var(--paper)] p-1 lg:flex">
+					<div className="hidden h-10 shrink-0 items-center rounded-lg border border-border bg-[var(--paper)] px-3 lg:flex">
 						<PaneToggle mainPane={mainPane} onChoose={choosePane} />
 					</div>
 				}
@@ -224,7 +224,7 @@ function Home() {
 				{mainPane === "write" ? (
 					<div className="no-print flex min-h-0 flex-1 flex-col">
 						{editor(
-							<span className="rounded bg-[var(--canvas)]/85 px-1.5 py-0.5 text-[var(--muted)] text-[0.7rem] tabular-nums">
+							<span className="rounded bg-background/85 px-1.5 py-0.5 text-muted-foreground text-[0.7rem] tabular-nums">
 								{statsText}
 							</span>,
 						)}
@@ -238,13 +238,14 @@ function Home() {
 			</main>
 
 			{/* 좁은 화면에서는 엄지가 닿는 자리에 띄운다 */}
-			<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-[var(--hairline)] bg-[var(--canvas)] p-1 shadow-lg lg:hidden">
+			<div className="no-print fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
 				<PaneToggle mainPane={mainPane} onChoose={choosePane} />
 			</div>
 		</div>
 	);
 }
 
+/** 두 쪽 중 하나를 고르는 것이라 스위치 양옆에 이름을 둔다 */
 function PaneToggle({
 	mainPane,
 	onChoose,
@@ -252,23 +253,32 @@ function PaneToggle({
 	mainPane: Pane;
 	onChoose: (pane: Pane) => void;
 }) {
+	const label = (pane: Pane) =>
+		`text-xs transition-colors ${
+			mainPane === pane ? "text-foreground" : "text-muted-foreground"
+		}`;
+
 	return (
-		<ToggleGroup
-			type="single"
-			value={mainPane}
-			// 라디오처럼 늘 하나가 눌려 있어야 한다. 빈 값이 오면 무시한다.
-			onValueChange={(value) => value && onChoose(value as Pane)}
-			className="rounded-full"
-		>
-			{(["write", "preview"] as const).map((pane) => (
-				<ToggleGroupItem
-					key={pane}
-					value={pane}
-					className="rounded-full px-3.5 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-				>
-					{PANE_LABEL[pane]}
-				</ToggleGroupItem>
-			))}
-		</ToggleGroup>
+		<div className="flex items-center gap-2">
+			<button
+				type="button"
+				onClick={() => onChoose("write")}
+				className={label("write")}
+			>
+				{PANE_LABEL.write}
+			</button>
+			<Switch
+				checked={mainPane === "preview"}
+				onCheckedChange={(on) => onChoose(on ? "preview" : "write")}
+				aria-label="원고지 미리보기"
+			/>
+			<button
+				type="button"
+				onClick={() => onChoose("preview")}
+				className={label("preview")}
+			>
+				{PANE_LABEL.preview}
+			</button>
+		</div>
 	);
 }
