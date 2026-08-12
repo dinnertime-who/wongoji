@@ -31,5 +31,194 @@
 		"formatter": {
 			"quoteStyle": "double"
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/shared/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"#/entities/**",
+											"#/features/**",
+											"#/widgets/**",
+											"#/pages/**",
+											"#/routes/**",
+											"#/router"
+										],
+										"message": "shared는 위 레이어를 부를 수 없다. 도메인 지식이 필요하면 entities로 올려라."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/entities/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"#/features/**",
+											"#/widgets/**",
+											"#/pages/**",
+											"#/routes/**",
+											"#/router"
+										],
+										"message": "entities는 위 레이어를 부를 수 없다."
+									},
+									{
+										"group": ["#/entities/**"],
+										"message": "다른 entity 슬라이스를 부를 수 없다. 둘이 함께 필요하면 feature로 올려라 — tidy가 그래서 features/archive-bootstrap에 있다. 같은 슬라이스 안은 상대 경로로."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/features/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"#/widgets/**",
+											"#/pages/**",
+											"#/routes/**",
+											"#/router"
+										],
+										"message": "features는 위 레이어를 부를 수 없다."
+									},
+									{
+										"group": ["#/features/**"],
+										"message": "다른 feature 슬라이스를 부를 수 없다. 공통분모는 entities로 내리고, 둘을 이어 붙이는 일은 page에서 해라."
+									},
+									{
+										"group": ["#/entities/*/**"],
+										"message": "entity 내부를 직접 부를 수 없다. index.ts만."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/widgets/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["#/pages/**", "#/routes/**", "#/router"],
+										"message": "widgets는 위 레이어를 부를 수 없다."
+									},
+									{
+										"group": ["#/widgets/**"],
+										"message": "다른 widget 슬라이스를 부를 수 없다. 필요하면 slot(ReactNode)으로 받아라 — AppShell의 sidebar가 그것이다."
+									},
+									{
+										"group": ["#/entities/*/**", "#/features/*/**"],
+										"message": "슬라이스 내부를 직접 부를 수 없다. index.ts만."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["src/pages/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": ["#/routes/**", "#/router"],
+										"message": "pages는 라우팅을 몰라야 한다. 주소는 라우트 어댑터가 읽어 넘긴다."
+									},
+									{
+										"group": ["#/pages/**"],
+										"message": "다른 page 슬라이스를 부를 수 없다."
+									},
+									{
+										"group": [
+											"#/entities/*/**",
+											"#/features/*/**",
+											"#/widgets/*/**"
+										],
+										"message": "슬라이스 내부를 직접 부를 수 없다. index.ts만."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/entities/archive/model/operations.ts",
+				"src/entities/archive/lib/**"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"#/features/**",
+											"#/widgets/**",
+											"#/pages/**",
+											"#/routes/**",
+											"#/router"
+										],
+										"message": "entities는 위 레이어를 부를 수 없다."
+									},
+									{
+										"group": ["#/entities/**"],
+										"message": "다른 entity 슬라이스를 부를 수 없다. 둘이 함께 필요하면 feature로 올려라."
+									},
+									{
+										"group": ["#/shared/lib/storage", "**/api/**"],
+										"message": "색인을 다루는 순수 함수는 저장소를 몰라야 한다. 이 성질 덕분에 나중에 서버에서 같은 코드를 그대로 쓴다."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		}
+	]
 }

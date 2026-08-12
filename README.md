@@ -65,9 +65,10 @@ docx는 [`docx`](https://github.com/dolanmiu/docx)(MIT)로 만들고, 내보낼 
 ```bash
 pnpm install
 pnpm dev          # http://localhost:3000 (--host, 같은 망에서 접속 가능)
-pnpm test         # 조판 엔진 · 보관함 · 내보내기
+pnpm test         # 조판 엔진 · 보관함 · 변환기 · 내보내기
+pnpm check        # Biome (포맷 · 린트 · 레이어 규칙)
 pnpm build
-pnpm check        # Biome
+pnpm gate         # 위 넷 + 배럴 검사. 커밋 전에 이것만 돌리면 된다
 ```
 
 ## 배포 — Cloudflare Workers
@@ -87,22 +88,52 @@ pnpm run deploy           # build + wrangler deploy
 
 ## 구조
 
+[Feature-Sliced Design](https://feature-sliced.design)으로 나눈다. 위층은 아래층만
+부를 수 있고, 같은 층끼리는 부르지 못한다. 슬라이스 바깥에서는 `index.ts`만 본다.
+
 ```
-src/lib/wongoji/     조판 엔진 (프레임워크 비의존)
-  types.ts           Cell·Block·Page 자료구조
-  profile.ts         규칙 프로파일 (현재 TOPIK 하나)
-  tokenize.ts        문자열 → 칸 단위 토큰
-  layout.ts          토큰 → 줄 배치 → 장 배치
-src/lib/store/       보관함 (localStorage)
-  local.ts           안전한 localStorage 겉포장 — 실패를 예외 대신 값으로 돌려준다
-  operations.ts      색인을 다루는 순수 함수 (만들기·옮기기·버리기·되살리기)
-  path.ts            materialized path 계산
-  store.ts           읽기·쓰기와 색인 변경 알림
-  bootstrap.ts       앱을 열 때 한 번 — 다듬기·옛 원고 옮기기·열 원고 고르기
-src/lib/export/      .docx · .json · .txt
-src/components/      원고지 렌더러, 에디터(Tiptap), 페이저(가상 스크롤), 보관함
+src/
+  routes/            APP — 라우팅. 주소를 읽어 page에 넘기는 3줄짜리 어댑터들
+    _app.tsx           주소에 없는 레이아웃. 보관함을 두르고 다듬기를 한 번 돌린다
+  pages/             home · editor · folder — 화면 하나를 짜 맞춘다
+  widgets/           app-shell · manuscript-sidebar · manuscript-bar · page-header
+  features/          무언가를 하는 것들 — 만들기 · 옮기기 · 휴지통 · 내보내기 ·
+                     복사 · 편집 · 초기화 · 쪽 전환 · 앱 열 때 다듬기
+  entities/
+    archive/           보관함. 색인 하나가 폴더·원고·휴지통을 함께 들고 있다
+      api/               색인 저장소 ← 회원 기능이 갈아끼울 지점
+      lib/path.ts        materialized path 계산
+      model/             자료구조 · 순수 연산 · 구독 훅 · 저장 실패 상태
+    manuscript/        원고
+      api/               본문 저장소 ← 회원 기능이 갈아끼울 지점
+      lib/typesetting/   조판 엔진 (프레임워크 비의존)
+      lib/tiptap.ts      에디터 문서 ↔ 조판 블록
+      lib/serialize.ts   평문 · 백업 JSON 읽고 쓰기
+  shared/            도메인을 모르는 것들 — shadcn 원본, cn, localStorage 겉포장
 docs/                규칙 명세서, 공모전 조사, 설계 기록
 ```
+
+**두 entity로 나눈 이유** — 색인이 JSON 한 덩어리라 폴더·원고·휴지통을 따로 뗄 수
+없다. `moveFolder`·`restore`·`countDocsUnder`가 셋을 함께 만지므로, 쪼개면 슬라이스를
+가로지르는 호출이 강제로 생긴다. 반대로 본문은 원고별 키라 완전히 따로 산다.
+
+**두 entity가 함께 필요하면 feature로 올린다.** `tidy`가 그 예다 — 색인이 무엇을
+아는지와 본문 키가 무엇이 있는지를 맞대어 보는 일이라 어느 한쪽에 둘 수 없다.
+
+### 레이어 규칙은 도구가 지킨다
+
+`biome.json`의 `overrides` + `noRestrictedImports`. 새 의존성은 없다.
+
+- `#/entities/*/**`는 걸리고 `#/entities/manuscript`는 통과한다 → **배럴만 허용**이
+  허용 목록 없이 성립한다
+- 지켜야 할 관례는 한 줄이다 — **별칭(`#/`) import는 슬라이스를 건너고, 상대
+  import(`./`)는 슬라이스 안에 머문다**
+- `scripts/check-barrels.sh`가 `index.ts`에 구현이 들어가는 것을 막는다.
+  `lib/export/index.ts`가 161줄짜리 구현이면서 배럴 이름을 달고 있던 적이 있다
+
+**함정** — `overrides`는 규칙 옵션을 합치지 않고 **갈아 끼운다.** 한 파일이 두
+override에 걸리면 뒤엣것만 산다. 그래서 `entities/archive/lib/**`용 블록이 위의
+entities 규칙을 통째로 다시 적고 있다. 여기에 규칙을 더할 때는 두 곳 다 고쳐야 한다.
 
 ### 조판 엔진
 
@@ -127,4 +158,10 @@ Tiptap을 최소 스키마로 쓴다 — 문단, 글자, 빈 행뿐이고 마크
 
 - **운문·긴 인용 블록** — 2칸 들여쓰기와 자동 빈 행
 - **`school` 프로파일** — 한 자리 숫자 1칸, `∨` 표시 등. `Profile` 인터페이스와 플래그는 이미 있어 값만 채우면 된다
-- **첫 장 헤더** — `title`·`affiliation` Block 타입이 엔진에 남아 있지만 지금은 쓰지 않는다. 제목을 조판에서 뺐기 때문이다
+- **첫 장 헤더** — 제목·소속을 첫 장에 앉히는 것. 엔진에 흔적이 남아 있었지만
+  도달할 수 없는 코드라 걷어냈다. 다시 넣는다면 `Block`을 늘리는 것이 아니라
+  원고지 첫 장을 따로 다루는 편이 맞다
+- **회원 · 서버 동기화** — 저장소를 만지는 곳은 `entities/*/api/` 두 파일뿐이라
+  거기서 갈아끼우면 된다. 다만 색인 키에 사용자 구분이 없고, 8자 랜덤 id가
+  경로 문자열 안에 박혀 있어 비회원 원고를 계정으로 합칠 때 다시 매길 방법이
+  없다 — 그 둘은 따로 풀어야 한다
