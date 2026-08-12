@@ -4,7 +4,7 @@ import {
 	type StoreIndex,
 	writeIndex,
 } from "#/entities/archive";
-import { type DocContent, writeDoc } from "#/entities/manuscript";
+import { type DocContent, emptyDoc, writeDoc } from "#/entities/manuscript";
 import { type SaveResult, safeGetItem } from "#/shared/lib/storage";
 import { tidy } from "./tidy";
 
@@ -15,16 +15,6 @@ import { tidy } from "./tidy";
  * 2. 원고가 하나도 없으면 옛 원고를 옮겨 오거나, 없으면 새로 만든다
  * 3. 열 원고를 고른다
  */
-
-/**
- * 처음 오는 사람이 보게 될 원고.
- *
- * 빈 화면보다 낫다 — 조판이 어떻게 되는지, 대화가 어떻게 들어가는지 한눈에
- * 보인다. 평문으로 넣으면 읽는 쪽에서 문단으로 나눈다.
- */
-const WELCOME = `가을이 깊었다. 마당의 감나무가 잎을 다 떨구고 나서야 나는 그 사실을 알아차렸다.
-"올해도 감은 안 열리려나?" 어머니가 물으셨다.
-나는 대답 대신 하늘을 올려다보았다. 2024년의 마지막 가을이 그렇게 지나가고 있었다……`;
 
 /** 새 구조 이전에 쓰던 키들 */
 const LEGACY = {
@@ -78,13 +68,14 @@ export async function bootstrap(now = Date.now()): Promise<Bootstrap> {
 			}
 		} else {
 			/*
-			 * 예시 원고는 정말 처음 온 사람에게만 보인다.
+			 * 빈 원고로 시작한다.
 			 *
-			 * 쓰던 사람이 마지막 원고를 버려도 여기로 온다. 그때 예시가 다시 깔리면
-			 * 방금 버린 자리에 낯선 글이 들어앉는다. 한 번이라도 원고를 연 적이
-			 * 있으면 빈 원고로 시작한다.
+			 * 전에는 처음 오는 사람에게 예시 글을 깔아 주었다. 조판이 어떻게 되는지
+			 * 보여 주려던 것인데, 그것이 목록에서는 사람이 쓴 원고와 구별되지 않았다 —
+			 * 로그인하면 한 자도 쓴 적 없는 사람에게 "이 원고를 계정으로 옮길까요?"를
+			 * 묻고, 옮기면 예시 글이 진짜 원고가 되어 계정에 남았다.
 			 */
-			await writeDoc(created.doc.id, isFirstVisit(index) ? WELCOME : "");
+			await writeDoc(created.doc.id, emptyDoc());
 		}
 	}
 
@@ -118,20 +109,6 @@ function readLegacy(): {
 		title: safeGetItem(LEGACY.title) ?? "",
 		goal: Number(safeGetItem(LEGACY.goal)) || 0,
 	};
-}
-
-/**
- * 이 브라우저에서 원고지를 써 본 적이 없는가.
- *
- * 원고를 한 번이라도 열면 `last`가 남는다. 폴더나 휴지통에 흔적이 있어도 쓰던
- * 사람이다. 셋 다 비어 있을 때만 처음으로 본다.
- */
-function isFirstVisit(index: StoreIndex): boolean {
-	return (
-		readLastOpened() === null &&
-		index.folders.length === 0 &&
-		index.trash.length === 0
-	);
 }
 
 /** 마지막으로 열었던 것. 사라졌으면 가장 최근에 고친 것 */

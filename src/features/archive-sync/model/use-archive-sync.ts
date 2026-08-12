@@ -57,11 +57,20 @@ export function useArchiveSync() {
 		if (!userId || pulledFor.current === userId) return;
 		pulledFor.current = userId;
 
-		let cancelled = false;
-
+		/*
+		 * **cleanup에서 취소하지 않는다.**
+		 *
+		 * 취소 깃발을 두면 effect가 한 번 더 돌 때(StrictMode의 두 번 실행,
+		 * 의존값이 바뀔 때) 진행 중이던 받아오기가 버려지는데, 바로 위 "이미
+		 * 받아왔다" 가드에 걸려 다시 받지도 않는다 — 서버에 있는 원고가 영영
+		 * 내려오지 않는다. `useManuscriptDoc`에서 같은 모양으로 한 번 겪었다.
+		 *
+		 * 대신 도착한 뒤에 아직 그 계정인지 본다. 계정을 바꿨으면 늦게 온 것은
+		 * 남의 보관함이므로 버린다.
+		 */
 		(async () => {
 			const remote = await fetchArchive();
-			if (cancelled) return;
+			if (pulledFor.current !== userId) return;
 
 			/*
 			 * 서버가 비어 있는데 이 기기의 계정 칸에는 원고가 있으면 **덮지 않는다.**
@@ -88,7 +97,7 @@ export function useArchiveSync() {
 			 * 못한 이 기기의 마지막 몇 글자를 서버 것으로 덮는다.
 			 */
 			for (const doc of remote.docs) {
-				if (cancelled) return;
+				if (pulledFor.current !== userId) return;
 				if ((await readDoc(doc.id)) != null) continue;
 
 				const content = await fetchDocContent(doc.id);
@@ -106,10 +115,6 @@ export function useArchiveSync() {
 			// 못 받아 왔으면 로컬에 있는 것으로 계속 쓴다. 다음 로그인에 다시 해 본다
 			pulledFor.current = null;
 		});
-
-		return () => {
-			cancelled = true;
-		};
 	}, [userId, report, queryClient]);
 
 	/* 색인이 바뀌면 뒤에서 밀어 넣는다 */

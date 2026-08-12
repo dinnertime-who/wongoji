@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { writeIndex } from "#/entities/archive";
 import { authClient } from "#/shared/api/auth-client";
@@ -19,6 +20,7 @@ import { mergeLocalIntoAccount, pendingUpload } from "./merge";
 export function useMergePrompt() {
 	const { data: session, isPending } = authClient.useSession();
 	const userId = session?.user.id ?? null;
+	const queryClient = useQueryClient();
 
 	const [ask, setAsk] = useState<{ docs: number; folders: number } | null>(
 		null,
@@ -66,6 +68,19 @@ export function useMergePrompt() {
 				await mergeLocalIntoAccount();
 				// 올린 것이 계정 색인에 들어왔다. 그것으로 보관함을 연다
 				writeIndex(await fetchArchive());
+
+				/*
+				 * 본문 캐시를 버린다.
+				 *
+				 * 옮기기는 본문을 계정 칸의 IndexedDB에 써 두지만 캐시는 건드리지
+				 * 않는다. 캐시는 스스로 낡지 않으므로(`staleTime: Infinity`), 옮기기
+				 * 전에 "없다"고 읽어 둔 것이 있으면 그것을 계속 내놓는다 — 새로고침
+				 * 해야만 본문이 보였다.
+				 *
+				 * 열쇠 앞머리로 지운다. 옮기면서 id가 다시 매겨졌을 수 있어 어느
+				 * 것이 바뀌었는지 여기서 세지 않는다.
+				 */
+				queryClient.removeQueries({ queryKey: ["doc"] });
 			} finally {
 				setMerging(false);
 				done();
