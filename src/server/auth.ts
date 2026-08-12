@@ -14,7 +14,7 @@ import { env } from "cloudflare:workers";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { drizzle } from "drizzle-orm/d1";
-import * as schema from "./schema";
+import * as schema from "./schema/index";
 
 /*
  * D1 바인딩은 요청 컨텍스트 안에서만 질의할 수 있다. 다만 `env.DB`를 **참조**

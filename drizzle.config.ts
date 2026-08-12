@@ -9,7 +9,7 @@ import { defineConfig } from "drizzle-kit";
  * 밀어 넣는다 — wrangler.jsonc의 migrations_dir이 이 out을 가리킨다.
  */
 export default defineConfig({
-	schema: "./src/server/schema.ts",
+	schema: "./src/server/schema/index.ts",
 	out: "./drizzle",
 	dialect: "sqlite",
 });
