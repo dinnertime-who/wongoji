@@ -194,9 +194,34 @@ export function useManuscriptDoc(docId: string) {
 		const content = toEditorContent(stored);
 		docRef.current = content;
 		// 에디터를 기다리지 않고 바로 조판한다
-		setBlocks(blocksFromDoc(content));
+		const opened = blocksFromDoc(content);
+		setBlocks(opened);
 		setLoad({ state: "ready", content });
 		setEditorKey((k) => k + 1);
+
+		/*
+		 * 목록에 적힌 분량이 실제와 다르면 지금 고쳐 둔다.
+		 *
+		 * 휴지통에서 되살린 원고가 그렇다. 분량은 본문을 읽어야 나오는 값이라
+		 * 꺼낼 때는 셀 수 없어 0자 1매로 적어 두는데, 아무도 다시 세지 않아
+		 * 영영 그대로 남았다 — 보관함 용량 표시도 함께 어긋났다.
+		 *
+		 * `updatedAt`은 건드리지 않는다. 읽기만 했는데 목록에서 맨 위로 올라오면
+		 * "최근 수정순"이 거짓말이 된다.
+		 */
+		const stats = layoutBlocks(opened).stats;
+		if (entry.chars !== stats.chars || entry.sheets !== stats.sheets) {
+			report(
+				mutateIndex((current) =>
+					updateDoc(
+						current,
+						docId,
+						{ chars: stats.chars, sheets: stats.sheets },
+						entry.updatedAt,
+					),
+				).result,
+			);
+		}
 	}, [docId, index, navigate]);
 
 	// 탭을 닫거나 새로고침할 때 마지막 몇 글자를 지킨다

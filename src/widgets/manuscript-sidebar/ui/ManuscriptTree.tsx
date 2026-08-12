@@ -82,6 +82,9 @@ const LONG_PRESS = 500;
 /** 기다리는 동안 이만큼 움직이면 넘기려던 손이다. 끌기로 치지 않는다 */
 const PRESS_SLOP = 10;
 
+/** 손을 뗀 뒤 이만큼은 뒤따라오는 탭을 삼킨다 */
+const TAP_SWALLOW = 300;
+
 /**
  * 길게 누르는 동안 글자가 잡히거나 확대 풍선이 뜨지 않게 한다.
  *
@@ -173,6 +176,14 @@ export function ManuscriptTree({
 	const [drag, setDrag] = useState<Drag | null>(null);
 	/** 지금 손이 올라가 있는 폴더의 안쪽 경로. 빈 곳이면 root다 */
 	const [over, setOver] = useState<Path | null>(null);
+	/*
+	 * 같은 값을 ref로도 든다.
+	 *
+	 * 창에 건 리스너는 걸던 순간의 값에 갇힌다. 다시 걸어 새 값을 보게 하면
+	 * 손가락이 움직일 때마다 떼었다 붙이게 되므로, 읽기용으로 ref를 함께 둔다.
+	 */
+	const dragRef = useRef<Drag | null>(null);
+	const overRef = useRef<Path | null>(null);
 
 	/*
 	 * 보고 있는 것까지 가는 길은 열어 둔다. 처음 그릴 때뿐 아니라 옮겨 다닐 때마다
@@ -202,21 +213,25 @@ export function ManuscriptTree({
 
 	/** 지금 끌고 있는 것을 이 경로에 놓을 수 있는가 */
 	const canDrop = (to: Path): boolean => {
-		if (!drag) return false;
-		if (drag.kind === "folder") {
-			const folder = index.folders.find((f) => f.id === drag.id);
+		const dragging = dragRef.current ?? drag;
+		if (!dragging) return false;
+		if (dragging.kind === "folder") {
+			const folder = index.folders.find((f) => f.id === dragging.id);
 			// 제 자신·제 자손 안으로는 갈 수 없다. 사슬이 끊긴다
 			return !!folder && canMoveFolder(folder, to);
 		}
 		// 이미 그 자리에 있으면 옮길 것이 없다
-		return index.docs.find((d) => d.id === drag.id)?.path !== to;
+		return index.docs.find((d) => d.id === dragging.id)?.path !== to;
 	};
 
 	const drop = (to: Path) => {
-		if (drag && canDrop(to)) {
-			if (drag.kind === "doc") actions.dropDoc(drag.id, to);
-			else actions.dropFolder(drag.id, to);
+		const dragging = dragRef.current ?? drag;
+		if (dragging && canDrop(to)) {
+			if (dragging.kind === "doc") actions.dropDoc(dragging.id, to);
+			else actions.dropFolder(dragging.id, to);
 		}
+		dragRef.current = null;
+		overRef.current = null;
 		setDrag(null);
 		setOver(null);
 	};
@@ -247,12 +262,14 @@ export function ManuscriptTree({
 		forgetPress();
 		dragged.current = false;
 		touching.current = true;
+		track();
 		press.current = {
 			item,
 			x: touch.clientX,
 			y: touch.clientY,
 			timer: window.setTimeout(() => {
 				press.current = null;
+				dragRef.current = item;
 				setDrag(item);
 				// 끌기가 열렸다는 것을 손끝에 알린다. 없는 기기도 있다
 				navigator.vibrate?.(10);
@@ -266,24 +283,29 @@ export function ManuscriptTree({
 	 * 창에 직접 얹는다. React가 거는 touchmove는 passive라 목록이 따라 스크롤되는
 	 * 것을 막을 수 없다.
 	 *
-	 * 끌기 상태가 바뀔 때만 다시 건다. 의존성을 비우면 손가락이 움직일 때마다
-	 * 리스너를 떼었다 붙이게 된다 — touchmove마다 렌더가 도는 자리다. drop이 들고
-	 * 있는 색인은 끄는 동안 바뀌지 않는다. 색인을 고치는 것이 놓는 순간이라,
-	 * 그때는 이미 이 손짓이 끝나 있다.
+	 * **손가락이 닿아 있는 동안에만 걸어 둔다.** 전에는 effect로 걸어서, 트리를
+	 * 그리는 내내 창에 non-passive touchmove가 얹혀 있었다 — 끌 생각이 전혀 없는
+	 * 사람의 스크롤까지 그 리스너를 거쳤다. 누르는 순간 걸고 떼는 순간 푼다.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: 위 설명 참고
-	useEffect(() => {
+	const detach = useRef<(() => void) | null>(null);
+
+	const track = () => {
+		// 앞선 손짓이 남아 있으면 먼저 푼다. 두 벌이 얹히면 놓기가 두 번 돈다
+		detach.current?.();
+
 		const move = (e: TouchEvent) => {
 			const touch = e.touches[0];
 			if (!touch) return;
 
-			if (drag) {
+			if (dragRef.current) {
 				// 끌고 있는 동안에는 목록이 함께 움직이지 않아야 한다
 				e.preventDefault();
 				const row = document
 					.elementFromPoint(touch.clientX, touch.clientY)
 					?.closest<HTMLElement>("[data-drop-path]");
-				setOver(row?.dataset.dropPath ?? null);
+				const next = row?.dataset.dropPath ?? null;
+				overRef.current = next;
+				setOver(next);
 				return;
 			}
 
@@ -300,9 +322,11 @@ export function ManuscriptTree({
 		const end = () => {
 			forgetPress();
 			touching.current = false;
-			if (!drag) return;
+			untrack();
+
+			if (!dragRef.current) return;
 			// 놓을 자리를 벗어난 채 손을 떼면 아무 일도 없다
-			if (over) drop(over);
+			if (overRef.current) drop(overRef.current);
 			else {
 				setDrag(null);
 				setOver(null);
@@ -311,23 +335,27 @@ export function ManuscriptTree({
 			dragged.current = true;
 			window.setTimeout(() => {
 				dragged.current = false;
-			}, 300);
+			}, TAP_SWALLOW);
 		};
 
 		window.addEventListener("touchmove", move, { passive: false });
 		window.addEventListener("touchend", end);
 		window.addEventListener("touchcancel", end);
-		return () => {
+		detach.current = () => {
 			window.removeEventListener("touchmove", move);
 			window.removeEventListener("touchend", end);
 			window.removeEventListener("touchcancel", end);
+			detach.current = null;
 		};
-	}, [drag, over]);
+	};
 
-	// 세워 둔 타이머를 남기지 않는다
+	const untrack = () => detach.current?.();
+
+	// 세워 둔 타이머도 리스너도 남기지 않는다
 	useEffect(
 		() => () => {
 			if (press.current) window.clearTimeout(press.current.timer);
+			detach.current?.();
 		},
 		[],
 	);
@@ -336,12 +364,20 @@ export function ManuscriptTree({
 		drag,
 		over,
 		canDrop,
-		onDragStart: setDrag,
+		onDragStart: (item) => {
+			dragRef.current = item;
+			setDrag(item);
+		},
 		onDragEnd: () => {
+			dragRef.current = null;
+			overRef.current = null;
 			setDrag(null);
 			setOver(null);
 		},
-		onDragOver: setOver,
+		onDragOver: (to) => {
+			overRef.current = to;
+			setOver(to);
+		},
 		onDrop: drop,
 		onPress,
 	};

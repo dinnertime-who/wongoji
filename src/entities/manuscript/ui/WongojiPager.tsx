@@ -23,6 +23,13 @@ function PageNav({
 }) {
 	// 타이핑 중에는 그대로 두어야 해서 입력값을 따로 붙든다. 비어 있으면 current를 쓴다.
 	const [draft, setDraft] = useState<string | null>(null);
+	/*
+	 * Escape로 물러났다.
+	 *
+	 * ref로 든다. `setDraft(null)`은 다음 렌더에 반영되는데 `blur()`는 그 자리에서
+	 * onBlur를 부르므로, 물러나겠다고 한 값이 그대로 커밋됐다.
+	 */
+	const discarded = useRef(false);
 
 	if (total <= 1) return null;
 
@@ -31,7 +38,10 @@ function PageNav({
 
 	const commit = () => {
 		const wanted = Number(draft);
+		const cancelled = discarded.current;
+		discarded.current = false;
 		setDraft(null);
+		if (cancelled) return;
 		if (!Number.isFinite(wanted) || wanted < 1) return;
 		onSelect(Math.min(total, Math.max(1, Math.round(wanted))) - 1);
 	};
@@ -59,7 +69,7 @@ function PageNav({
 				onKeyDown={(e) => {
 					if (e.key === "Enter") e.currentTarget.blur();
 					if (e.key === "Escape") {
-						setDraft(null);
+						discarded.current = true;
 						e.currentTarget.blur();
 					}
 				}}
