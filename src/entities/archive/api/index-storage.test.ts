@@ -83,3 +83,48 @@ describe("색인 스냅샷", () => {
 		expect(indexSnapshot()).toBe(indexSnapshot());
 	});
 });
+
+describe("옛 판 읽기", () => {
+	it("1판이 저장되어 있으면 올려서 준다", () => {
+		const storage = mount();
+		storage.setItem(
+			indexKey(),
+			JSON.stringify({
+				version: 1,
+				folders: [],
+				trash: [],
+				docs: [
+					{
+						id: "d1",
+						title: "감나무",
+						path: "/",
+						goal: 0,
+						chars: 0,
+						sheets: 1,
+						createdAt: 1,
+						updatedAt: 1,
+					},
+				],
+			}),
+		);
+
+		const index = readIndex();
+		expect(index.version).toBe(2);
+		expect(index.docs[0].order).toBe(0);
+	});
+
+	it("올린 것을 저장소에 되쓰지는 않는다", () => {
+		const storage = mount();
+		const raw = JSON.stringify({
+			version: 1,
+			folders: [],
+			docs: [],
+			trash: [],
+		});
+		storage.setItem(indexKey(), raw);
+
+		readIndex();
+		// 읽기가 쓰기를 부르면 탭이 여럿일 때 서로 덮어쓴다
+		expect(storage.getItem(indexKey())).toBe(raw);
+	});
+});

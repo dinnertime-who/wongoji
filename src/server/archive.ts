@@ -31,10 +31,16 @@ export interface ServerArchive extends StoreIndex {
 	purged: string[];
 }
 
+/*
+ * 자리(`order`)는 아직 테이블에 없다. 컬럼이 붙기 전까지는 모두 0으로 온다 —
+ * 브라우저의 정렬이 동률을 이름·시각으로 가르므로 목록은 지금까지와 똑같이
+ * 보이지만, **다른 기기에서 바꾼 차례는 따라오지 않는다.**
+ */
 const asDoc = (row: typeof archiveDoc.$inferSelect): DocEntry => ({
 	id: row.id,
 	title: row.title,
 	path: row.path,
+	order: 0,
 	goal: row.goal,
 	chars: row.chars,
 	sheets: row.sheets,
@@ -46,6 +52,7 @@ const asFolder = (row: typeof archiveFolder.$inferSelect): FolderEntry => ({
 	id: row.id,
 	name: row.name,
 	path: row.path,
+	order: 0,
 });
 
 export async function readArchive(
@@ -94,7 +101,15 @@ export async function readArchive(
 	];
 
 	return {
-		version: 1,
+		/*
+		 * 판 번호를 상수로 부르지 않고 그대로 적는다. 값을 import하면 화면 쪽
+		 * 모듈이 서버 번들에 실리는데, 이 파일이 `import type`만 쓰는 이유가 그것을
+		 * 막으려는 것이다.
+		 *
+		 * 어긋날 걱정은 없다 — `StoreIndex.version`이 `typeof INDEX_VERSION`이라
+		 * 리터럴 타입이다. 판이 올라가면 여기가 컴파일되지 않는다.
+		 */
+		version: 2,
 		folders: folders.filter((f) => f.deletedAt === null).map(asFolder),
 		docs: docs.filter((d) => d.deletedAt === null).map(asDoc),
 		trash,

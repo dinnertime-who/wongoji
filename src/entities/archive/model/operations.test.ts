@@ -14,8 +14,8 @@ import {
 	createFolder,
 	daysLeft,
 	duplicateDoc,
-	moveDoc,
-	moveFolder,
+	nudgeEntry,
+	placeEntry,
 	purge,
 	purgeExpired,
 	remapIds,
@@ -108,7 +108,7 @@ describe("만들기", () => {
 		);
 	});
 
-	it("폴더가 먼저, 원고는 최근 수정순", () => {
+	it("폴더가 먼저 온다", () => {
 		const { index } = sample();
 		const kids = childrenOf(index, ROOT);
 		expect(kids.folders.map((f) => f.name)).toEqual(["신춘문예"]);
@@ -116,10 +116,22 @@ describe("만들기", () => {
 	});
 });
 
+/** 그 자리 형제들을 보이는 차례대로 */
+const folderNames = (index: StoreIndex, path: string) =>
+	childrenOf(index, path).folders.map((f) => f.name);
+const docTitles = (index: StoreIndex, path: string) =>
+	childrenOf(index, path).docs.map((d) => d.title);
+
+const toEnd = (path: string) => ({ path, before: null });
+
 describe("옮기기", () => {
 	it("폴더를 옮기면 그 아래 전부가 따라간다", () => {
 		const { index, y2026, 감나무, 초고 } = sample();
-		const next = moveFolder(index, y2026.id, ROOT);
+		const next = placeEntry(
+			index,
+			{ kind: "folder", id: y2026.id },
+			toEnd(ROOT),
+		);
 
 		expect(next.folders.find((f) => f.id === y2026.id)?.path).toBe(ROOT);
 		// 하위 폴더와 원고의 경로가 함께 바뀐다
@@ -133,15 +145,198 @@ describe("옮기기", () => {
 
 	it("자손 안으로 옮기려 하면 아무 일도 없다", () => {
 		const { index, 신춘문예, y2026 } = sample();
-		expect(moveFolder(index, 신춘문예.id, fullPath(y2026))).toBe(index);
+		expect(
+			placeEntry(
+				index,
+				{ kind: "folder", id: 신춘문예.id },
+				toEnd(fullPath(y2026)),
+			),
+		).toBe(index);
 	});
 
-	it("원고만 옮기는 것은 경로 하나 바꾸는 일", () => {
+	it("원고만 옮기면 경로가 바뀐다", () => {
 		const { index, 감나무 } = sample();
+		const next = placeEntry(index, { kind: "doc", id: 감나무.id }, toEnd(ROOT));
+		expect(next.docs.find((d) => d.id === 감나무.id)?.path).toBe(ROOT);
+	});
+
+	it("옮겨 온 것은 그 자리 맨 끝에 붙는다", () => {
+		const { index, 감나무 } = sample();
+		const next = placeEntry(index, { kind: "doc", id: 감나무.id }, toEnd(ROOT));
+		expect(docTitles(next, ROOT)).toEqual(["루트 원고", "감나무"]);
+	});
+
+	it("떠나온 자리도 다시 빽빽해진다", () => {
+		let index = emptyIndex();
+		const ids = seq("d");
+		for (const title of ["가", "나", "다"]) {
+			index = createDoc(index, { title, now: NOW }, ids).index;
+		}
+		const folder = createFolder(index, "폴더", ROOT, seq("f"));
+
+		// 가운데 것을 폴더로 빼내면 남은 둘이 0·1이 되어야 한다
+		const next = placeEntry(
+			folder.index,
+			{ kind: "doc", id: "d2" },
+			toEnd(fullPath(folder.folder)),
+		);
+		expect(childrenOf(next, ROOT).docs.map((d) => [d.title, d.order])).toEqual([
+			["가", 0],
+			["다", 1],
+		]);
+	});
+});
+
+describe("차례", () => {
+	/** 루트에 원고 넷 — 가·나·다·라 */
+	function four() {
+		let index = emptyIndex();
+		const ids = seq("d");
+		for (const title of ["가", "나", "다", "라"]) {
+			index = createDoc(index, { title, now: NOW }, ids).index;
+		}
+		return index;
+	}
+
+	it("만든 차례대로 늘어선다 — 새것이 맨 끝이다", () => {
+		expect(docTitles(four(), ROOT)).toEqual(["가", "나", "다", "라"]);
+	});
+
+	it("고쳐도 자리를 지킨다 — 최근 수정순이 아니다", () => {
+		const index = updateDoc(four(), "d1", { chars: 100 }, NOW + 1000);
+		expect(docTitles(index, ROOT)).toEqual(["가", "나", "다", "라"]);
+	});
+
+	it("어느 형제 앞으로 끼운다", () => {
+		const next = placeEntry(
+			four(),
+			{ kind: "doc", id: "d4" },
+			{
+				path: ROOT,
+				before: "d2",
+			},
+		);
+		expect(docTitles(next, ROOT)).toEqual(["가", "라", "나", "다"]);
+	});
+
+	it("before가 null이면 맨 끝이다", () => {
+		const next = placeEntry(four(), { kind: "doc", id: "d1" }, toEnd(ROOT));
+		expect(docTitles(next, ROOT)).toEqual(["나", "다", "라", "가"]);
+	});
+
+	it("옮기고 나면 번호에 빈틈이 없다", () => {
+		const next = placeEntry(
+			four(),
+			{ kind: "doc", id: "d4" },
+			{
+				path: ROOT,
+				before: "d1",
+			},
+		);
+		expect(childrenOf(next, ROOT).docs.map((d) => d.order)).toEqual([
+			0, 1, 2, 3,
+		]);
+	});
+
+	it("제 앞에 놓는 것은 제자리에 두는 것이다", () => {
+		const index = four();
 		expect(
-			moveDoc(index, 감나무.id, ROOT).docs.find((d) => d.id === 감나무.id)
-				?.path,
-		).toBe(ROOT);
+			placeEntry(
+				index,
+				{ kind: "doc", id: "d2" },
+				{
+					path: ROOT,
+					before: "d2",
+				},
+			),
+		).toBe(index);
+	});
+
+	it("손대지 않은 항목은 같은 객체로 남는다", () => {
+		const index = four();
+		// 맨 뒤를 맨 앞으로 — 넷 다 번호가 바뀐다. 그래도 다른 자리는 그대로다
+		const folder = createFolder(index, "폴더", ROOT, seq("f"));
+		const next = placeEntry(
+			folder.index,
+			{ kind: "doc", id: "d4" },
+			{
+				path: ROOT,
+				before: "d1",
+			},
+		);
+		expect(next.folders[0]).toBe(folder.index.folders[0]);
+	});
+
+	it("폴더도 원고와 따로 센다", () => {
+		let index = emptyIndex();
+		const ids = seq("f");
+		for (const name of ["나중", "먼저"]) {
+			index = createFolder(index, name, ROOT, ids).index;
+		}
+		index = createDoc(index, { title: "원고", now: NOW }, seq("d")).index;
+
+		// 이름순이 아니라 만든 차례다. 원고의 자리와도 겹치지 않는다
+		expect(folderNames(index, ROOT)).toEqual(["나중", "먼저"]);
+		expect(childrenOf(index, ROOT).folders.map((f) => f.order)).toEqual([0, 1]);
+		expect(childrenOf(index, ROOT).docs.map((d) => d.order)).toEqual([0]);
+	});
+
+	it("복제는 원본 바로 아래로 간다", () => {
+		const index = four();
+		const made = duplicateDoc(index, "d2", NOW, seq("c"));
+		expect(docTitles(made?.index ?? index, ROOT)).toEqual([
+			"가",
+			"나",
+			"나 (사본)",
+			"다",
+			"라",
+		]);
+	});
+});
+
+describe("한 칸 밀기", () => {
+	function four() {
+		let index = emptyIndex();
+		const ids = seq("d");
+		for (const title of ["가", "나", "다", "라"]) {
+			index = createDoc(index, { title, now: NOW }, ids).index;
+		}
+		return index;
+	}
+
+	it("위로", () => {
+		const next = nudgeEntry(four(), { kind: "doc", id: "d3" }, -1);
+		expect(docTitles(next, ROOT)).toEqual(["가", "다", "나", "라"]);
+	});
+
+	it("아래로", () => {
+		const next = nudgeEntry(four(), { kind: "doc", id: "d2" }, 1);
+		expect(docTitles(next, ROOT)).toEqual(["가", "다", "나", "라"]);
+	});
+
+	it("마지막 바로 앞에서 아래로 밀면 맨 끝이 된다", () => {
+		const next = nudgeEntry(four(), { kind: "doc", id: "d3" }, 1);
+		expect(docTitles(next, ROOT)).toEqual(["가", "나", "라", "다"]);
+	});
+
+	it("양 끝에서 더 밀면 아무 일도 없다", () => {
+		const index = four();
+		expect(nudgeEntry(index, { kind: "doc", id: "d1" }, -1)).toBe(index);
+		expect(nudgeEntry(index, { kind: "doc", id: "d4" }, 1)).toBe(index);
+	});
+
+	it("다른 폴더의 것과는 섞이지 않는다", () => {
+		const made = createFolder(four(), "폴더", ROOT, seq("f"));
+		let index = createDoc(
+			made.index,
+			{ title: "안쪽", path: fullPath(made.folder), now: NOW },
+			seq("x"),
+		).index;
+
+		// 폴더 안에 하나뿐이니 밀 곳이 없다
+		index = nudgeEntry(index, { kind: "doc", id: "x1" }, -1);
+		expect(docTitles(index, fullPath(made.folder))).toEqual(["안쪽"]);
+		expect(docTitles(index, ROOT)).toEqual(["가", "나", "다", "라"]);
 	});
 });
 

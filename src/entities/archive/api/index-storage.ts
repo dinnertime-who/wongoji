@@ -9,6 +9,7 @@ import {
 	scopedKey,
 	subscribeToScope,
 } from "#/shared/lib/storage";
+import { upgradeIndex } from "../model/migrate";
 import { emptyIndex, type StoreIndex } from "../model/types";
 
 /**
@@ -30,17 +31,16 @@ import { emptyIndex, type StoreIndex } from "../model/types";
 export const indexKey = () => scopedKey("index");
 const lastKey = () => scopedKey("last");
 
+/**
+ * 저장된 문자열에서 색인을 꺼낸다. 옛 판이면 올려서 준다.
+ *
+ * **올린 결과를 여기서 저장하지는 않는다.** 읽기가 쓰기를 부르면 탭이 여럿일 때
+ * 서로 덮어쓴다. 다음번 `mutateIndex`가 지나가며 새 판으로 적힌다.
+ */
 function parseIndex(raw: string | null): StoreIndex | null {
 	if (!raw) return null;
 	try {
-		const parsed = JSON.parse(raw);
-		if (parsed?.version !== 1 || !Array.isArray(parsed.docs)) return null;
-		return {
-			version: 1,
-			folders: parsed.folders ?? [],
-			docs: parsed.docs,
-			trash: parsed.trash ?? [],
-		};
+		return upgradeIndex(JSON.parse(raw));
 	} catch {
 		return null;
 	}

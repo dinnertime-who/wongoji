@@ -8,9 +8,8 @@ import {
 	displayTitle,
 	type FolderEntry,
 	fullPath,
-	moveDoc,
-	moveFolder,
 	type Path,
+	placeEntry,
 	ROOT,
 	renameFolder,
 	trashDoc,
@@ -117,11 +116,9 @@ export function ManuscriptSidebar() {
 		 * 끌어다 놓은 이동. 갈 곳이 이미 정해져 있어 다이얼로그를 열지 않는다.
 		 *
 		 * 갈 수 없는 자리는 트리가 미리 걸러 놓으므로 여기서 다시 묻지 않는다.
-		 * moveFolder도 제 안에서 한 번 더 막는다.
+		 * `placeEntry`도 제 안에서 한 번 더 막는다.
 		 */
-		dropDoc: (docId, to) => change((current) => moveDoc(current, docId, to)),
-		dropFolder: (folderId, to) =>
-			change((current) => moveFolder(current, folderId, to)),
+		drop: (moving, to) => change((current) => placeEntry(current, moving, to)),
 
 		duplicateDoc: (doc) => open(duplicateDocById(doc.id)),
 
@@ -246,13 +243,17 @@ export function ManuscriptSidebar() {
 							: ROOT
 				}
 				onPick={(path) => {
-					if (sheet.kind === "moveFolder") {
-						const { id } = sheet.folder;
-						change((current) => moveFolder(current, id, path));
-					} else if (sheet.kind === "moveDoc") {
-						const { id } = sheet.doc;
-						change((current) => moveDoc(current, id, path));
-					}
+					// 골라서 옮기면 그 폴더 맨 끝으로 간다. 자리까지 고르게 하지 않는다
+					const moving =
+						sheet.kind === "moveFolder"
+							? ({ kind: "folder", id: sheet.folder.id } as const)
+							: sheet.kind === "moveDoc"
+								? ({ kind: "doc", id: sheet.doc.id } as const)
+								: null;
+					if (!moving) return;
+					change((current) =>
+						placeEntry(current, moving, { path, before: null }),
+					);
 				}}
 			/>
 

@@ -59,7 +59,12 @@ async function readIndexBody(request: Request): Promise<StoreIndex | null> {
 		if (!body || typeof body !== "object") return null;
 
 		const { version, folders, docs, trash } = body as Partial<StoreIndex>;
-		if (version !== 1) return null;
+		/*
+		 * 지금 판만 받는다. 옛 판을 올려 주는 일은 브라우저 쪽(`model/migrate.ts`)에
+		 * 있고, 거기를 지난 것만 여기로 온다. 서버에 두 벌을 두면 어느 쪽이 정본인지
+		 * 알 수 없게 된다.
+		 */
+		if (version !== 2) return null;
 		if (
 			!Array.isArray(folders) ||
 			!Array.isArray(docs) ||
@@ -67,7 +72,7 @@ async function readIndexBody(request: Request): Promise<StoreIndex | null> {
 		) {
 			return null;
 		}
-		return { version: 1, folders, docs, trash };
+		return { version, folders, docs, trash };
 	} catch {
 		return null;
 	}

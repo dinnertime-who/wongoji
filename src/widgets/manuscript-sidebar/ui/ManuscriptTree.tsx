@@ -20,7 +20,9 @@ import {
 	displayTitle,
 	type FolderEntry,
 	fullPath,
+	type Moving,
 	type Path,
+	type Placement,
 	ROOT,
 	type StoreIndex,
 	useStoreIndex,
@@ -47,15 +49,14 @@ export interface TreeActions {
 	/** 하나뿐인 원고를 비운다. 버리는 대신이다 */
 	resetDoc: (doc: DocEntry) => void;
 	/*
-	 * 끌어다 놓아 옮긴다. 다이얼로그를 거치는 moveDoc·moveFolder와 목적지는 같지만
-	 * 고르는 방법이 달라 따로 둔다 — 이쪽은 갈 곳이 이미 정해져 있다.
+	 * 끌어다 놓아 옮긴다. 다이얼로그를 거치는 이동과 목적지는 같지만 고르는
+	 * 방법이 달라 따로 둔다 — 이쪽은 갈 곳이 이미 정해져 있다.
 	 */
-	dropDoc: (docId: string, to: Path) => void;
-	dropFolder: (folderId: string, to: Path) => void;
+	drop: (moving: Moving, to: Placement) => void;
 }
 
 /** 끌고 있는 것. 폴더는 제 자손에 들어갈 수 없어 종류를 알아야 한다 */
-type Drag = { kind: "doc" | "folder"; id: string };
+type Drag = Moving;
 
 /** 트리 전체가 나눠 쓰는 끌어 놓기 상태 */
 interface Dnd {
@@ -226,9 +227,9 @@ export function ManuscriptTree({
 
 	const drop = (to: Path) => {
 		const dragging = dragRef.current ?? drag;
+		// 지금은 늘 그 자리 맨 끝이다. 사이에 끼우는 것은 아직 붙지 않았다
 		if (dragging && canDrop(to)) {
-			if (dragging.kind === "doc") actions.dropDoc(dragging.id, to);
-			else actions.dropFolder(dragging.id, to);
+			actions.drop(dragging, { path: to, before: null });
 		}
 		dragRef.current = null;
 		overRef.current = null;
