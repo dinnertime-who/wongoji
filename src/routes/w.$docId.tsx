@@ -1,34 +1,43 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Breadcrumb } from "#/components/Breadcrumb";
-import { CapacityMeter } from "#/components/CapacityMeter";
-import { CopyManuscript } from "#/components/CopyManuscript";
-import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
-import { RulesDialog } from "#/components/RulesDialog";
 import { Shell } from "#/components/Shell";
-import { WongojiEditor } from "#/components/WongojiEditor";
-import { WongojiPager } from "#/components/WongojiPager";
-import { exportBackup, type Manuscript } from "#/lib/export";
 import {
+	Breadcrumb,
+	CapacityMeter,
 	displayTitle,
 	mutateIndex,
-	readDoc,
 	readIndex,
+	updateDoc,
+	useStoreIndex,
+	writeLastOpened,
+} from "#/entities/archive";
+import {
+	type Block,
+	blocksFromDoc,
+	blocksToDoc,
+	goalProgress,
+	layoutBlocks,
+	type Manuscript,
+	RulesDialog,
+	readDoc,
+	toEditorContent,
+	WongojiPager,
+	writeDoc,
+} from "#/entities/manuscript";
+import { tidy } from "#/features/archive-bootstrap";
+import { CopyManuscript } from "#/features/copy-manuscript";
+import { WongojiEditor } from "#/features/edit-manuscript";
+import { ExportDialog, exportBackup } from "#/features/export-manuscript";
+import {
 	requestPersistentStorage,
 	type SaveFailure,
 	type SaveResult,
 	safeGetItem,
 	safeSetItem,
-	tidy,
-	updateDoc,
-	useStoreIndex,
-	writeDoc,
-	writeLastOpened,
-} from "#/lib/store";
-import { blocksFromDoc, blocksToDoc, toEditorContent } from "#/lib/tiptap";
-import { type Block, goalProgress, layoutBlocks } from "#/lib/wongoji";
+} from "#/shared/lib/storage";
+
 import { Button } from "#/shared/ui/button";
 import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 import { SidebarTrigger } from "#/shared/ui/sidebar";

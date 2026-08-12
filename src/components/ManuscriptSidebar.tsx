@@ -1,17 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { FolderPicker } from "#/components/FolderPicker";
 import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
-import { TrashDialog } from "#/components/TrashDialog";
 import {
 	ancestorIds,
-	type Created,
-	createDocIn,
 	createFolder,
 	type DocEntry,
 	displayTitle,
-	duplicateDocById,
 	type FolderEntry,
 	fullPath,
 	moveDoc,
@@ -20,11 +15,18 @@ import {
 	type Path,
 	ROOT,
 	renameFolder,
-	type SaveResult,
 	type StoreIndex,
 	trashDoc,
 	trashFolder,
-} from "#/lib/store";
+} from "#/entities/archive";
+import {
+	type Created,
+	createDocIn,
+	duplicateDocById,
+} from "#/features/create-entry";
+import { TrashDialog } from "#/features/manage-trash";
+import { FolderPicker } from "#/features/move-entry";
+import type { SaveResult } from "#/shared/lib/storage";
 import { Button } from "#/shared/ui/button";
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
 import { NameDialog } from "#/shared/ui/name-dialog";

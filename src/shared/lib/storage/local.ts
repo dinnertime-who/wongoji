@@ -124,3 +124,19 @@ export async function requestPersistentStorage(): Promise<boolean | null> {
 		return null;
 	}
 }
+
+/**
+ * 저장소에 든 키를 전부 늘어놓는다.
+ *
+ * 고아가 된 값을 찾을 때 쓴다. 브라우저가 아니거나 접근이 막혔으면 빈 배열이다 —
+ * "하나도 없다"와 구별되지 않지만, 지울 것을 못 찾는 쪽이 잘못 지우는 쪽보다 낫다.
+ */
+export function listStorageKeys(storage?: Storage): string[] {
+	const store = getStore(storage);
+	if (!store) return [];
+	try {
+		return Object.keys(store);
+	} catch {
+		return [];
+	}
+}

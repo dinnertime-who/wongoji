@@ -3,7 +3,7 @@ import {
 	goalRatio,
 	type LayoutStats,
 	remainingChars,
-} from "#/lib/wongoji";
+} from "#/entities/manuscript";
 import { Input } from "#/shared/ui/input";
 import { Label } from "#/shared/ui/label";
 import { PageTitle } from "#/shared/ui/page-title";

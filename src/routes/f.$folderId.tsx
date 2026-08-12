@@ -1,12 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FileTextIcon, FolderIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Breadcrumb } from "#/components/Breadcrumb";
-import { CapacityMeter } from "#/components/CapacityMeter";
 import { Shell } from "#/components/Shell";
 import {
+	Breadcrumb,
+	CapacityMeter,
 	childrenOf,
-	createDocIn,
 	createFolder,
 	type DocEntry,
 	displayTitle,
@@ -15,14 +14,13 @@ import {
 	mutateIndex,
 	readIndex,
 	renameFolder,
-	type SaveFailure,
-	type SaveResult,
-	tidy,
 	updateDoc,
 	useStoreIndex,
-	writeDoc,
-} from "#/lib/store";
-import { emptyDoc } from "#/lib/tiptap";
+} from "#/entities/archive";
+import { emptyDoc, writeDoc } from "#/entities/manuscript";
+import { tidy } from "#/features/archive-bootstrap";
+import { createDocIn } from "#/features/create-entry";
+import type { SaveFailure, SaveResult } from "#/shared/lib/storage";
 import { Button } from "#/shared/ui/button";
 import { PageTitle } from "#/shared/ui/page-title";
 import { SaveErrorBanner } from "#/shared/ui/save-error-banner";

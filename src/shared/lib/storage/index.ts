@@ -1,4 +1,5 @@
 export {
+	listStorageKeys,
 	requestPersistentStorage,
 	type SaveFailure,
 	type SaveResult,

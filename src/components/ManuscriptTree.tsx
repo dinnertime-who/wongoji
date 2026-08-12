@@ -23,7 +23,7 @@ import {
 	type Path,
 	ROOT,
 	type StoreIndex,
-} from "#/lib/store";
+} from "#/entities/archive";
 import { Button } from "#/shared/ui/button";
 import {
 	DropdownMenu,
