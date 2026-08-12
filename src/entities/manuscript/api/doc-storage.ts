@@ -1,9 +1,20 @@
-import { clear, createStore, del, get, keys, set } from "idb-keyval";
 import {
+	clear,
+	createStore,
+	del,
+	get,
+	keys,
+	set,
+	type UseStore,
+} from "idb-keyval";
+import {
+	currentScope,
 	listStorageKeys,
 	type SaveResult,
+	type StorageScope,
 	safeGetItem,
 	safeRemoveItem,
+	scopedDbName,
 } from "#/shared/lib/storage";
 
 /**
@@ -25,12 +36,24 @@ import {
 export const DOC_PREFIX = "wongoji:v1:doc:";
 
 /**
- * IndexedDB 안의 자리.
+ * 이 칸의 본문이 사는 곳.
  *
- * 데이터베이스가 따로라 키에 앞머리를 붙일 이유가 없다. 계정별로 나눌 때는
- * 키에 섞지 말고 store를 따로 연다 — 남의 칸을 훑을 길이 아예 없어진다.
+ * 칸마다 **데이터베이스**를 따로 연다. store를 따로 여는 편이 자연스러워 보이지만
+ * `createStore`가 버전 없이 DB를 열기 때문에 그럴 수 없다 — 이미 있는 DB에는
+ * store가 새로 만들어지지 않아 질의가 통째로 실패한다.
+ *
+ * DB가 갈리면 남의 칸을 훑을 길이 아예 없다. 계정 칸을 치울 때도 DB 하나만
+ * 버리면 된다.
  */
-const store = createStore("wongoji", "docs");
+let opened: { scope: StorageScope; store: UseStore } | null = null;
+
+function store(): UseStore {
+	const scope = currentScope();
+	if (!opened || opened.scope !== scope) {
+		opened = { scope, store: createStore(scopedDbName(scope), "docs") };
+	}
+	return opened.store;
+}
 
 /** 본문 하나. Tiptap 문서를 그대로 담는다 */
 export type DocContent = unknown;
@@ -41,7 +64,7 @@ export type DocContent = unknown;
  * 읽는 쪽과 쓴 뒤 캐시를 고치는 쪽이 같은 열쇠를 봐야 한다. 각자 적으면 언젠가
  * 갈라지고, 갈라지면 저장한 내용이 다음에 열 때 옛것으로 되돌아간다.
  */
-export const docQueryKey = (id: string) => ["doc", id] as const;
+export const docQueryKey = (id: string) => ["doc", currentScope(), id] as const;
 
 /*
  * 옛 원고를 옮긴다.
@@ -56,6 +79,13 @@ export const docQueryKey = (id: string) => ["doc", id] as const;
 let migration: Promise<void> | null = null;
 
 function migrated(): Promise<void> {
+	/*
+	 * 옛 키(`wongoji:v1:doc:*`)에는 칸이 없다 — 계정이 생기기 전에 쓴 것이므로
+	 * 전부 비로그인 원고다. 계정 칸에서 이것을 돌리면 남의 원고를 계정 보관함에
+	 * 쏟아 넣는다.
+	 */
+	if (currentScope() !== null) return Promise.resolve();
+
 	migration ??= migrate().catch((error) => {
 		migration = null;
 		throw error;
@@ -84,7 +114,7 @@ async function migrate(): Promise<void> {
 		}
 
 		// 옮긴 것이 확실해진 뒤에 지운다. 순서를 뒤집으면 중간에 끊겼을 때 잃는다
-		await set(id, content, store);
+		await set(id, content, store());
 		safeRemoveItem(key);
 	}
 }
@@ -116,7 +146,7 @@ function failure(error: unknown): SaveResult {
 export async function readDoc(id: string): Promise<DocContent | null> {
 	try {
 		await migrated();
-		return (await get<DocContent>(id, store)) ?? null;
+		return (await get<DocContent>(id, store())) ?? null;
 	} catch {
 		/*
 		 * 못 읽은 것과 없는 것을 여기서는 구별하지 않는다. 부르는 쪽은 둘 다
@@ -133,7 +163,7 @@ export async function writeDoc(
 ): Promise<SaveResult> {
 	try {
 		await migrated();
-		await set(id, content, store);
+		await set(id, content, store());
 		return { ok: true };
 	} catch (error) {
 		return failure(error);
@@ -143,7 +173,7 @@ export async function writeDoc(
 export async function removeDoc(id: string): Promise<void> {
 	try {
 		await migrated();
-		await del(id, store);
+		await del(id, store());
 	} catch {
 		// 지우지 못해도 할 수 있는 일이 없다
 	}
@@ -161,7 +191,7 @@ export async function removeDoc(id: string): Promise<void> {
 export async function listDocIds(): Promise<string[]> {
 	try {
 		await migrated();
-		return (await keys(store)).map(String);
+		return (await keys(store())).map(String);
 	} catch {
 		return [];
 	}
@@ -170,7 +200,7 @@ export async function listDocIds(): Promise<string[]> {
 /** 이 store의 본문을 전부 버린다. 계정 칸을 치울 때 쓴다 */
 export async function clearDocs(): Promise<void> {
 	try {
-		await clear(store);
+		await clear(store());
 	} catch {
 		// 지우지 못해도 할 수 있는 일이 없다
 	}

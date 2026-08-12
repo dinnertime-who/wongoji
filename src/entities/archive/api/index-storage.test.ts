@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDoc } from "../model/operations";
 import { emptyIndex } from "../model/types";
 import {
-	INDEX_KEY,
+	indexKey,
 	indexSnapshot,
 	readIndex,
 	writeIndex,
@@ -66,7 +66,7 @@ describe("색인 스냅샷", () => {
 
 		// 다른 탭이 쓴 것처럼 저장소만 바꾼다. writeIndex를 거치지 않는다
 		storage.setItem(
-			INDEX_KEY,
+			indexKey(),
 			JSON.stringify(createDoc(emptyIndex(), { title: "다른 탭" }).index),
 		);
 
@@ -77,7 +77,7 @@ describe("색인 스냅샷", () => {
 
 	it("깨진 색인은 빈 색인으로 읽되, 그것도 같은 객체다", () => {
 		const storage = mount();
-		storage.setItem(INDEX_KEY, "{ 깨짐");
+		storage.setItem(indexKey(), "{ 깨짐");
 
 		expect(readIndex()).toEqual(emptyIndex());
 		expect(indexSnapshot()).toBe(indexSnapshot());

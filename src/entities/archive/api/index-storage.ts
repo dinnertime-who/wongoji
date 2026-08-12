@@ -1,7 +1,11 @@
 import {
+	currentScope,
 	type SaveResult,
+	type StorageScope,
 	safeGetItem,
 	safeSetItem,
+	scopedKey,
+	subscribeToScope,
 } from "#/shared/lib/storage";
 import { emptyIndex, type StoreIndex } from "../model/types";
 
@@ -15,8 +19,14 @@ import { emptyIndex, type StoreIndex } from "../model/types";
  * 하나 칠 때마다 전체를 다시 쓴다. 본문은 원고별로 따로 있고 여기서 다루지 않는다.
  */
 
-export const INDEX_KEY = "wongoji:v1:index";
-const LAST_KEY = "wongoji:v1:last";
+/**
+ * 색인이 놓이는 키. **상수가 아니라 물어봐야 하는 값이다.**
+ *
+ * 로그인하면 계정 칸으로 자리가 옮겨진다. 상수로 두면 계정 원고가 비로그인
+ * 원고 위에 써진다.
+ */
+export const indexKey = () => scopedKey("index");
+const lastKey = () => scopedKey("last");
 
 function parseIndex(raw: string | null): StoreIndex | null {
 	if (!raw) return null;
@@ -43,12 +53,20 @@ function parseIndex(raw: string | null): StoreIndex | null {
  */
 let snapshotRaw: string | null | undefined;
 let snapshot: StoreIndex = emptyIndex();
+/*
+ * 스냅샷이 어느 칸의 것인지 함께 붙든다. 칸이 갈리면 원본 문자열이 우연히 같을
+ * 수 있는데(둘 다 빈 색인이면 실제로 같다), 그때 옛 객체를 그대로 돌려주면
+ * 화면은 보관함이 바뀐 것을 모른다.
+ */
+let snapshotScope: StorageScope | undefined;
 
 /** 지금 색인. 바뀌지 않았으면 지난번과 같은 객체다 */
 export function indexSnapshot(): StoreIndex {
-	const raw = safeGetItem(INDEX_KEY);
-	if (raw !== snapshotRaw) {
+	const scope = currentScope();
+	const raw = safeGetItem(indexKey());
+	if (raw !== snapshotRaw || scope !== snapshotScope) {
 		snapshotRaw = raw;
+		snapshotScope = scope;
 		snapshot = parseIndex(raw) ?? emptyIndex();
 	}
 	return snapshot;
@@ -56,7 +74,7 @@ export function indexSnapshot(): StoreIndex {
 
 /** 지금 색인. 못 읽으면 빈 색인이다 */
 export function readIndex(): StoreIndex {
-	return parseIndex(safeGetItem(INDEX_KEY)) ?? emptyIndex();
+	return parseIndex(safeGetItem(indexKey())) ?? emptyIndex();
 }
 
 /**
@@ -67,7 +85,7 @@ export function readIndex(): StoreIndex {
  * 이어 가면 고아 정리가 본문 키를 전부 지우고, 그 위에 빈 목록이 써진다.
  */
 export function indexUnreadable(): boolean {
-	const raw = safeGetItem(INDEX_KEY);
+	const raw = safeGetItem(indexKey());
 	return raw !== null && parseIndex(raw) === null;
 }
 
@@ -84,14 +102,31 @@ export function subscribeToIndex(listener: () => void): () => void {
 	return () => void listeners.delete(listener);
 }
 
+/*
+ * 칸이 갈리면 색인이 바뀐 것과 같다 — 보던 자리가 통째로 옮겨졌다.
+ *
+ * `storage` 이벤트로는 오지 않는다. 값이 바뀐 것이 아니라 어느 키를 볼지가
+ * 바뀐 것이라 브라우저가 알려 줄 수가 없다.
+ */
+subscribeToScope(() => {
+	for (const listener of listeners) {
+		try {
+			listener();
+		} catch {
+			// 구독자 사정이다
+		}
+	}
+});
+
 export function writeIndex(index: StoreIndex): SaveResult {
 	const json = JSON.stringify(index);
-	const result = safeSetItem(INDEX_KEY, json);
+	const result = safeSetItem(indexKey(), json);
 	if (!result.ok) return result;
 
 	// 방금 쓴 것을 스냅샷으로 삼는다. 다시 읽어 파싱할 이유가 없다
 	snapshotRaw = json;
 	snapshot = index;
+	snapshotScope = currentScope();
 
 	/*
 	 * 구독자 하나가 터져도 나머지에게는 알린다. 여기서 예외가 새어 나가면
@@ -124,6 +159,6 @@ export function mutateIndex(change: (index: StoreIndex) => StoreIndex): {
 
 // ─── 마지막으로 연 원고 ───
 
-export const readLastOpened = (): string | null => safeGetItem(LAST_KEY);
+export const readLastOpened = (): string | null => safeGetItem(lastKey());
 export const writeLastOpened = (id: string): SaveResult =>
-	safeSetItem(LAST_KEY, id);
+	safeSetItem(lastKey(), id);

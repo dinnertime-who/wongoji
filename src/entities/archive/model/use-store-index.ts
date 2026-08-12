@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import {
-	INDEX_KEY,
+	indexKey,
 	indexSnapshot,
 	subscribeToIndex,
 } from "../api/index-storage";
@@ -20,7 +20,7 @@ import { emptyIndex, type StoreIndex } from "./types";
  */
 function subscribe(onChange: () => void): () => void {
 	const onStorage = (event: StorageEvent) => {
-		if (event.key === null || event.key === INDEX_KEY) onChange();
+		if (event.key === null || event.key === indexKey()) onChange();
 	};
 	window.addEventListener("storage", onStorage);
 	const unsubscribe = subscribeToIndex(onChange);

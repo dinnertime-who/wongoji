@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { useArchiveScope } from "#/features/auth";
 import { QueryProvider } from "#/shared/api/query";
 
 import appCss from "../styles.css?url";
@@ -38,7 +39,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
-				<QueryProvider>{children}</QueryProvider>
+				<QueryProvider>
+					<ArchiveScope>{children}</ArchiveScope>
+				</QueryProvider>
 				{/*
 				 * TanStack Devtools는 띄우지 않는다. 떠 있는 뱃지가 화면 구석을 가린다.
 				 * 패키지와 vite 플러그인은 그대로 두었으니 다시 쓰려면 여기에 붙이면 된다.
@@ -47,4 +50,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</body>
 		</html>
 	);
+}
+
+/**
+ * 보관함 칸을 세션에 맞춘다.
+ *
+ * QueryProvider 안이어야 한다 — 세션을 묻는 일도 질의다. 그리는 것은 없다.
+ */
+function ArchiveScope({ children }: { children: React.ReactNode }) {
+	useArchiveScope();
+	return children;
 }

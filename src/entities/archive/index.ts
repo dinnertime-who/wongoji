@@ -1,5 +1,5 @@
 export {
-	INDEX_KEY,
+	indexKey,
 	indexSnapshot,
 	indexUnreadable,
 	mutateIndex,

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createDoc,
 	emptyIndex,
-	INDEX_KEY,
+	indexKey,
 	readIndex,
 	type StoreIndex,
 	subscribeToIndex,
@@ -70,7 +70,7 @@ async function withOneDoc(
 	storage: FakeStorage,
 ): Promise<{ index: StoreIndex; id: string }> {
 	const { index, doc } = createDoc(emptyIndex(), { title: "감나무" });
-	storage.setItem(INDEX_KEY, JSON.stringify(index));
+	storage.setItem(indexKey(), JSON.stringify(index));
 	await writeDoc(doc.id, { type: "doc" });
 	return { index, id: doc.id };
 }
@@ -89,8 +89,8 @@ describe("색인이 깨졌을 때", () => {
 		const { id } = await withOneDoc(storage);
 
 		// 한 바이트가 깨졌다
-		storage.setItem(INDEX_KEY, '{"version":1,"docs":[{ 깨짐');
-		const corrupt = storage.getItem(INDEX_KEY);
+		storage.setItem(indexKey(), '{"version":1,"docs":[{ 깨짐');
+		const corrupt = storage.getItem(indexKey());
 
 		const { result } = await tidy();
 
@@ -99,7 +99,7 @@ describe("색인이 깨졌을 때", () => {
 		// 본문이 그대로 있어야 한다. 이것을 잃으면 되돌릴 길이 없다
 		expect(await hasBody(id)).toBe(true);
 		// 색인도 건드리지 않는다 — 손으로 고칠 여지를 남긴다
-		expect(storage.getItem(INDEX_KEY)).toBe(corrupt);
+		expect(storage.getItem(indexKey())).toBe(corrupt);
 	});
 
 	it("색인이 아예 없는 것은 깨진 것이 아니다 — 처음 온 사람이다", async () => {
@@ -123,7 +123,7 @@ describe("고아 본문 정리", () => {
 	it("휴지통에 있는 원고의 본문은 고아가 아니다 — 되살릴 것이다", async () => {
 		const storage = mount();
 		storage.setItem(
-			INDEX_KEY,
+			indexKey(),
 			JSON.stringify({
 				...emptyIndex(),
 				trash: [
@@ -179,7 +179,7 @@ describe("색인 변경 알림", () => {
 describe("readIndex", () => {
 	it("못 읽으면 빈 색인을 준다 — 그리는 쪽은 그편이 맞다", () => {
 		const storage = mount();
-		storage.setItem(INDEX_KEY, "깨짐");
+		storage.setItem(indexKey(), "깨짐");
 		expect(readIndex()).toEqual(emptyIndex());
 	});
 });

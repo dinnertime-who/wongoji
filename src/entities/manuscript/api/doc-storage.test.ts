@@ -41,7 +41,10 @@ class FakeStorage {
 let storage: FakeStorage;
 
 /** 옛 본문이 놓인 채로 새 저장소 모듈을 받는다 */
-async function load(legacy: Record<string, string> = {}) {
+async function load(
+	legacy: Record<string, string> = {},
+	scope: string | null = null,
+) {
 	storage = new FakeStorage();
 	for (const [id, raw] of Object.entries(legacy)) {
 		storage.setItem(`${DOC_PREFIX}${id}`, raw);
@@ -49,14 +52,27 @@ async function load(legacy: Record<string, string> = {}) {
 	vi.stubGlobal("window", { localStorage: storage });
 
 	vi.resetModules();
+	// 같은 resetModules 뒤에 받아야 저장소 모듈이 한 벌이다
+	const { setStorageScope } = await import("#/shared/lib/storage");
+	setStorageScope(scope);
 	return await import("./doc-storage");
 }
 
+/*
+ * IndexedDB는 테스트 사이에 살아남는다.
+ *
+ * 비로그인 칸은 이름이 하나뿐이라 비우고 시작한다. 계정 칸은 `newAccount()`가
+ * 매번 다른 id를 주므로 애초에 겹치지 않는다 — `deleteDatabase`는 앞 테스트가
+ * 열어 둔 커넥션에 막혀 영영 끝나지 않아서 쓸 수 없다.
+ */
 beforeEach(async () => {
-	// IndexedDB는 테스트 사이에 살아남는다
 	const { clearDocs } = await load();
 	await clearDocs();
 });
+
+let accountSeq = 0;
+/** 이 테스트만 쓰는 계정 칸 */
+const newAccount = () => `usr_${++accountSeq}`;
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -111,6 +127,54 @@ describe("옛 본문 옮기기", () => {
 	it("옮길 것이 없으면 아무 일도 하지 않는다", async () => {
 		const { listDocIds } = await load();
 		expect(await listDocIds()).toEqual([]);
+	});
+});
+
+describe("칸이 갈린다", () => {
+	it("계정에 쓴 본문은 비로그인 칸에 보이지 않는다", async () => {
+		const 계정 = await load({}, newAccount());
+		await 계정.writeDoc("a1", { type: "doc", 누구: "계정" });
+
+		const 비로그인 = await load({}, null);
+		expect(await 비로그인.readDoc("a1")).toBeNull();
+	});
+
+	it("비로그인에 쓴 본문은 계정 칸에 보이지 않는다", async () => {
+		const 비로그인 = await load({}, null);
+		await 비로그인.writeDoc("a1", { type: "doc", 누구: "비로그인" });
+
+		const 계정 = await load({}, newAccount());
+		expect(await 계정.readDoc("a1")).toBeNull();
+	});
+
+	it("계정이 다르면 서로 보이지 않는다", async () => {
+		const 가 = await load({}, newAccount());
+		await 가.writeDoc("a1", { type: "doc" });
+
+		const 나 = await load({}, newAccount());
+		expect(await 나.readDoc("a1")).toBeNull();
+	});
+
+	/*
+	 * 옛 키에는 칸이 없다 — 계정이 생기기 전에 쓴 것이라 전부 비로그인 원고다.
+	 * 로그인한 채로 처음 열었다고 남의 원고를 계정 보관함에 쏟아 넣으면 안 된다.
+	 */
+	it("옛 본문 옮기기는 계정 칸에서 돌지 않는다", async () => {
+		const 계정 = await load({ 옛것: '{"type":"doc"}' }, newAccount());
+
+		expect(await 계정.listDocIds()).toEqual([]);
+		// 옮기지 않았으니 localStorage에 그대로 남아 있어야 한다
+		expect(storage.getItem(`${DOC_PREFIX}옛것`)).not.toBeNull();
+	});
+
+	it("그 뒤 로그아웃하면 그때 옮긴다", async () => {
+		await load({ 옛것: '{"type":"doc"}' }, newAccount());
+
+		// 같은 localStorage를 그대로 두고 비로그인으로 내려온다
+		const legacy = { 옛것: storage.getItem(`${DOC_PREFIX}옛것`) as string };
+		const 비로그인 = await load(legacy, null);
+
+		expect(await 비로그인.readDoc("옛것")).toEqual({ type: "doc" });
 	});
 });
 
