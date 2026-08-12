@@ -14,7 +14,6 @@ import {
 	createFolder,
 	type DocEntry,
 	displayTitle,
-	EMPTY_DOC,
 	type FolderEntry,
 	fullPath,
 	mutateIndex,
@@ -27,6 +26,7 @@ import {
 	useStoreIndex,
 	writeDoc,
 } from "#/lib/store";
+import { emptyDoc } from "#/lib/tiptap";
 
 export const Route = createFileRoute("/f/$folderId")({ component: FolderPage });
 
@@ -100,7 +100,7 @@ function FolderPage() {
 	 * 끼운 내용을 곧바로 되덮을 것이 없다.
 	 */
 	const resetDoc = (docId: string) => {
-		report(writeDoc(docId, EMPTY_DOC));
+		report(writeDoc(docId, emptyDoc()));
 		change((current) =>
 			updateDoc(current, docId, { title: "", goal: 0, chars: 0, sheets: 1 }),
 		);

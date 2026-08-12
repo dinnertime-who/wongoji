@@ -2,7 +2,12 @@ import { PageTitle } from "#/components/PageTitle";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Progress } from "#/components/ui/progress";
-import { CELLS_PER_SHEET, type LayoutStats } from "#/lib/wongoji";
+import {
+	goalProgress,
+	goalRatio,
+	type LayoutStats,
+	remainingChars,
+} from "#/lib/wongoji";
 
 /**
  * 제목과 분량 목표.
@@ -27,9 +32,8 @@ export function ManuscriptBar({
 	onGoalChange: (value: number) => void;
 	stats: LayoutStats;
 }) {
-	const remaining = goal > 0 ? goal * CELLS_PER_SHEET - stats.chars : 0;
-	const ratio =
-		goal > 0 ? Math.min(1, stats.chars / (goal * CELLS_PER_SHEET)) : 0;
+	const remaining = goal > 0 ? remainingChars(stats.chars, goal) : 0;
+	const ratio = goalRatio(stats.chars, goal);
 	const over = remaining < 0;
 
 	return (
@@ -63,7 +67,8 @@ export function ManuscriptBar({
 
 			<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
 				<span className={over ? "text-foreground" : "text-muted-foreground"}>
-					{goal > 0 ? `${stats.sheets} / ${goal}매` : `${stats.sheets}매`}
+					{/* 목표가 없으면 매수만 — 바로 아래 줄에 글자 수가 따로 있다 */}
+					{goalProgress(stats.sheets, goal) ?? `${stats.sheets}매`}
 				</span>
 				{goal > 0 && (
 					<span className="text-muted-foreground">

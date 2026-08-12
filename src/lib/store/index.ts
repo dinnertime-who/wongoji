@@ -36,12 +36,7 @@ export {
 	writeDoc,
 	writeLastOpened,
 } from "./store";
-export {
-	type Created,
-	createDocIn,
-	duplicateDocById,
-	EMPTY_DOC,
-} from "./transactions";
+export { type Created, createDocIn, duplicateDocById } from "./transactions";
 export type {
 	DocEntry,
 	FolderEntry,

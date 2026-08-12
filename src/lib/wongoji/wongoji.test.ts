@@ -193,6 +193,14 @@ describe("문단·페이지", () => {
 		expect(layout("가".repeat(200)).stats.sheets).toBe(1);
 		expect(layout("가".repeat(201)).stats.sheets).toBe(2);
 	});
+
+	it("문단 구분은 글자로 세지 않는다", () => {
+		// 200자를 100자씩 두 문단으로 나눠도 한 매다. 문단 사이를 글자로 세면
+		// 201자가 되어 두 매로 넘어간다 — 사람이 친 글자가 아니다
+		const 두문단 = `${"가".repeat(100)}\n${"나".repeat(100)}`;
+		expect(layout(두문단).stats.chars).toBe(200);
+		expect(layout(두문단).stats.sheets).toBe(1);
+	});
 });
 
 describe("빈 행", () => {

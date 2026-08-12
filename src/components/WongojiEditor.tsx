@@ -4,7 +4,6 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import { Placeholder, UndoRedo } from "@tiptap/extensions";
-import type { Node as PMNode } from "@tiptap/pm/model";
 import {
 	type Content,
 	type Editor,
@@ -14,6 +13,7 @@ import {
 import { CornerDownLeftIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "#/components/ui/button";
+import { BLANK_ROW_TYPE, blocksFromDoc } from "#/lib/tiptap";
 import type { Block } from "#/lib/wongoji";
 
 /**
@@ -45,7 +45,7 @@ function insertBlankRow(editor: Editor): boolean {
 	return editor
 		.chain()
 		.focus()
-		.insertContent([{ type: "horizontalRule" }, { type: "paragraph" }])
+		.insertContent([{ type: BLANK_ROW_TYPE }, { type: "paragraph" }])
 		.run();
 }
 
@@ -63,19 +63,21 @@ const BlankRowShortcut = Extension.create({
 	},
 });
 
-/** ProseMirror 문서를 조판 엔진의 블록 배열로 옮긴다 */
-function docToBlocks(doc: PMNode): Block[] {
-	const blocks: Block[] = [];
-	doc.forEach((node) => {
-		if (node.type.name === BlankRow.name) {
-			blocks.push({ type: "blankRow" });
-			return;
-		}
-		if (!node.isTextblock) return;
-		const text = node.textContent.trim();
-		if (text) blocks.push({ type: "paragraph", text });
-	});
-	return blocks;
+/**
+ * 지금 내용을 알린다.
+ *
+ * JSON으로 한 번만 옮긴다. 저장할 값과 조판할 값이 같은 것에서 나오므로,
+ * 둘을 따로 만들면 어긋날 자리가 생긴다.
+ *
+ * 컴포넌트 밖에 둔다. 안에 두면 그릴 때마다 새 함수가 되어, 아래 effect가
+ * 그것을 의존값으로 삼는 순간 내용이 그대로인데도 알림이 다시 나간다.
+ */
+function announce(
+	editor: Editor,
+	notify: (blocks: Block[], doc: Content) => void,
+): void {
+	const doc = editor.state.doc.toJSON() as Content;
+	notify(blocksFromDoc(doc), doc);
 }
 
 export function WongojiEditor({
@@ -84,7 +86,8 @@ export function WongojiEditor({
 	overlay,
 }: {
 	initialContent: Content;
-	onChange: (blocks: Block[], doc: PMNode) => void;
+	/** 내용이 바뀌었다. 조판할 블록과 저장할 문서를 함께 넘긴다 */
+	onChange: (blocks: Block[], doc: Content) => void;
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
 }) {
@@ -123,13 +126,12 @@ export function WongojiEditor({
 				spellcheck: "false",
 			},
 		},
-		onUpdate: ({ editor }) =>
-			notify.current(docToBlocks(editor.state.doc), editor.state.doc),
+		onUpdate: ({ editor }) => announce(editor, notify.current),
 	});
 
 	// 최초 마운트 시에도 한 번 조판한다 (onUpdate는 편집이 있어야 발생한다)
 	useEffect(() => {
-		if (editor) notify.current(docToBlocks(editor.state.doc), editor.state.doc);
+		if (editor) announce(editor, notify.current);
 	}, [editor]);
 
 	return (

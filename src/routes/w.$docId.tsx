@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumb } from "#/components/Breadcrumb";
@@ -17,7 +16,7 @@ import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import { exportBackup, type Manuscript } from "#/lib/export";
 import {
-	type DocContent,
+	displayTitle,
 	mutateIndex,
 	readDoc,
 	readIndex,
@@ -32,7 +31,8 @@ import {
 	writeDoc,
 	writeLastOpened,
 } from "#/lib/store";
-import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
+import { blocksFromDoc, blocksToDoc, toEditorContent } from "#/lib/tiptap";
+import { type Block, goalProgress, layoutBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/w/$docId")({ component: Editor });
 
@@ -53,65 +53,6 @@ type Load =
 	| { state: "ready"; content: Content }
 	/** 색인에는 있는데 본문 키가 없다 */
 	| { state: "lost" };
-
-/** 블록 배열을 Tiptap 문서로. 빈 문서는 허용되지 않아 빈 문단 하나를 둔다. */
-function blocksToDoc(blocks: Block[]): Content {
-	const content = blocks.map((b) =>
-		b.type === "blankRow"
-			? { type: "horizontalRule" }
-			: { type: "paragraph", content: [{ type: "text", text: b.text }] },
-	);
-	return {
-		type: "doc",
-		content: content.length ? content : [{ type: "paragraph" }],
-	};
-}
-
-/**
- * Tiptap 문서에서 조판할 블록을 뽑는다.
- *
- * 에디터가 마운트되어 있지 않아도 조판할 수 있어야 한다. 모바일에서 원고지 쪽을
- * 보고 있으면 에디터는 렌더되지 않으므로, 에디터의 onChange만 믿으면 원고지가
- * 빈 채로 뜬다.
- */
-function contentToBlocks(content: Content): Block[] {
-	const nodes =
-		content && typeof content === "object" && "content" in content
-			? ((content.content ?? []) as Array<Record<string, unknown>>)
-			: [];
-
-	const blocks: Block[] = [];
-	for (const node of nodes) {
-		if (node.type === "horizontalRule") {
-			blocks.push({ type: "blankRow" });
-			continue;
-		}
-		const inline = (node.content ?? []) as Array<{ text?: string }>;
-		const text = inline
-			.map((n) => n.text ?? "")
-			.join("")
-			.trim();
-		if (text) blocks.push({ type: "paragraph", text });
-	}
-	return blocks;
-}
-
-/**
- * 보관함에서 읽은 본문을 에디터가 받을 수 있는 꼴로 만든다.
- *
- * 아주 예전에는 평문으로 저장했으므로 그 경우도 가린다.
- */
-function toEditorContent(content: DocContent): Content {
-	if (typeof content === "string") return blocksToDoc(parseBlocks(content));
-	if (
-		content != null &&
-		typeof content === "object" &&
-		(content as { type?: string }).type === "doc"
-	) {
-		return content as Content;
-	}
-	return blocksToDoc([]);
-}
 
 function Editor() {
 	const { docId } = Route.useParams();
@@ -267,7 +208,7 @@ function Editor() {
 		const content = toEditorContent(stored);
 		docRef.current = content;
 		// 에디터를 기다리지 않고 바로 조판한다
-		setBlocks(contentToBlocks(content));
+		setBlocks(blocksFromDoc(content));
 		setLoad({ state: "ready", content });
 		setEditorKey((k) => k + 1);
 	}, [docId, navigate]);
@@ -282,12 +223,11 @@ function Editor() {
 	}, [flush]);
 
 	const handleChange = useCallback(
-		(next: Block[], doc: PMNode) => {
+		(next: Block[], content: Content) => {
 			// 아직 아무 원고도 못 읽었으면 어디에 쓸지 모른다
 			if (!openedRef.current) return;
 
 			setBlocks(next);
-			const content = doc.toJSON() as Content;
 			docRef.current = content;
 			pending.current = { docId: openedRef.current, content, blocks: next };
 
@@ -363,10 +303,9 @@ function Editor() {
 	 */
 	const { pages, stats } = useMemo(() => layoutBlocks(blocks), [blocks]);
 
+	// 목표가 없으면 글자 수까지 적는다 — 원고 위라 자리가 있다
 	const statsText =
-		goal > 0
-			? `${stats.sheets} / ${goal}매`
-			: `${stats.chars}자 · ${stats.sheets}매`;
+		goalProgress(stats.sheets, goal) ?? `${stats.chars}자 · ${stats.sheets}매`;
 
 	return (
 		/*
@@ -392,7 +331,7 @@ function Editor() {
 						<Breadcrumb
 							index={index}
 							path={opened.path}
-							leaf={title.trim() || "제목 없는 원고"}
+							leaf={displayTitle({ title })}
 						/>
 					)}
 

@@ -1,6 +1,7 @@
+import { emptyDoc } from "#/lib/tiptap";
 import type { SaveResult } from "./local";
 import { createDoc, duplicateDoc } from "./operations";
-import { type DocContent, mutateIndex, readDoc, writeDoc } from "./store";
+import { mutateIndex, readDoc, writeDoc } from "./store";
 import type { Path, StoreIndex } from "./types";
 
 /**
@@ -13,12 +14,6 @@ import type { Path, StoreIndex } from "./types";
  * 저장이 실패하면 **되돌린다.** 목록에는 있는데 본문 키가 없는 원고는 "본문을
  * 잃었다"는 뜻으로 읽히므로, 갓 만든 원고가 그렇게 보여서는 안 된다.
  */
-
-/** 새 원고의 빈 본문. 키가 아예 없으면 "본문을 잃었다"는 뜻이 된다 */
-export const EMPTY_DOC: DocContent = {
-	type: "doc",
-	content: [{ type: "paragraph" }],
-};
 
 const dropDoc = (id: string) => (index: StoreIndex) => ({
 	...index,
@@ -41,7 +36,7 @@ export function createDocIn(path: Path, now?: number): Created {
 	});
 	if (!result.ok) return { docId: "", result };
 
-	const body = writeDoc(docId, EMPTY_DOC);
+	const body = writeDoc(docId, emptyDoc());
 	if (!body.ok) {
 		mutateIndex(dropDoc(docId));
 		return { docId: "", result: body };
@@ -65,7 +60,7 @@ export function duplicateDocById(id: string, now?: number): Created {
 	// 없는 원고를 복제하려 했다. 실패는 아니지만 갈 곳도 없다
 	if (!copyId) return { docId: "", result };
 
-	const written = writeDoc(copyId, body ?? EMPTY_DOC);
+	const written = writeDoc(copyId, body ?? emptyDoc());
 	if (!written.ok) {
 		mutateIndex(dropDoc(copyId));
 		return { docId: "", result: written };

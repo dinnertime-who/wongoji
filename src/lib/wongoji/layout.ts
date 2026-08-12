@@ -79,11 +79,17 @@ export function layoutBlocks(
 	blocks: Block[],
 	profile: Profile = DEFAULT_PROFILE,
 ): LayoutResult {
-	// 매수는 쓴 글자 수로 센다. 빈 행은 지시자지 글자가 아니므로 빠진다.
-	const normalized = blocks
+	/*
+	 * 매수는 쓴 글자 수로 센다. 빈 행은 지시자지 글자가 아니므로 빠진다.
+	 *
+	 * 문단 사이를 빈 문자열로 잇는다. 줄바꿈을 끼우면 그것까지 글자로 세어져,
+	 * 문단이 잦을수록 매수가 부푼다 — 문단 200개면 199자다. 매는 "공백 포함
+	 * 글자수 ÷ 200"이고 줄바꿈은 사람이 친 글자가 아니다.
+	 */
+	const written = blocks
 		.filter((b) => b.type !== "blankRow")
 		.map((b) => b.text)
-		.join("\n");
+		.join("");
 
 	const lines: Cell[][] = [];
 	let cur: Cell[] = [];
@@ -202,11 +208,11 @@ export function layoutBlocks(
 	return {
 		pages,
 		stats: {
-			chars: normalized.length,
+			chars: written.length,
 			filledCells,
 			lines: lines.length,
 			pages: pages.length,
-			sheets: Math.max(1, Math.ceil(normalized.length / CELLS_PER_SHEET)),
+			sheets: Math.max(1, Math.ceil(written.length / CELLS_PER_SHEET)),
 		},
 	};
 }
