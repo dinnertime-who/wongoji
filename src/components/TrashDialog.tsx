@@ -52,7 +52,7 @@ export function TrashDialog({
 	index: StoreIndex;
 	onReport: (result: SaveResult) => void;
 }) {
-	/** 영영 지우기 전에 확인받을 대상 */
+	/** 완전 삭제 전에 확인받을 대상 */
 	const [confirming, setConfirming] = useState<TrashEntry | null>(null);
 
 	// 최근에 버린 것이 위로
@@ -111,7 +111,7 @@ export function TrashDialog({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>영영 지울까요?</AlertDialogTitle>
+						<AlertDialogTitle>완전히 삭제할까요?</AlertDialogTitle>
 						<AlertDialogDescription>
 							{confirming ? label(confirming, index) : ""}을(를) 지웁니다. 이
 							작업은 되돌릴 수 없습니다.
@@ -174,7 +174,7 @@ function Row({
 				className="text-destructive hover:text-destructive"
 				onClick={onErase}
 			>
-				영영 지우기
+				완전 삭제
 			</Button>
 		</li>
 	);
