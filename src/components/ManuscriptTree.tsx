@@ -12,14 +12,6 @@ import {
 	Trash2Icon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "#/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu";
 import {
 	ancestorIds,
 	canMoveFolder,
@@ -32,6 +24,14 @@ import {
 	ROOT,
 	type StoreIndex,
 } from "#/lib/store";
+import { Button } from "#/shared/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "#/shared/ui/dropdown-menu";
 
 /** 트리에서 걸 수 있는 일들. 실제 처리는 사이드바가 한다 */
 export interface TreeActions {

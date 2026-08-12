@@ -1,4 +1,4 @@
-import { type SaveResult, safeGetItem } from "./local";
+import { type SaveResult, safeGetItem } from "#/shared/lib/storage";
 import { createDoc } from "./operations";
 import {
 	type DocContent,

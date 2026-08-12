@@ -1,4 +1,4 @@
-import { Button } from "#/components/ui/button";
+import { Button } from "#/shared/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -6,7 +6,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "#/components/ui/dialog";
+} from "#/shared/ui/dialog";
 
 /**
  * 이 앱이 따르는 규칙을 그대로 보여준다.

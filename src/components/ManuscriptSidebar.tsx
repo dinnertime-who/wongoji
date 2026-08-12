@@ -1,18 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "#/components/ConfirmDialog";
 import { FolderPicker } from "#/components/FolderPicker";
 import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
-import { NameDialog } from "#/components/NameDialog";
 import { TrashDialog } from "#/components/TrashDialog";
-import { Button } from "#/components/ui/button";
-import {
-	SidebarContent,
-	SidebarFooter,
-	SidebarHeader,
-	useSidebar,
-} from "#/components/ui/sidebar";
 import {
 	ancestorIds,
 	type Created,
@@ -34,6 +25,15 @@ import {
 	trashDoc,
 	trashFolder,
 } from "#/lib/store";
+import { Button } from "#/shared/ui/button";
+import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
+import { NameDialog } from "#/shared/ui/name-dialog";
+import {
+	SidebarContent,
+	SidebarFooter,
+	SidebarHeader,
+	useSidebar,
+} from "#/shared/ui/sidebar";
 
 /** 어떤 창을 열어 두었는가. 한 번에 하나만 뜬다 */
 type Sheet =

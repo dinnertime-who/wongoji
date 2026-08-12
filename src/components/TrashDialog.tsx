@@ -1,14 +1,5 @@
 import { FileTextIcon, FolderIcon, Undo2Icon } from "lucide-react";
 import { useState } from "react";
-import { ConfirmDialog } from "#/components/ConfirmDialog";
-import { Button } from "#/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "#/components/ui/dialog";
 import {
 	countDocsUnder,
 	daysLeft,
@@ -22,6 +13,15 @@ import {
 	TRASH_DAYS,
 	type TrashEntry,
 } from "#/lib/store";
+import { Button } from "#/shared/ui/button";
+import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "#/shared/ui/dialog";
 
 /**
  * 휴지통.

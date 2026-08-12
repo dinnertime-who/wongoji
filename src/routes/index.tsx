@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import type { SaveFailure } from "#/lib/store";
 import { bootstrap } from "#/lib/store/bootstrap";
+import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 
 export const Route = createFileRoute("/")({ component: Landing });
 

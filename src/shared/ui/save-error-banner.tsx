@@ -1,6 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react";
-import { Button } from "#/components/ui/button";
-import type { SaveFailure } from "#/lib/store/local";
+import type { SaveFailure } from "#/shared/lib/storage";
+import { Button } from "#/shared/ui/button";
 
 /**
  * 저장이 실패했음을 알린다.

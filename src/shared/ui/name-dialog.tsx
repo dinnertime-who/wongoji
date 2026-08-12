@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "#/components/ui/button";
+import { Button } from "#/shared/ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -7,8 +7,8 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "#/components/ui/dialog";
-import { Input } from "#/components/ui/input";
+} from "#/shared/ui/dialog";
+import { Input } from "#/shared/ui/input";
 
 /**
  * 이름 하나를 받는 창.

@@ -4,7 +4,7 @@ export {
 	type SaveResult,
 	safeGetItem,
 	safeSetItem,
-} from "./local";
+} from "#/shared/lib/storage";
 export {
 	childrenOf,
 	countDocsUnder,

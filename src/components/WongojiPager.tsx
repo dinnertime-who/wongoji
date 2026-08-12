@@ -1,9 +1,9 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useRef, useState } from "react";
-import { Button } from "#/components/ui/button";
-import { Input } from "#/components/ui/input";
 import type { Page } from "#/lib/wongoji";
+import { Button } from "#/shared/ui/button";
+import { Input } from "#/shared/ui/input";
 import { WongojiSheet } from "./WongojiSheet";
 
 /**

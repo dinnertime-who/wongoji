@@ -1,14 +1,5 @@
 import { ChevronRightIcon, FolderIcon, HomeIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "#/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "#/components/ui/dialog";
 import {
 	canMoveFolder,
 	childrenOf,
@@ -17,6 +8,15 @@ import {
 	ROOT,
 	type StoreIndex,
 } from "#/lib/store";
+import { Button } from "#/shared/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "#/shared/ui/dialog";
 
 /**
  * 옮길 자리를 고르는 창.

@@ -1,13 +1,13 @@
-import { PageTitle } from "#/components/PageTitle";
-import { Input } from "#/components/ui/input";
-import { Label } from "#/components/ui/label";
-import { Progress } from "#/components/ui/progress";
 import {
 	goalProgress,
 	goalRatio,
 	type LayoutStats,
 	remainingChars,
 } from "#/lib/wongoji";
+import { Input } from "#/shared/ui/input";
+import { Label } from "#/shared/ui/label";
+import { PageTitle } from "#/shared/ui/page-title";
+import { Progress } from "#/shared/ui/progress";
 
 /**
  * 제목과 분량 목표.

@@ -3,7 +3,7 @@ import {
 	safeGetItem,
 	safeRemoveItem,
 	safeSetItem,
-} from "./local";
+} from "#/shared/lib/storage";
 import { purgeExpired, repairPaths } from "./operations";
 import { emptyIndex, type StoreIndex } from "./types";
 

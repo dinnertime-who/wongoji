@@ -1,5 +1,5 @@
 import { emptyDoc } from "#/lib/tiptap";
-import type { SaveResult } from "./local";
+import type { SaveResult } from "#/shared/lib/storage";
 import { createDoc, duplicateDoc } from "./operations";
 import { mutateIndex, readDoc, writeDoc } from "./store";
 import type { Path, StoreIndex } from "./types";

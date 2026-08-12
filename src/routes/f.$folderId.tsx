@@ -3,11 +3,7 @@ import { FileTextIcon, FolderIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "#/components/Breadcrumb";
 import { CapacityMeter } from "#/components/CapacityMeter";
-import { PageTitle } from "#/components/PageTitle";
-import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import { Shell } from "#/components/Shell";
-import { Button } from "#/components/ui/button";
-import { SidebarTrigger } from "#/components/ui/sidebar";
 import {
 	childrenOf,
 	createDocIn,
@@ -27,6 +23,10 @@ import {
 	writeDoc,
 } from "#/lib/store";
 import { emptyDoc } from "#/lib/tiptap";
+import { Button } from "#/shared/ui/button";
+import { PageTitle } from "#/shared/ui/page-title";
+import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
+import { SidebarTrigger } from "#/shared/ui/sidebar";
 
 export const Route = createFileRoute("/f/$folderId")({ component: FolderPage });
 

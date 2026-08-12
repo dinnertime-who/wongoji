@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { ManuscriptSidebar } from "#/components/ManuscriptSidebar";
-import { Sidebar, SidebarProvider } from "#/components/ui/sidebar";
 import {
 	type SaveResult,
 	type StoreIndex,
 	safeGetItem,
 	safeSetItem,
 } from "#/lib/store";
+import { Sidebar, SidebarProvider } from "#/shared/ui/sidebar";
 
 /** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
 const SIDEBAR_KEY = "wongoji:sidebar";

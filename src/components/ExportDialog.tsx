@@ -1,13 +1,4 @@
 import { useRef, useState } from "react";
-import { Button } from "#/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "#/components/ui/dialog";
 import {
 	exportBackup,
 	exportDocx,
@@ -16,6 +7,15 @@ import {
 	parseImported,
 } from "#/lib/export";
 import { parseBlocks } from "#/lib/wongoji";
+import { Button } from "#/shared/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "#/shared/ui/dialog";
 
 /** 여러 줄짜리 항목이라 버튼 기본 높이를 풀고 왼쪽 정렬로 둔다 */
 const ROW =

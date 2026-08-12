@@ -12,9 +12,9 @@ import {
 } from "@tiptap/react";
 import { CornerDownLeftIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Button } from "#/components/ui/button";
 import { BLANK_ROW_TYPE, blocksFromDoc } from "#/lib/tiptap";
 import type { Block } from "#/lib/wongoji";
+import { Button } from "#/shared/ui/button";
 
 /**
  * 원고지 에디터.

@@ -1,7 +1,7 @@
 import { CheckIcon, CopyIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "#/components/ui/button";
 import { type Manuscript, toPlainText } from "#/lib/export";
+import { Button } from "#/shared/ui/button";
 
 /** 복사했다고 알려 두는 시간 */
 const FLASH = 1500;

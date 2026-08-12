@@ -7,11 +7,7 @@ import { CopyManuscript } from "#/components/CopyManuscript";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import { RulesDialog } from "#/components/RulesDialog";
-import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import { Shell } from "#/components/Shell";
-import { Button } from "#/components/ui/button";
-import { SidebarTrigger } from "#/components/ui/sidebar";
-import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
 import { exportBackup, type Manuscript } from "#/lib/export";
@@ -33,6 +29,10 @@ import {
 } from "#/lib/store";
 import { blocksFromDoc, blocksToDoc, toEditorContent } from "#/lib/tiptap";
 import { type Block, goalProgress, layoutBlocks } from "#/lib/wongoji";
+import { Button } from "#/shared/ui/button";
+import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
+import { SidebarTrigger } from "#/shared/ui/sidebar";
+import { Switch } from "#/shared/ui/switch";
 
 export const Route = createFileRoute("/w/$docId")({ component: Editor });
 
