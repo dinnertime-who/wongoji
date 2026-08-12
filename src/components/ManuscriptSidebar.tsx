@@ -17,6 +17,12 @@ import {
 } from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import {
+	SidebarContent,
+	SidebarFooter,
+	SidebarHeader,
+	useSidebar,
+} from "#/components/ui/sidebar";
+import {
 	ancestorIds,
 	createDoc,
 	createFolder,
@@ -64,8 +70,6 @@ export function ManuscriptSidebar({
 	currentDocId,
 	onReport,
 	onReset,
-	onNavigate,
-	inDrawer = false,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
@@ -77,13 +81,21 @@ export function ManuscriptSidebar({
 	 * 다시 저장된다. 화면을 쥔 쪽이 함께 처리해야 한다.
 	 */
 	onReset: () => void;
-	onNavigate?: () => void;
-	/** 좁은 화면의 서랍 안인가. 서랍은 오른쪽 위에 제 닫기 단추를 그린다 */
-	inDrawer?: boolean;
 }) {
 	const navigate = useNavigate();
+	const { isMobile, setOpenMobile } = useSidebar();
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 	const here = index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT;
+
+	/**
+	 * 원고를 고르면 서랍을 닫는다.
+	 *
+	 * 서랍일 때만이다. 옆에 펴 둔 보관함은 원고를 골라도 그대로 둔다 — 자리를
+	 * 차지하지 않으므로 닫을 이유가 없고, 이어서 다른 원고를 고를 수도 있다.
+	 */
+	const closeDrawer = () => {
+		if (isMobile) setOpenMobile(false);
+	};
 
 	/** 색인을 고치고 결과를 알린다. 성공했는지 돌려준다 */
 	const change = (edit: (index: StoreIndex) => StoreIndex): boolean => {
@@ -103,7 +115,7 @@ export function ManuscriptSidebar({
 
 		writeDoc(createdId, EMPTY_BODY);
 		navigate({ to: "/w/$docId", params: { docId: createdId } });
-		onNavigate?.();
+		closeDrawer();
 	};
 
 	const actions: TreeActions = {
@@ -127,7 +139,7 @@ export function ManuscriptSidebar({
 
 			onReport(writeDoc(copyId, body ?? EMPTY_BODY));
 			navigate({ to: "/w/$docId", params: { docId: copyId } });
-			onNavigate?.();
+			closeDrawer();
 		},
 
 		/*
@@ -153,13 +165,8 @@ export function ManuscriptSidebar({
 	};
 
 	return (
-		<div className="flex h-full min-h-0 flex-col">
-			{/* 서랍의 닫기 X가 오른쪽 위에 겹쳐 앉는다. 그만큼 비켜 준다 */}
-			<div
-				className={`flex shrink-0 items-center gap-1 py-2 pl-2 ${
-					inDrawer ? "pr-12" : "pr-2"
-				}`}
-			>
+		<>
+			<SidebarHeader className="flex-row items-center gap-1 py-2 pl-2 pr-2">
 				<span className="flex-1 px-1 text-muted-foreground text-xs">원고</span>
 				<Button
 					variant="ghost"
@@ -179,25 +186,27 @@ export function ManuscriptSidebar({
 				>
 					<FilePlusIcon />
 				</Button>
-			</div>
+			</SidebarHeader>
 
 			{/*
 			 * 가로·세로 모두 스크롤한다. 원고가 쌓이면 세로가, 트리가 깊어지면 가로가
 			 * 필요하다. 이름을 자르는 것보다 미는 편이 낫다.
 			 */}
-			<nav
-				className="min-h-0 flex-1 overflow-auto px-1"
-				aria-label="원고 보관함"
+			<SidebarContent
+				// 정본은 가로 넘침을 숨긴다. 트리는 밀어내야 하므로 되돌린다
+				className="overflow-x-auto px-1"
 			>
-				<ManuscriptTree
-					index={index}
-					currentDocId={currentDocId}
-					actions={actions}
-					onNavigate={onNavigate}
-				/>
-			</nav>
+				<nav aria-label="원고 보관함">
+					<ManuscriptTree
+						index={index}
+						currentDocId={currentDocId}
+						actions={actions}
+						onNavigate={closeDrawer}
+					/>
+				</nav>
+			</SidebarContent>
 
-			<div className="shrink-0 border-border border-t px-1 py-1">
+			<SidebarFooter className="border-border border-t px-1 py-1">
 				<Button
 					variant="ghost"
 					size="sm"
@@ -210,7 +219,7 @@ export function ManuscriptSidebar({
 						<span className="ml-auto tabular-nums">{index.trash.length}</span>
 					)}
 				</Button>
-			</div>
+			</SidebarFooter>
 
 			<NameDialog
 				open={sheet.kind === "newFolder"}
@@ -303,7 +312,7 @@ export function ManuscriptSidebar({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</div>
+		</>
 	);
 }
 

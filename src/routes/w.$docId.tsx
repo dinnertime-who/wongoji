@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
-import { PanelLeftIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
@@ -13,11 +12,10 @@ import { RulesDialog } from "#/components/RulesDialog";
 import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import { Button } from "#/components/ui/button";
 import {
-	Sheet,
-	SheetContent,
-	SheetTitle,
-	SheetTrigger,
-} from "#/components/ui/sheet";
+	Sidebar,
+	SidebarProvider,
+	SidebarTrigger,
+} from "#/components/ui/sidebar";
 import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
@@ -38,7 +36,6 @@ import {
 	writeDoc,
 	writeLastOpened,
 } from "#/lib/store";
-import { LG, useMediaQuery } from "#/lib/useMediaQuery";
 import { type Block, layoutBlocks, parseBlocks } from "#/lib/wongoji";
 
 export const Route = createFileRoute("/w/$docId")({ component: Editor });
@@ -128,8 +125,6 @@ function Editor() {
 	const { docId } = Route.useParams();
 	const navigate = useNavigate();
 	const index = useStoreIndex();
-	// 넓은 화면인가. 보관함을 옆에 두느냐 서랍에 넣느냐가 갈린다
-	const wide = useMediaQuery(LG);
 
 	const [load, setLoad] = useState<Load>({ state: "loading" });
 	const [blocks, setBlocks] = useState<Block[]>([]);
@@ -137,7 +132,6 @@ function Editor() {
 	const [goal, setGoal] = useState(0);
 	const [mainPane, setMainPane] = useState<Pane>("write");
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const [drawerOpen, setDrawerOpen] = useState(false);
 	// 불러오기로 내용을 갈아끼울 때 에디터를 다시 마운트시키는 열쇠.
 	// Tiptap은 만들어진 뒤 content 옵션을 다시 보지 않는다.
 	const [editorKey, setEditorKey] = useState(0);
@@ -321,11 +315,13 @@ function Editor() {
 		report(safeSetItem(PANE_KEY, pane));
 	};
 
-	const toggleSidebar = () => {
-		setSidebarOpen((open) => {
-			safeSetItem(SIDEBAR_KEY, open ? "0" : "1");
-			return !open;
-		});
+	/*
+	 * 접힘 상태는 이 앱의 다른 화면 설정과 같이 localStorage에 둔다. 정본은 쿠키에
+	 * 적지만, 그러면 저장이 실패해도 알릴 길이 없다.
+	 */
+	const openSidebar = (open: boolean) => {
+		setSidebarOpen(open);
+		report(safeSetItem(SIDEBAR_KEY, open ? "1" : "0"));
 	};
 
 	const changeTitle = (value: string) => {
@@ -390,77 +386,43 @@ function Editor() {
 			? `${stats.sheets} / ${goal}매`
 			: `${stats.chars}자 · ${stats.sheets}매`;
 
-	const sidebar = (inDrawer: boolean) => (
-		<ManuscriptSidebar
-			index={index}
-			currentDocId={docId}
-			onReport={report}
-			onReset={resetDoc}
-			// 서랍에서는 원고를 고르면 닫는다
-			onNavigate={inDrawer ? () => setDrawerOpen(false) : undefined}
-			inDrawer={inDrawer}
-		/>
-	);
-
 	return (
 		/*
 		 * 화면 높이에 못박는다. min-h로 두면 위쪽 한계가 없어 안쪽 스크롤 영역이
 		 * 자기 높이를 정하지 못하고, 원고지가 길어질 때 페이지 전체가 늘어난다.
+		 * 정본의 `min-h-svh`를 min-h-0으로 눌러야 그 못이 풀리지 않는다.
 		 */
-		<div className="flex h-[100dvh] overflow-hidden bg-background text-foreground">
+		<SidebarProvider
+			open={sidebarOpen}
+			onOpenChange={openSidebar}
+			className="h-[100dvh] min-h-0 overflow-hidden bg-background text-foreground"
+		>
 			{/*
 			 * 보관함은 가운데 정렬된 본문 바깥에 둔다. 안에 넣으면 원고 폭을 깎는다.
-			 * 좁은 화면에서는 자리를 내줄 수 없어 서랍으로 뺀다.
 			 *
-			 * 가리지 않고 아예 그리지 않는다. `hidden lg:block`으로 두면 좁은 화면에서도
-			 * 트리가 통째로 한 벌 더 그려진다 — 서랍에 있는 것과 같은 것을 눈에서만
-			 * 지운 꼴이다.
+			 * 한 벌만 쓴다. 넓으면 옆에 붙고 좁으면 서랍이 되는 분기는 Sidebar가 안에서
+			 * 가른다 — 두 벌을 각각 그리던 것을 여기 한 곳으로 모았다.
+			 *
+			 * 접어도 DOM에는 남는다. 폭을 0으로 미끄러뜨려 접는 그림을 얻으려면
+			 * 그려 두어야 한다. 예전에는 아예 그리지 않았다.
 			 */}
-			{wide && sidebarOpen && (
-				<aside className="w-60 shrink-0 border-border border-r bg-muted/40">
-					{sidebar(false)}
-				</aside>
-			)}
+			<Sidebar>
+				<ManuscriptSidebar
+					index={index}
+					currentDocId={docId}
+					onReport={report}
+					onReset={resetDoc}
+				/>
+			</Sidebar>
 
 			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 				<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
 					<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-						{/* 넓은 화면에서는 보관함을 접었다 펴고, 좁은 화면에서는 서랍을 연다 */}
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							className="hidden lg:inline-flex"
-							onClick={toggleSidebar}
-							title="보관함"
-							aria-label="보관함"
-							aria-expanded={sidebarOpen}
-						>
-							<PanelLeftIcon />
-						</Button>
 						{/*
-						 * 단추는 CSS로 가린다. 몇 개 되지 않아 그려 두는 값이 싸고, 첫
-						 * 그림에 바로 자리를 잡는다. 서랍 속 내용은 열기 전에는 아예
-						 * 만들어지지 않는다.
-						 *
-						 * 넓어지면 닫는다. 좁을 때 열어 둔 채 창을 키우면 옆에 펼친
-						 * 보관함과 서랍이 같은 것을 두 번 그린다.
+						 * 단추 하나로 족하다. 넓으면 옆의 보관함을 접었다 펴고, 좁으면
+						 * 서랍을 연다 — 어느 쪽인지는 Sidebar가 안에서 가른다.
 						 */}
-						<Sheet open={drawerOpen && !wide} onOpenChange={setDrawerOpen}>
-							<SheetTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									className="lg:hidden"
-									aria-label="보관함"
-								>
-									<PanelLeftIcon />
-								</Button>
-							</SheetTrigger>
-							<SheetContent side="left" className="w-72 p-0">
-								<SheetTitle className="sr-only">보관함</SheetTitle>
-								{sidebar(true)}
-							</SheetContent>
-						</Sheet>
+						<SidebarTrigger title="보관함" aria-label="보관함" />
 
 						<ManuscriptBreadcrumb index={index} docId={docId} />
 
@@ -537,7 +499,7 @@ function Editor() {
 					</>
 				)}
 			</div>
-		</div>
+		</SidebarProvider>
 	);
 }
 
