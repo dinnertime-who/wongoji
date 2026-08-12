@@ -211,6 +211,13 @@ export function ManuscriptTree({
 	} | null>(null);
 	/** 방금 끌기로 끝났다. 뒤따라오는 탭을 삼키는 데 쓴다 */
 	const dragged = useRef(false);
+	/*
+	 * 손가락이 아직 화면에 있다.
+	 *
+	 * 브라우저의 링크 메뉴를 막을지 가리는 데 쓴다. drag 상태로는 늦다 — 메뉴가
+	 * 뜨는 때와 끌기가 열리는 때가 같은 0.5초라, 다시 그려지기 전에 판정해야 한다.
+	 */
+	const touching = useRef(false);
 
 	const forgetPress = () => {
 		if (press.current) window.clearTimeout(press.current.timer);
@@ -220,6 +227,7 @@ export function ManuscriptTree({
 	const onPress = (item: Drag, touch: React.Touch) => {
 		forgetPress();
 		dragged.current = false;
+		touching.current = true;
 		press.current = {
 			item,
 			x: touch.clientX,
@@ -272,6 +280,7 @@ export function ManuscriptTree({
 
 		const end = () => {
 			forgetPress();
+			touching.current = false;
 			if (!drag) return;
 			// 놓을 자리를 벗어난 채 손을 떼면 아무 일도 없다
 			if (over) drop(over);
@@ -326,7 +335,8 @@ export function ManuscriptTree({
 		 */
 		// biome-ignore lint/a11y/noStaticElementInteractions: 끌어 놓기는 마우스 전용이다. 키보드로는 ⋯ 메뉴의 이동을 쓴다
 		<div
-			className={`min-w-max flex-1 py-1 ${NO_CALLOUT} ${
+			// 줄끼리 붙여 두면 어느 것을 눌렀는지 손가락이 헷갈린다
+			className={`flex min-w-max flex-1 flex-col gap-1 py-1 ${NO_CALLOUT} ${
 				drag && over === ROOT && canDrop(ROOT) ? "bg-accent/60" : ""
 			}`}
 			data-drop-path={ROOT}
@@ -339,6 +349,16 @@ export function ManuscriptTree({
 				dragged.current = false;
 				e.preventDefault();
 				e.stopPropagation();
+			}}
+			/*
+			 * 손가락으로 길게 누르면 브라우저가 링크 메뉴를 띄운다 — 원고 줄이 링크라
+			 * "새 탭에서 열기"가 끌기 위로 겹쳐 올라온다.
+			 *
+			 * 누르고 있는 중일 때만 막는다. 마우스 오른쪽 누르기는 그대로 두어야
+			 * 데스크톱에서 원고를 새 탭으로 여는 길이 남는다.
+			 */
+			onContextMenu={(e) => {
+				if (touching.current || drag) e.preventDefault();
 			}}
 			onDragOver={(e) => {
 				// 여기서 막지 않으면 브라우저가 놓기를 거부한다
@@ -414,7 +434,8 @@ function Level({
 				const inside = fullPath(folder);
 				const dragging = dnd.drag?.id === folder.id;
 				return (
-					<div key={folder.id}>
+					// 폴더 줄과 그 안의 것들 사이도 바깥과 같은 간격으로 벌린다
+					<div key={folder.id} className="flex flex-col gap-1">
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
 							className={`group flex items-center rounded ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
