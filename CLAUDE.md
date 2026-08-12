@@ -27,6 +27,10 @@ CWD=$(lsof -a -p "$PID" -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
 Feature-Sliced Design. 레이어와 슬라이스 규칙, 그리고 `biome.json` overrides의
 함정은 [README의 구조 절](README.md#구조)에 적혀 있다.
 
+**저장소는 칸으로 갈린다.** 비로그인은 `wongoji:v1:index`, 로그인하면
+`wongoji:v1:u:<id>:index`. 본문은 IndexedDB로 같은 규칙을 탄다. 키를 상수로 두면
+계정 원고가 비로그인 원고 위에 써지므로, `scopedKey()`에 물어보고 쓴다.
+
 지켜야 할 관례는 한 줄이다 — **별칭(`#/`) import는 슬라이스를 건너고, 상대
 import(`./`)는 슬라이스 안에 머문다.**
 

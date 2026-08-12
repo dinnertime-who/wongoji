@@ -4,7 +4,9 @@
 
 넓은 화면에서는 왼쪽에 글을 쓰고 오른쪽 원고지에 곧바로 조판된다. 좁은 화면에서는 자리를 나눌 수 없어 둘 중 하나만 띄우고 오른쪽 아래 토글로 오간다.
 
-로그인이 없다. 원고는 전부 브라우저에 있고 서버는 원고를 보지 않는다.
+로그인하지 않아도 다 쓸 수 있다. 그때 원고는 이 브라우저에만 있다. 구글로 로그인하면
+계정 보관함이 생기고 기기 사이에 따라다닌다 — 어느 쪽이든 **읽고 쓰는 곳은 늘 로컬이고,**
+서버는 뒤에서 맞춘다.
 
 ## 먼저 알아야 할 것 — 원고지에는 표준이 없다
 
@@ -39,17 +41,57 @@
 
 ## 원고 관리
 
-로그인 없이 브라우저에만 둔다.
-
 - **폴더 트리** — 중첩 가능. 원고는 폴더 밖에도 놓을 수 있다(보이지 않는 root)
 - **이동 · 복제** — 복제는 `제목 (사본)`, 겹치면 번호가 올라간다. 사본은 원본 바로 아래
 - **차례** — 끌어다 사이에 끼우거나 ⋯ 메뉴의 위로·아래로. 폴더가 늘 원고 위에 온다
 - **휴지통** — 30일 뒤 사라진다. 남은 날과, 폴더가 데리고 간 원고 수를 보여 준다
 - **저장** — 타이핑이 멎고 300ms 뒤. 실패하면(주로 용량 초과) 배너가 뜨고 백업 내려받기를 권한다
 
-저장 구조는 키 두 벌이다. `wongoji:v1:index`에 목록(제목·경로·목표·분량)이, `wongoji:v1:doc:<id>`에 본문이 따로 들어간다. 목록을 그릴 때 원고를 열지 않아도 되게 나눈 것이라, **본문은 색인에 넣지 않는다** — 색인은 원고를 열고 옮길 때마다 통째로 읽고 쓰기 때문에 여기에 본문이 섞이면 원고 수만큼 커진다.
+### 색인과 본문을 나눈다
 
-localStorage를 쓴다. 70매 원고 하나가 JSON 25KB, 쓰기 0.11ms, 한도 5MB 정도라 원고 200편쯤 들어간다. 이 규모에서 IndexedDB로 옮길 이득이 없어 대신 `navigator.storage.persist()`를 요청해 브라우저가 용량을 정리할 때 원고를 먼저 버리지 않게 한다.
+목록(제목·경로·차례·목표·분량)은 **색인 한 덩어리**로 localStorage에, 본문은 원고마다
+따로 IndexedDB에 둔다. 목록을 그릴 때 원고를 열지 않아도 되게 나눈 것이다 — 색인은
+원고를 열고 옮길 때마다 통째로 읽고 쓰므로, 여기에 본문이 섞이면 그 비용이 원고 수만큼
+커진다.
+
+둘을 다른 저장소에 둔 것은 크기 때문이다. 원고 200편 × 10,000자면 색인은 57KB라
+localStorage(약 5MB)에 넉넉히 들어가지만 본문을 합치면 6–13MB로 넘긴다. **색인이
+localStorage에 남아 있어야 하는 이유는 따로 있다** — 화면이 `useSyncExternalStore`로
+그것을 구독하는데, 그 훅은 동기적이고 정체성이 안정된 스냅샷을 요구한다. 비동기인
+IndexedDB로는 줄 수 없는 값이다.
+
+`navigator.storage.persist()`를 요청해 브라우저가 용량을 정리할 때 원고를 먼저 버리지
+않게 한다.
+
+### 로그인하면 칸이 갈린다
+
+같은 브라우저 안에서 비로그인 원고와 계정 원고가 서로 섞이지 않아야 한다. 저장하는
+자리를 통째로 나눈다.
+
+| | 색인 | 본문 |
+| --- | --- | --- |
+| 비로그인 | `wongoji:v1:index` | IndexedDB `wongoji` |
+| 계정 | `wongoji:v1:u:<id>:index` | IndexedDB `wongoji:u:<id>` |
+
+두 앞머리는 서로의 앞머리가 아니므로 고아 정리가 칸을 넘어갈 수 없다. 로그아웃하면
+비로그인 칸이 그대로 다시 보인다.
+
+**비로그인 원고가 있는 채로 로그인하면 옮길지 묻는다.** 묻지 않고 올리면 남의 컴퓨터를
+잠깐 빌려 쓴 사람의 원고가 계정에 남는다. 답하기 전에는 보관함이 열리지 않는다 —
+그러지 않으면 답하기도 전에 빈 원고가 만들어져 목록에 남는다.
+
+### 서버와 주고받기
+
+읽기는 **늘 로컬에서** 한다. 서버는 뒤에서 받아 로컬에 적을 뿐이고, 화면은 색인이
+바뀌었다는 알림으로 따라온다. 그래서 사이드바도 에디터도 이 기능을 모른다.
+
+- 로그인하면 계정 보관함을 받아 로컬에 적는다. 서버가 비었는데 로컬에 원고가 있으면
+  덮지 않고 올린다 — 아직 못 올린 것이다
+- 색인이 바뀌면 1.5초 뒤에 색인 전체를 밀어 넣는다. 본문은 그 원고 하나만
+- 못 보냈으면 로컬 것으로 계속 쓴다. 다음 변경에 다시 간다
+
+두 기기에서 같은 원고를 고치면 **나중에 밀어 넣은 쪽이 이긴다.** 항목마다 시각을 두고
+병합하지 않는다.
 
 ## 내보내기
 
@@ -179,8 +221,12 @@ https://<배포주소>/api/auth/callback/google
 
 ### 배포
 
+**스키마를 고쳤으면 마이그레이션이 먼저다.** 컬럼이 없는 채로 새 코드가 뜨면 보관함
+읽기가 깨진다 — 그동안 접속한 사람은 빈 목록을 본다.
+
 ```bash
-pnpm run deploy    # build + wrangler deploy
+pnpm db:migrate:remote    # 스키마가 바뀌었을 때만
+pnpm run deploy           # build + wrangler deploy
 ```
 
 - `wrangler.jsonc` — Worker 이름은 `wongoji`. 배포 URL은 `wongoji.<계정>.workers.dev`
@@ -188,8 +234,9 @@ pnpm run deploy    # build + wrangler deploy
 - `vite.config.ts` — `@cloudflare/vite-plugin`이 SSR 환경을 Workers 런타임으로 돌린다. 개발 서버도 workerd에서 실행된다
 - `pnpm dlx wrangler deploy --dry-run` 으로 배포 없이 번들을 검증할 수 있다
 
-D1에는 로그인 정보(`user`·`session`·`account`·`verification`)만 있다. **원고는
-여전히 전부 브라우저에 있다** — 로그인해도 서버로 올라가지 않는다.
+D1에는 로그인 정보(`user`·`session`·`account`·`verification`)와 계정 보관함
+(`archive_folder`·`archive_doc`·`archive_doc_content`·`archive_tombstone`)이 있다.
+**로그인하지 않은 원고는 올라가지 않는다** — 그것은 이 브라우저 것이다.
 
 ## 구조
 
@@ -200,23 +247,28 @@ D1에는 로그인 정보(`user`·`session`·`account`·`verification`)만 있�
 src/
   routes/            APP — 라우팅. 주소를 읽어 page에 넘기는 3줄짜리 어댑터들
     _app.tsx           주소에 없는 레이아웃. 보관함을 두르고 다듬기를 한 번 돌린다
+    api.*.ts           계정 보관함 · better-auth 핸들러. 서버에서만 돈다
   pages/             home · editor · folder — 화면 하나를 짜 맞춘다
   widgets/           app-shell · manuscript-sidebar · manuscript-bar · page-header
-  features/          무언가를 하는 것들 — 만들기 · 옮기기 · 차례 바꾸기 · 휴지통 ·
-                     내보내기 · 복사 · 편집 · 초기화 · 쪽 전환 · 앱 열 때 다듬기 ·
-                     로그인 · 계정과 주고받기
+  features/          무언가를 하는 것들
     reorder-entry/     끌어 놓기. 트리와 폴더 쪽이 나눠 쓴다
+    archive-sync/      계정과 주고받기 · 로그인할 때 옮길지 묻기
+    archive-bootstrap/ 앱 열 때 다듬기
+    auth/              로그인 단추 · 저장소 칸 맞추기
+    create-entry · move-entry · copy-manuscript · edit-manuscript ·
+    reset-manuscript · manage-trash · export-manuscript · toggle-pane
   entities/
     archive/           보관함. 색인 하나가 폴더·원고·휴지통을 함께 들고 있다
-      api/               색인 저장소 (localStorage)
+      api/               색인 저장소 (localStorage, 칸별)
       lib/path.ts        materialized path 계산
       model/             자료구조 · 순수 연산 · 판 올리기 · 구독 훅 · 저장 실패 상태
     manuscript/        원고
-      api/               본문 저장소 (IndexedDB)
+      api/               본문 저장소 (IndexedDB, 칸별)
       lib/typesetting/   조판 엔진 (프레임워크 비의존)
       lib/tiptap.ts      에디터 문서 ↔ 조판 블록
       lib/serialize.ts   평문 · 백업 JSON 읽고 쓰기
-  shared/            도메인을 모르는 것들 — shadcn 원본, cn, localStorage 겉포장
+  shared/            도메인을 모르는 것들 — shadcn 원본, cn, 저장소 겉포장과 칸
+  server/            FSD 밖. better-auth · D1 · 스키마 (아래 절 참고)
 docs/                규칙 명세서, 공모전 조사, 설계 기록
 ```
 
@@ -270,9 +322,20 @@ FSD는 화면을 나누자고 만든 규칙이다. D1 바인딩과 OAuth 시크�
 | 파일 | 무엇 |
 | --- | --- |
 | `src/server/auth.ts` | better-auth 인스턴스 (D1 · 구글) |
-| `src/server/schema.ts` | drizzle 표. better-auth CLI가 만든다 |
+| `src/server/db.ts` | drizzle over D1 |
+| `src/server/session.ts` | 요청에서 사용자 꺼내기 · 401 |
+| `src/server/archive.ts` | 계정 보관함 읽고 쓰기. 소프트 삭제 ↔ 휴지통 배열 번역이 여기 한 곳에 있다 |
+| `src/server/schema/auth.ts` | better-auth CLI가 만든다. 손으로 고치지 않는다 |
+| `src/server/schema/archive.ts` | 보관함 테이블. 브라우저의 `StoreIndex`를 옮긴 것이라 mpath도 그대로다 |
 | `src/shared/api/auth-client.ts` | 브라우저 쪽 짝. 서버와 코드를 나눠 갖지 않고 HTTP로만 만난다 |
 | `src/routes/api.auth.$.ts` | `/api/auth/*`를 전부 받는 핸들러 |
+| `src/routes/api.archive*.ts` | 계정 보관함. 색인 하나와 원고 하나짜리가 따로 있다 |
+
+`schema/auth.ts`를 다시 뽑을 때:
+
+```bash
+npx auth generate --adapter drizzle --dialect sqlite --output src/server/schema/auth.ts
+```
 
 밖에 있다는 것이 규칙이 없다는 뜻은 아니다. 화면 쪽 규칙을 지지 않을 뿐이고,
 대신 선이 둘 있다. 둘 다 biome이 지킨다.
@@ -285,9 +348,13 @@ FSD는 화면을 나누자고 만든 규칙이다. D1 바인딩과 OAuth 시크�
 
 **함정** — `createFileRoute`의 `server` 옵션은 `@tanstack/react-router`가 아니라
 react-start가 `declare module`로 얹는다. `src/` 어디에서도 react-start를 부르지
-않으면 그 선언이 안 들어와 "`server`라는 속성이 없다"고 나온다. 그래서
-`api.auth.$.ts`에 `import type {} from "@tanstack/react-start"` 한 줄이 있다 —
-런타임에는 아무것도 하지 않는다.
+않으면 그 선언이 안 들어와 "`server`라는 속성이 없다"고 나온다. 그래서 api 라우트에
+`import type {} from "@tanstack/react-start"` 한 줄이 있다 — 런타임에는 아무것도
+하지 않는다.
+
+**함정** — `overrides`가 규칙을 갈아 끼우는 탓에(위 참고) `#/server` 금지는 프론트
+다섯 레이어의 블록마다 **따로 적혀 있다.** `entities/archive` 전용 블록도 그중
+하나다. 한 곳만 고치면 나머지에 구멍이 남는다.
 
 ### 조판 엔진
 
@@ -315,8 +382,10 @@ Tiptap을 최소 스키마로 쓴다 — 문단, 글자, 빈 행뿐이고 마크
 - **첫 장 헤더** — 제목·소속을 첫 장에 앉히는 것. 엔진에 흔적이 남아 있었지만
   도달할 수 없는 코드라 걷어냈다. 다시 넣는다면 `Block`을 늘리는 것이 아니라
   원고지 첫 장을 따로 다루는 편이 맞다
-- **서버 동기화** — 로그인은 들어왔다(구글, better-auth). 다만 원고는 아직 전부
-  브라우저에 있고 계정과 이어져 있지 않다. 저장소를 만지는 곳은 `entities/*/api/`
-  두 파일뿐이라 거기서 갈아끼우면 되지만, 색인 키에 사용자 구분이 없고 8자 랜덤
-  id가 경로 문자열 안에 박혀 있어 비회원 원고를 계정으로 합칠 때 다시 매길 방법이
-  없다 — 그 둘은 따로 풀어야 한다
+- **항목 단위 병합** — 두 기기에서 같은 원고를 고치면 나중에 밀어 넣은 쪽이 이긴다.
+  제대로 하려면 항목마다 고친 시각이 있어야 하고, 그러면 색인 전체를 올리는 지금
+  방식부터 갈아야 한다
+- **끌기로 목록 건너뛰기** — 사이드바에서 폴더 쪽 목록으로 끌어 넘기는 것. 두 벌의
+  끌기 상태를 하나로 묶어야 하고 손가락 쪽은 창에 얹은 리스너가 서로를 덮는다.
+  목록 사이를 옮기는 길은 ⋯ 메뉴의 이동에 있다
+- **차례를 키보드로 끌기** — 위로·아래로는 있지만 붙든 채 여러 칸 옮기는 것은 없다
