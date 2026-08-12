@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ancestorIds } from "../lib/path";
-import type { FolderEntry, Path, StoreIndex } from "../model/types";
+import type { FolderEntry, Path } from "../model/types";
+import { useStoreIndex } from "../model/use-store-index";
 
 /** 이보다 깊어지면 앞을 줄인다. 머리말은 한 줄로 남아야 한다 */
 const SHOWN = 2;
@@ -13,16 +14,15 @@ const SHOWN = 2;
  * 아니다 — 제자리로 가는 링크는 누를 이유가 없다.
  */
 export function Breadcrumb({
-	index,
 	path,
 	leaf,
 }: {
-	index: StoreIndex;
 	/** 지금 보고 있는 것이 놓인 자리. 제 id는 들어가지 않는다 */
 	path: Path;
 	/** 맨 끝에 적을 이름 */
 	leaf: string;
 }) {
+	const index = useStoreIndex();
 	const byId = new Map(index.folders.map((f) => [f.id, f]));
 	const trail = ancestorIds(path)
 		.map((id) => byId.get(id))

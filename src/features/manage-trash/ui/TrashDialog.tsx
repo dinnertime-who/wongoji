@@ -10,9 +10,10 @@ import {
 	type StoreIndex,
 	TRASH_DAYS,
 	type TrashEntry,
+	useSaveStatus,
+	useStoreIndex,
 } from "#/entities/archive";
 import { removeDoc } from "#/entities/manuscript";
-import type { SaveResult } from "#/shared/lib/storage";
 
 import { Button } from "#/shared/ui/button";
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
@@ -36,14 +37,12 @@ import {
 export function TrashDialog({
 	open,
 	onOpenChange,
-	index,
-	onReport,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	index: StoreIndex;
-	onReport: (result: SaveResult) => void;
 }) {
+	const index = useStoreIndex();
+	const { report: onReport } = useSaveStatus();
 	/** 완전 삭제 전에 확인받을 대상 */
 	const [confirming, setConfirming] = useState<TrashEntry | null>(null);
 

@@ -1,32 +1,24 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { FileTextIcon, FolderIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Shell } from "#/components/Shell";
+import { useEffect } from "react";
 import {
 	Breadcrumb,
-	CapacityMeter,
 	childrenOf,
 	createFolder,
 	type DocEntry,
 	displayTitle,
 	type FolderEntry,
 	fullPath,
-	mutateIndex,
 	readIndex,
 	renameFolder,
-	updateDoc,
+	useArchiveMutation,
+	useSaveStatus,
 	useStoreIndex,
 } from "#/entities/archive";
-import { emptyDoc, writeDoc } from "#/entities/manuscript";
-import { tidy } from "#/features/archive-bootstrap";
 import { createDocIn } from "#/features/create-entry";
-import type { SaveFailure, SaveResult } from "#/shared/lib/storage";
 import { Button } from "#/shared/ui/button";
 import { PageTitle } from "#/shared/ui/page-title";
-import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
-import { SidebarTrigger } from "#/shared/ui/sidebar";
-
-export const Route = createFileRoute("/f/$folderId")({ component: FolderPage });
+import { PageHeader } from "#/widgets/page-header";
 
 /**
  * 폴더 안을 펼쳐 보이는 쪽.
@@ -34,18 +26,13 @@ export const Route = createFileRoute("/f/$folderId")({ component: FolderPage });
  * 보관함의 트리와 같은 것을 담지만 쓰임이 다르다. 트리는 원고를 쓰는 동안 옆에
  * 두고 곁눈질하는 것이고, 이 쪽은 무엇이 들어 있는지 한 번에 보려고 여는 것이다.
  */
-function FolderPage() {
-	const { folderId } = Route.useParams();
+export function FolderPage({ folderId }: { folderId: string }) {
 	const navigate = useNavigate();
 	const index = useStoreIndex();
-	const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
+	const { report } = useSaveStatus();
+	const change = useArchiveMutation();
 
 	const folder = index.folders.find((f) => f.id === folderId);
-
-	// 기한 지난 휴지통 비우기·끊어진 경로 고치기. 여기로 바로 들어올 수도 있다
-	useEffect(() => {
-		tidy();
-	}, []);
 
 	/*
 	 * 없는 폴더를 가리키는 주소면 열 수 있는 곳으로 보낸다. 휴지통에 넣었거나
@@ -69,13 +56,6 @@ function FolderPage() {
 	const inside = fullPath(folder);
 	const { folders, docs } = childrenOf(index, inside);
 
-	const report = (result: SaveResult) =>
-		setSaveFailure(result.ok ? null : result);
-
-	const change = (edit: Parameters<typeof mutateIndex>[0]) => {
-		report(mutateIndex(edit).result);
-	};
-
 	const rename = (name: string) =>
 		change((current) => renameFolder(current, folder.id, name));
 
@@ -91,41 +71,11 @@ function FolderPage() {
 
 	const empty = folders.length === 0 && docs.length === 0;
 
-	/*
-	 * 하나뿐인 원고를 비운다.
-	 *
-	 * 여기서는 저장소만 고치면 된다. 원고 쪽과 달리 에디터가 떠 있지 않아, 갈아
-	 * 끼운 내용을 곧바로 되덮을 것이 없다.
-	 */
-	const resetDoc = (docId: string) => {
-		report(writeDoc(docId, emptyDoc()));
-		change((current) =>
-			updateDoc(current, docId, { title: "", goal: 0, chars: 0, sheets: 1 }),
-		);
-	};
-
 	return (
-		<Shell
-			index={index}
-			currentDocId=""
-			currentFolderId={folder.id}
-			onReport={report}
-			onReset={resetDoc}
-		>
-			{/* 원고 쪽 머리말과 같은 짜임이다. 쪽을 옮겨도 같은 자리에 같은 크기로 있어야 한다 */}
-			<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
-				<div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 px-6 py-2.5">
-					<SidebarTrigger title="보관함" aria-label="보관함" />
-
-					<Breadcrumb index={index} path={folder.path} leaf={folder.name} />
-
-					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-						<CapacityMeter index={index} />
-					</div>
-				</div>
-			</header>
-
-			{saveFailure && <SaveErrorBanner failure={saveFailure} />}
+		<>
+			<PageHeader width="narrow">
+				<Breadcrumb path={folder.path} leaf={folder.name} />
+			</PageHeader>
 
 			<div className="mx-auto w-full max-w-3xl overflow-auto px-6 py-10">
 				<PageTitle
@@ -137,10 +87,10 @@ function FolderPage() {
 
 				<div className="mt-6 flex flex-col">
 					{folders.map((child) => (
-						<PageLink key={child.id} folder={child} />
+						<EntryLink key={child.id} folder={child} />
 					))}
 					{docs.map((doc) => (
-						<PageLink key={doc.id} doc={doc} />
+						<EntryLink key={doc.id} doc={doc} />
 					))}
 
 					{empty && (
@@ -159,7 +109,7 @@ function FolderPage() {
 					</Button>
 				</div>
 			</div>
-		</Shell>
+		</>
 	);
 }
 
@@ -169,7 +119,7 @@ function FolderPage() {
  * 분량은 원고에만 적는다. 폴더의 분량을 더해 보여 주려면 아래를 모두 훑어야
  * 하는데, 목록을 그릴 때마다 치를 값은 아니다.
  */
-function PageLink({ folder, doc }: { folder?: FolderEntry; doc?: DocEntry }) {
+function EntryLink({ folder, doc }: { folder?: FolderEntry; doc?: DocEntry }) {
 	const shared =
 		"flex items-center gap-2 rounded-md px-2 py-2 text-base hover:bg-muted";
 

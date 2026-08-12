@@ -1,6 +1,6 @@
 import { SHEET_LIMIT } from "../config/limits";
 import { usedSheets } from "../model/operations";
-import type { StoreIndex } from "../model/types";
+import { useStoreIndex } from "../model/use-store-index";
 
 /** 이 비율을 넘으면 미리 알린다. 꽉 찬 뒤에 알리면 늦다 */
 const NEAR = 0.9;
@@ -11,7 +11,8 @@ const NEAR = 0.9;
  * 막지 않는다. 글을 쓰는 도중에 입력을 거절하면 방금 쓴 문장이 갈 곳을 잃는다.
  * 한도를 넘겨도 계속 쓸 수 있게 두고, 색으로만 알린다.
  */
-export function CapacityMeter({ index }: { index: StoreIndex }) {
+export function CapacityMeter() {
+	const index = useStoreIndex();
 	const used = usedSheets(index);
 	const over = used >= SHEET_LIMIT;
 	const near = !over && used >= SHEET_LIMIT * NEAR;

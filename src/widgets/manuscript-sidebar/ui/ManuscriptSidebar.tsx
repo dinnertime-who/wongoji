@@ -1,7 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
 import {
 	ancestorIds,
 	createFolder,
@@ -11,13 +10,14 @@ import {
 	fullPath,
 	moveDoc,
 	moveFolder,
-	mutateIndex,
 	type Path,
 	ROOT,
 	renameFolder,
-	type StoreIndex,
 	trashDoc,
 	trashFolder,
+	useArchiveMutation,
+	useSaveStatus,
+	useStoreIndex,
 } from "#/entities/archive";
 import {
 	type Created,
@@ -26,7 +26,7 @@ import {
 } from "#/features/create-entry";
 import { TrashDialog } from "#/features/manage-trash";
 import { FolderPicker } from "#/features/move-entry";
-import type { SaveResult } from "#/shared/lib/storage";
+import { resetDoc } from "#/features/reset-manuscript";
 import { Button } from "#/shared/ui/button";
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
 import { NameDialog } from "#/shared/ui/name-dialog";
@@ -36,6 +36,8 @@ import {
 	SidebarHeader,
 	useSidebar,
 } from "#/shared/ui/sidebar";
+import { useOpenedEntry } from "../model/use-opened-entry";
+import { ManuscriptTree, type TreeActions } from "./ManuscriptTree";
 
 /** 어떤 창을 열어 두었는가. 한 번에 하나만 뜬다 */
 type Sheet =
@@ -54,30 +56,20 @@ const CLOSED: Sheet = { kind: "none" };
  *
  * 새 원고와 새 폴더는 **지금 보고 있는 원고가 든 폴더**에 만든다. 맨 위에 있으면
  * root에 만든다. 어디에 생겼는지 헤매지 않게 하려는 것이다.
+ *
+ * 무엇이 열려 있는지 색인이 무엇인지 저장이 실패했는지를 전부 제가 읽는다.
+ * 물려받으면 이 위의 모든 부품이 그것을 아는 척해야 하고, 틀(AppShell)이 쪽마다
+ * 다시 마운트되는 원인이기도 했다.
  */
-export function ManuscriptSidebar({
-	index,
-	currentDocId,
-	currentFolderId,
-	onReport,
-	onReset,
-}: {
-	index: StoreIndex;
-	currentDocId: string;
-	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
-	currentFolderId?: string;
-	onReport: (result: SaveResult) => void;
-	/**
-	 * 그 원고를 비운다.
-	 *
-	 * 저장소만 고쳐서는 안 된다 — 에디터가 들고 있는 내용은 그대로 남아 곧바로
-	 * 다시 저장된다. 화면을 쥔 쪽이 함께 처리해야 한다.
-	 */
-	onReset: (docId: string) => void;
-}) {
+export function ManuscriptSidebar() {
 	const navigate = useNavigate();
+	const index = useStoreIndex();
+	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
+	const { report } = useSaveStatus();
+	const change = useArchiveMutation();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
+
 	/*
 	 * 새 원고와 새 폴더가 놓일 자리.
 	 *
@@ -99,16 +91,9 @@ export function ManuscriptSidebar({
 		if (isMobile) setOpenMobile(false);
 	};
 
-	/** 색인을 고치고 결과를 알린다. 성공했는지 돌려준다 */
-	const change = (edit: (index: StoreIndex) => StoreIndex): boolean => {
-		const { result } = mutateIndex(edit);
-		onReport(result);
-		return result.ok;
-	};
-
 	/** 새로 만들거나 복제한 원고를 연다. 실패는 배너가 받는다 */
 	const open = ({ docId, result }: Created) => {
-		onReport(result);
+		report(result);
 		if (!docId) return;
 		navigate({ to: "/w/$docId", params: { docId } });
 		closeDrawer();
@@ -159,7 +144,7 @@ export function ManuscriptSidebar({
 
 	return (
 		<>
-			<SidebarHeader className="flex-row items-center gap-1 py-2 pl-2 pr-2">
+			<SidebarHeader className="flex-row items-center gap-1 py-2 pr-2 pl-2">
 				<span className="flex-1 px-1 text-muted-foreground text-xs">원고</span>
 				<Button
 					variant="ghost"
@@ -191,13 +176,7 @@ export function ManuscriptSidebar({
 			>
 				{/* 트리가 짧아도 아래 빈 곳까지 늘어나야 한다. 거기가 root로 꺼내는 자리다 */}
 				<nav aria-label="원고 보관함" className="flex flex-1 flex-col">
-					<ManuscriptTree
-						index={index}
-						currentDocId={currentDocId}
-						currentFolderId={currentFolderId}
-						actions={actions}
-						onNavigate={closeDrawer}
-					/>
+					<ManuscriptTree actions={actions} onNavigate={closeDrawer} />
 				</nav>
 			</SidebarContent>
 
@@ -275,8 +254,6 @@ export function ManuscriptSidebar({
 			<TrashDialog
 				open={sheet.kind === "trash"}
 				onOpenChange={(open) => !open && setSheet(CLOSED)}
-				index={index}
-				onReport={onReport}
 			/>
 
 			{/*
@@ -289,7 +266,9 @@ export function ManuscriptSidebar({
 				title="이 원고를 비울까요?"
 				description="하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고 빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저 내보내세요."
 				confirmLabel="비우기"
-				onConfirm={() => sheet.kind === "resetDoc" && onReset(sheet.doc.id)}
+				onConfirm={() =>
+					sheet.kind === "resetDoc" && report(resetDoc(sheet.doc.id))
+				}
 			/>
 		</>
 	);

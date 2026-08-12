@@ -39,6 +39,11 @@ export {
 	usedSheets,
 } from "./model/operations";
 export {
+	SaveStatusProvider,
+	useArchiveMutation,
+	useSaveStatus,
+} from "./model/save-status";
+export {
 	type DocEntry,
 	emptyIndex,
 	type FolderEntry,

@@ -6,4 +6,5 @@ export {
 	safeGetItem,
 	safeRemoveItem,
 	safeSetItem,
+	savePreference,
 } from "./local";

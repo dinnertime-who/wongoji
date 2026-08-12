@@ -10,53 +10,58 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as FFolderIdRouteImport } from './routes/f.$folderId'
-import { Route as WDocIdRouteImport } from './routes/w.$docId'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppFFolderIdRouteImport } from './routes/_app.f.$folderId'
+import { Route as AppWDocIdRouteImport } from './routes/_app.w.$docId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FFolderIdRoute = FFolderIdRouteImport.update({
-  id: '/f/$folderId',
-  path: '/f/$folderId',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WDocIdRoute = WDocIdRouteImport.update({
+const AppFFolderIdRoute = AppFFolderIdRouteImport.update({
+  id: '/f/$folderId',
+  path: '/f/$folderId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWDocIdRoute = AppWDocIdRouteImport.update({
   id: '/w/$docId',
   path: '/w/$docId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/f/$folderId': typeof FFolderIdRoute
-  '/w/$docId': typeof WDocIdRoute
+  '/f/$folderId': typeof AppFFolderIdRoute
+  '/w/$docId': typeof AppWDocIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/f/$folderId': typeof FFolderIdRoute
-  '/w/$docId': typeof WDocIdRoute
+  '/f/$folderId': typeof AppFFolderIdRoute
+  '/w/$docId': typeof AppWDocIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/f/$folderId': typeof FFolderIdRoute
-  '/w/$docId': typeof WDocIdRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/f/$folderId': typeof AppFFolderIdRoute
+  '/_app/w/$docId': typeof AppWDocIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/f/$folderId' | '/w/$docId'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/f/$folderId' | '/w/$docId'
-  id: '__root__' | '/' | '/f/$folderId' | '/w/$docId'
+  id: '__root__' | '/' | '/_app' | '/_app/f/$folderId' | '/_app/w/$docId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  FFolderIdRoute: typeof FFolderIdRoute
-  WDocIdRoute: typeof WDocIdRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -68,27 +73,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/f/$folderId': {
-      id: '/f/$folderId'
-      path: '/f/$folderId'
-      fullPath: '/f/$folderId'
-      preLoaderRoute: typeof FFolderIdRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/w/$docId': {
-      id: '/w/$docId'
+    '/_app/f/$folderId': {
+      id: '/_app/f/$folderId'
+      path: '/f/$folderId'
+      fullPath: '/f/$folderId'
+      preLoaderRoute: typeof AppFFolderIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/w/$docId': {
+      id: '/_app/w/$docId'
       path: '/w/$docId'
       fullPath: '/w/$docId'
-      preLoaderRoute: typeof WDocIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppWDocIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppFFolderIdRoute: typeof AppFFolderIdRoute
+  AppWDocIdRoute: typeof AppWDocIdRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppFFolderIdRoute: AppFFolderIdRoute,
+  AppWDocIdRoute: AppWDocIdRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  FFolderIdRoute: FFolderIdRoute,
-  WDocIdRoute: WDocIdRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

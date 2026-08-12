@@ -140,3 +140,16 @@ export function listStorageKeys(storage?: Storage): string[] {
 		return [];
 	}
 }
+
+/**
+ * 화면 설정을 적는다. 실패는 삼킨다.
+ *
+ * 접힘 상태나 보고 있던 쪽 같은 것이다. 못 적으면 다음에 열 때 기본값으로
+ * 시작한다는 뜻일 뿐이라, 사용자가 할 수 있는 일도 없고 알릴 값도 없다.
+ *
+ * **원고에는 절대 쓰지 않는다.** 원고는 이 브라우저에만 있어서, 저장 실패를
+ * 삼키면 사용자는 계속 쓰는데 아무것도 남지 않는다.
+ */
+export function savePreference(key: string, value: string): void {
+	safeSetItem(key, value);
+}

@@ -23,6 +23,7 @@ import {
 	type Path,
 	ROOT,
 	type StoreIndex,
+	useStoreIndex,
 } from "#/entities/archive";
 import { Button } from "#/shared/ui/button";
 import {
@@ -32,6 +33,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "#/shared/ui/dropdown-menu";
+import { useOpenedEntry } from "../model/use-opened-entry";
 
 /** 트리에서 걸 수 있는 일들. 실제 처리는 사이드바가 한다 */
 export interface TreeActions {
@@ -154,20 +156,15 @@ function dragProps(dnd: Dnd, item: Drag, label: string) {
  * 이름은 줄임표로 자르지 않고 가로로 넘긴다. 트리가 깊어지면 미는 편이 낫다.
  */
 export function ManuscriptTree({
-	index,
-	currentDocId,
-	currentFolderId,
 	actions,
 	onNavigate,
 }: {
-	index: StoreIndex;
-	currentDocId: string;
-	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
-	currentFolderId?: string;
 	actions: TreeActions;
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
 }) {
+	const index = useStoreIndex();
+	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
 	// 지금 원고까지 가는 길은 펴 둔다
 	const current = index.docs.find((d) => d.id === currentDocId);
 	const [open, setOpen] = useState<Set<string>>(

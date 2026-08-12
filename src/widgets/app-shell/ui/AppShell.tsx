@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import { ManuscriptSidebar } from "#/components/ManuscriptSidebar";
-import type { StoreIndex } from "#/entities/archive";
-import {
-	type SaveResult,
-	safeGetItem,
-	safeSetItem,
-} from "#/shared/lib/storage";
+import { safeGetItem, savePreference } from "#/shared/lib/storage";
 import { Sidebar, SidebarProvider } from "#/shared/ui/sidebar";
 
 /** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
@@ -17,30 +11,15 @@ const ROOMY = 1280;
 /**
  * 보관함을 옆에 두는 틀.
  *
- * 원고 쪽과 폴더 쪽이 함께 쓴다. 어느 쪽을 보고 있든 보관함은 같은 자리에
- * 같은 상태로 있어야 한다 — 쪽을 옮길 때마다 접혔다 펴지면 옮겨 다닐 수 없다.
+ * 무엇을 옆에 둘지는 **받아서** 쓴다. 안에서 직접 부르면 위젯이 위젯을 부르게
+ * 되고, 그러면 이 틀은 보관함 없이는 쓸 수 없는 것이 된다. 회원 기능이 들어와
+ * 옆에 다른 것이 붙어도 이 파일은 그대로다.
  */
-export function Shell({
-	index,
-	currentDocId,
-	currentFolderId,
-	onReport,
-	onReset,
+export function AppShell({
+	sidebar,
 	children,
 }: {
-	index: StoreIndex;
-	/** 지금 열어 둔 원고. 폴더 쪽에는 없다 */
-	currentDocId: string;
-	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
-	currentFolderId?: string;
-	onReport: (result: SaveResult) => void;
-	/**
-	 * 하나뿐인 원고를 비운다.
-	 *
-	 * 비우는 방법이 쪽마다 다르다. 원고 쪽은 에디터가 들고 있는 내용까지 함께
-	 * 갈아야 하고, 폴더 쪽은 에디터가 없어 저장소만 고치면 된다.
-	 */
-	onReset: (docId: string) => void;
+	sidebar: React.ReactNode;
 	children: React.ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
@@ -54,11 +33,15 @@ export function Shell({
 
 	/*
 	 * 접힘 상태는 이 앱의 다른 화면 설정과 같이 localStorage에 둔다. 정본은 쿠키에
-	 * 적지만, 그러면 저장이 실패해도 알릴 길이 없다.
+	 * 적지만, 그러면 다른 화면 설정과 저장하는 곳이 갈린다.
+	 *
+	 * 실패해도 알리지 않는다. 접힘 상태를 못 적은 것은 다음에 열 때 기본값으로
+	 * 시작한다는 뜻일 뿐인데, 원고 저장 실패와 같은 배너로 알리면 "원고를 잃을 수
+	 * 있다"고 잘못 읽힌다.
 	 */
 	const change = (next: boolean) => {
 		setOpen(next);
-		onReport(safeSetItem(SIDEBAR_KEY, next ? "1" : "0"));
+		savePreference(SIDEBAR_KEY, next ? "1" : "0");
 	};
 
 	return (
@@ -81,15 +64,7 @@ export function Shell({
 			 * 접어도 DOM에는 남는다. 폭을 0으로 미끄러뜨려 접는 그림을 얻으려면
 			 * 그려 두어야 한다.
 			 */}
-			<Sidebar>
-				<ManuscriptSidebar
-					index={index}
-					currentDocId={currentDocId}
-					currentFolderId={currentFolderId}
-					onReport={onReport}
-					onReset={onReset}
-				/>
-			</Sidebar>
+			<Sidebar>{sidebar}</Sidebar>
 
 			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 				{children}
