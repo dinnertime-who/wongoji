@@ -31,16 +31,11 @@ export interface ServerArchive extends StoreIndex {
 	purged: string[];
 }
 
-/*
- * 자리(`order`)는 아직 테이블에 없다. 컬럼이 붙기 전까지는 모두 0으로 온다 —
- * 브라우저의 정렬이 동률을 이름·시각으로 가르므로 목록은 지금까지와 똑같이
- * 보이지만, **다른 기기에서 바꾼 차례는 따라오지 않는다.**
- */
 const asDoc = (row: typeof archiveDoc.$inferSelect): DocEntry => ({
 	id: row.id,
 	title: row.title,
 	path: row.path,
-	order: 0,
+	order: row.order,
 	goal: row.goal,
 	chars: row.chars,
 	sheets: row.sheets,
@@ -52,7 +47,7 @@ const asFolder = (row: typeof archiveFolder.$inferSelect): FolderEntry => ({
 	id: row.id,
 	name: row.name,
 	path: row.path,
-	order: 0,
+	order: row.order,
 });
 
 export async function readArchive(
@@ -152,11 +147,18 @@ export async function pushArchive(
 					id: f.id,
 					name: f.name,
 					path: f.path,
+					order: f.order,
 					updatedAt: at,
 				})
 				.onConflictDoUpdate({
 					target: [archiveFolder.userId, archiveFolder.id],
-					set: { name: f.name, path: f.path, updatedAt: at, deletedAt: null },
+					set: {
+						name: f.name,
+						path: f.path,
+						order: f.order,
+						updatedAt: at,
+						deletedAt: null,
+					},
 				}),
 		);
 	}
@@ -167,6 +169,7 @@ export async function pushArchive(
 			id: d.id,
 			title: d.title,
 			path: d.path,
+			order: d.order,
 			goal: d.goal,
 			chars: d.chars,
 			sheets: d.sheets,

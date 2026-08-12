@@ -1,5 +1,5 @@
 /**
- * 원고 보관함 — 서버 쪽 표.
+ * 원고 보관함 — 서버 쪽 테이블.
  *
  * 브라우저의 `StoreIndex`(entities/archive/model/types.ts)를 옮긴 것이다. 뼈대는
  * 그대로 둔다 — **폴더 트리는 부모 id가 아니라 조상 사슬을 경로 문자열로 박아
@@ -7,7 +7,7 @@
  * 접두사 검사 한 번으로 끝나기 때문이다. 서버에서도 같은 이유가 그대로 산다.
  *
  * 나누는 기준도 그대로다. 목록을 그릴 때 본문을 읽지 않아야 해서 제목·분량은
- * 원고 행에 두고 본문은 다른 표에 둔다. 로컬에서 색인과 본문 키를 나눈 것과
+ * 원고 행에 두고 본문은 다른 테이블에 둔다. 로컬에서 색인과 본문 키를 나눈 것과
  * 같은 이유다.
  */
 
@@ -23,6 +23,16 @@ import { user } from "./auth";
 
 /** 로컬과 같은 뜻. `"/"`는 보이지 않는 root, 자기 id는 들어가지 않는다 */
 const path = () => text("path").notNull();
+
+/**
+ * 형제 사이에서 몇 번째인가. 로컬 `order`가 그대로 온다.
+ *
+ * **컬럼 이름은 `sort_order`다** — `order`는 SQL 예약어라 쓰는 자리마다 따옴표를
+ * 둘러야 하고, 한 번 빠뜨리면 문법 오류가 난다. TS 쪽 이름은 로컬과 맞춘다.
+ *
+ * 정렬은 브라우저가 한다. 한 사람의 행 수가 작아서 인덱스를 따로 두지 않는다.
+ */
+const sortOrder = () => integer("sort_order").default(0).notNull();
 
 const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
@@ -54,6 +64,7 @@ export const archiveFolder = sqliteTable(
 		id: text("id").notNull(),
 		name: text("name").notNull(),
 		path: path(),
+		order: sortOrder(),
 
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.default(now)
@@ -85,6 +96,7 @@ export const archiveDoc = sqliteTable(
 		id: text("id").notNull(),
 		title: text("title").notNull(),
 		path: path(),
+		order: sortOrder(),
 		/** 목표 매수. 0이면 목표를 두지 않은 것 */
 		goal: integer("goal").default(0).notNull(),
 		chars: integer("chars").default(0).notNull(),

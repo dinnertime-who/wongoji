@@ -1,7 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 
 /**
- * 표를 만드는 SQL을 뽑는 데만 쓴다. 적용은 wrangler가 한다.
+ * 테이블을 만드는 SQL을 뽑는 데만 쓴다. 적용은 wrangler가 한다.
  *
  * drizzle-kit이 D1에 직접 붙으려면 계정 토큰이 따로 필요한데, 그러면 시크릿이
  * 한 벌 늘고 로컬 D1에는 어차피 닿지 못한다. 그래서 여기서는 SQL만 만들고

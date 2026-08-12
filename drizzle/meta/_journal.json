@@ -15,6 +15,13 @@
       "when": 1786520612728,
       "tag": "0001_icy_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786552436834,
+      "tag": "0002_empty_tombstone",
+      "breakpoints": true
     }
   ]
 }
