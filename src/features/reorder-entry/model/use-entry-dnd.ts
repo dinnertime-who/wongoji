@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { Moving, Path } from "#/entities/archive";
+import type { Moving } from "#/entities/archive";
+import { type DropRow, type DropZone, zoneOf } from "../lib/drop-zone";
 
 /**
  * 목록에서 끌어다 놓기.
@@ -50,9 +51,16 @@ interface DragProps {
 	onTouchStart: (e: React.TouchEvent) => void;
 }
 
-/** 줄에 얹으면 놓는 자리가 된다 */
+/**
+ * 줄에 얹으면 놓는 자리가 된다.
+ *
+ * `data-*`는 손가락 쪽에서 쓴다. 터치에는 "지금 이 줄 위에 있다"는 것을 알려
+ * 주는 이벤트가 없어, 좌표로 줄을 찾아낸 뒤 이 값들을 읽는다.
+ */
 interface DropProps {
-	"data-drop-path": Path;
+	"data-drop-id": string;
+	"data-drop-kind": "doc" | "folder";
+	"data-drop-path": string;
 	onDragOver: (e: React.DragEvent) => void;
 	onDrop: (e: React.DragEvent) => void;
 }
@@ -62,30 +70,58 @@ export interface EntryDnd {
 	drag: Moving | null;
 	/** 그 줄을 끌고 있는가. 흐리게 그리는 데 쓴다 */
 	isDragging: (id: string) => boolean;
-	/** 놓을 수 있는 자리에 손이 올라와 있는가 */
-	isOver: (to: Path) => boolean;
+	/**
+	 * 이 줄의 어디에 놓이려 하는가. 다른 줄이거나 놓을 수 없으면 null.
+	 *
+	 * 놓을 수 없는 자리는 아무 표시도 하지 않는다 — 금지 표시를 그리는 것보다
+	 * 반응이 없는 편이 조용하다.
+	 */
+	zoneOn: (id: string) => DropZone | null;
+	/** 빈 곳이 목적지인가 */
+	isOverRoot: boolean;
 	dragProps: (item: Moving, label: string) => DragProps;
-	dropProps: (to: Path) => DropProps;
-	/** 목록을 감싸는 바깥. 빈 곳이 `root`가 되고, 끌기 뒤의 탭을 삼킨다 */
-	rootProps: DropProps & {
+	dropProps: (row: DropRow) => DropProps;
+	/** 목록을 감싸는 바깥. 빈 곳이 맨 끝이 되고, 끌기 뒤의 탭을 삼킨다 */
+	rootProps: {
+		"data-drop-root": string;
+		onDragOver: (e: React.DragEvent) => void;
+		onDrop: (e: React.DragEvent) => void;
 		onClickCapture: (e: React.MouseEvent) => void;
 		onContextMenu: (e: React.MouseEvent) => void;
 	};
 }
 
+/** 손이 올라가 있는 곳. 줄 위이거나, 목록의 빈 곳이거나 */
+type Over = { at: "root" } | { at: "row"; row: DropRow; zone: DropZone };
+
+const sameOver = (a: Over | null, b: Over | null): boolean => {
+	if (a === null || b === null) return a === b;
+	if (a.at !== b.at) return false;
+	return (
+		a.at === "root" ||
+		(b.at === "row" && a.row.id === b.row.id && a.zone === b.zone)
+	);
+};
+
 export function useEntryDnd({
-	root,
 	canDrop: allowed,
 	onDrop,
 }: {
-	/** 빈 곳에 놓으면 여기로 간다 */
-	root: Path;
-	canDrop: (moving: Moving, to: Path) => boolean;
-	onDrop: (moving: Moving, to: Path) => void;
+	/**
+	 * 여기에 놓을 수 있는가. `null`이면 목록의 빈 곳 — 그 목록의 맨 끝이다.
+	 *
+	 * 색인을 아는 쪽이 답한다. 대개 `placeEntry`를 돌려 보고 색인이 그대로면
+	 * 놓을 것이 없다고 하면 된다 — 무엇이 제자리인지 아는 것은 그쪽이다.
+	 */
+	canDrop: (
+		moving: Moving,
+		to: { row: DropRow; zone: DropZone } | null,
+	) => boolean;
+	onDrop: (moving: Moving, to: { row: DropRow; zone: DropZone } | null) => void;
 }): EntryDnd {
 	const [drag, setDrag] = useState<Moving | null>(null);
 	/** 지금 손이 올라가 있는 자리 */
-	const [over, setOver] = useState<Path | null>(null);
+	const [over, setOver] = useState<Over | null>(null);
 	/*
 	 * 같은 값을 ref로도 든다.
 	 *
@@ -93,11 +129,27 @@ export function useEntryDnd({
 	 * 손가락이 움직일 때마다 떼었다 붙이게 되므로, 읽기용으로 ref를 함께 둔다.
 	 */
 	const dragRef = useRef<Moving | null>(null);
-	const overRef = useRef<Path | null>(null);
+	const overRef = useRef<Over | null>(null);
 
-	const canDrop = (to: Path): boolean => {
+	const asTarget = (at: Over) =>
+		at.at === "root" ? null : { row: at.row, zone: at.zone };
+
+	const canDrop = (at: Over): boolean => {
 		const dragging = dragRef.current ?? drag;
-		return !!dragging && allowed(dragging, to);
+		return !!dragging && allowed(dragging, asTarget(at));
+	};
+
+	/*
+	 * 같은 자리면 다시 그리지 않는다.
+	 *
+	 * dragover는 손이 멎어 있어도 계속 온다. 그때마다 새 객체를 넣으면 목록
+	 * 전체가 초당 수십 번 다시 그려진다 — 전에는 목적지가 문자열 하나라 React가
+	 * 알아서 걸러 주었지만, 이제는 줄과 구역을 함께 든 객체다.
+	 */
+	const aim = (at: Over | null) => {
+		if (sameOver(overRef.current, at)) return;
+		overRef.current = at;
+		setOver(at);
 	};
 
 	const clear = () => {
@@ -107,9 +159,9 @@ export function useEntryDnd({
 		setOver(null);
 	};
 
-	const drop = (to: Path) => {
+	const drop = (at: Over) => {
 		const dragging = dragRef.current ?? drag;
-		if (dragging && canDrop(to)) onDrop(dragging, to);
+		if (dragging && canDrop(at)) onDrop(dragging, asTarget(at));
 		clear();
 	};
 
@@ -147,6 +199,36 @@ export function useEntryDnd({
 	 */
 	const detach = useRef<(() => void) | null>(null);
 
+	/**
+	 * 이 좌표에 무엇이 있는가. 손가락 전용이다.
+	 *
+	 * 마우스는 `dragover`가 어느 줄인지 알려 주지만 터치에는 그런 이벤트가 없다.
+	 * 줄이 DOM에 적어 둔 `data-*`를 읽고, 사각형을 물어 마우스와 **같은
+	 * `zoneOf`를 지난다** — 두 손짓이 다른 규칙을 타면 어긋난다.
+	 */
+	const under = (x: number, y: number, moving: Moving): Over | null => {
+		const el = document.elementFromPoint(x, y);
+		const row = el?.closest<HTMLElement>("[data-drop-id]");
+		if (row) {
+			const { dropId, dropKind, dropPath } = row.dataset;
+			if (!dropId || !dropKind || dropPath === undefined) return null;
+			return {
+				at: "row",
+				row: { id: dropId, kind: dropKind as "doc" | "folder", path: dropPath },
+				zone: zoneOf(
+					row.getBoundingClientRect(),
+					y,
+					{
+						kind: dropKind as "doc" | "folder",
+					},
+					moving,
+				),
+			};
+		}
+		// 줄이 아니어도 목록 안이면 빈 곳이다 — 거기가 맨 끝이다
+		return el?.closest("[data-drop-root]") ? { at: "root" } : null;
+	};
+
 	const track = () => {
 		// 앞선 손짓이 남아 있으면 먼저 푼다. 두 벌이 얹히면 놓기가 두 번 돈다
 		detach.current?.();
@@ -155,15 +237,11 @@ export function useEntryDnd({
 			const touch = e.touches[0];
 			if (!touch) return;
 
-			if (dragRef.current) {
+			const dragging = dragRef.current;
+			if (dragging) {
 				// 끌고 있는 동안에는 목록이 함께 움직이지 않아야 한다
 				e.preventDefault();
-				const row = document
-					.elementFromPoint(touch.clientX, touch.clientY)
-					?.closest<HTMLElement>("[data-drop-path]");
-				const next = row?.dataset.dropPath ?? null;
-				overRef.current = next;
-				setOver(next);
+				aim(under(touch.clientX, touch.clientY, dragging));
 				return;
 			}
 
@@ -184,7 +262,8 @@ export function useEntryDnd({
 
 			if (!dragRef.current) return;
 			// 놓을 자리를 벗어난 채 손을 떼면 아무 일도 없다
-			if (overRef.current) drop(overRef.current);
+			const at = overRef.current;
+			if (at) drop(at);
 			else clear();
 			// 손을 뗀 뒤 따라오는 탭이 원고를 열거나 폴더를 접지 않게 한다
 			dragged.current = true;
@@ -216,7 +295,11 @@ export function useEntryDnd({
 	return {
 		drag,
 		isDragging: (id) => drag?.id === id,
-		isOver: (to) => Boolean(drag) && over === to && canDrop(to),
+		zoneOn: (id) => {
+			if (!drag || over?.at !== "row" || over.row.id !== id) return null;
+			return canDrop(over) ? over.zone : null;
+		},
+		isOverRoot: Boolean(drag) && over?.at === "root" && canDrop(over),
 
 		/**
 		 * 마우스는 브라우저의 끌기를 그대로 쓴다 — dataTransfer를 채워야 시작된다.
@@ -256,29 +339,41 @@ export function useEntryDnd({
 			},
 		}),
 
-		/**
-		 * `data-drop-path`는 손가락 쪽에서 쓴다. 터치에는 "지금 이 줄 위에 있다"는
-		 * 것을 알려 주는 이벤트가 없어, 좌표로 줄을 찾아낸 뒤 이 값을 읽는다.
-		 */
-		dropProps: (to) => ({
-			"data-drop-path": to,
-			onDragOver: (e: React.DragEvent) => {
-				if (!canDrop(to)) return;
-				// 바깥의 root 영역까지 올라가면 목적지가 root로 덮인다
-				e.stopPropagation();
-				e.preventDefault();
-				overRef.current = to;
-				setOver(to);
-			},
-			onDrop: (e: React.DragEvent) => {
-				e.stopPropagation();
-				e.preventDefault();
-				drop(to);
-			},
-		}),
+		dropProps: (row) => {
+			/** 이 이벤트가 이 줄의 어디에서 났는가 */
+			const aimAt = (e: React.DragEvent): Over => ({
+				at: "row",
+				row,
+				zone: zoneOf(
+					e.currentTarget.getBoundingClientRect(),
+					e.clientY,
+					row,
+					dragRef.current ?? drag ?? row,
+				),
+			});
+
+			return {
+				"data-drop-id": row.id,
+				"data-drop-kind": row.kind,
+				"data-drop-path": row.path,
+				onDragOver: (e: React.DragEvent) => {
+					const at = aimAt(e);
+					if (!canDrop(at)) return;
+					// 바깥의 빈 곳까지 올라가면 목적지가 그쪽으로 덮인다
+					e.stopPropagation();
+					e.preventDefault();
+					aim(at);
+				},
+				onDrop: (e: React.DragEvent) => {
+					e.stopPropagation();
+					e.preventDefault();
+					drop(aimAt(e));
+				},
+			};
+		},
 
 		rootProps: {
-			"data-drop-path": root,
+			"data-drop-root": "",
 			/*
 			 * 끌기로 끝난 손짓에는 탭이 뒤따라온다. 그대로 두면 옮기자마자 그 원고가
 			 * 열리거나 폴더가 접힌다.
@@ -301,14 +396,13 @@ export function useEntryDnd({
 			},
 			onDragOver: (e: React.DragEvent) => {
 				// 여기서 막지 않으면 브라우저가 놓기를 거부한다
-				if (!canDrop(root)) return;
+				if (!canDrop({ at: "root" })) return;
 				e.preventDefault();
-				overRef.current = root;
-				setOver(root);
+				aim({ at: "root" });
 			},
 			onDrop: (e: React.DragEvent) => {
 				e.preventDefault();
-				drop(root);
+				drop({ at: "root" });
 			},
 		},
 	};

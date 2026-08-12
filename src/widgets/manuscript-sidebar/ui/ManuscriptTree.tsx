@@ -16,7 +16,6 @@ import {
 import { useEffect, useState } from "react";
 import {
 	ancestorIds,
-	canMoveFolder,
 	childrenOf,
 	type DocEntry,
 	displayTitle,
@@ -25,13 +24,18 @@ import {
 	type Moving,
 	type Path,
 	type Placement,
+	placeEntry,
 	ROOT,
 	type StoreIndex,
 	useStoreIndex,
 } from "#/entities/archive";
 import {
+	DropLine,
+	type DropRow,
+	type DropZone,
 	type EntryDnd,
 	NO_CALLOUT,
+	placementFor,
 	useEntryDnd,
 } from "#/features/reorder-entry";
 import { Button } from "#/shared/ui/button";
@@ -64,14 +68,25 @@ export interface TreeActions {
 	nudge: (moving: Moving, dir: -1 | 1) => void;
 }
 
+/** 줄의 들여쓰기. 깊이가 깊어질수록 오른쪽으로 민다 */
+const indentAt = (depth: number) => `${depth * 0.75 + 0.5}rem`;
+
 /**
- * 놓을 수 있는 자리에 손이 올라왔을 때 줄에 입히는 표시.
+ * 놓기 표시. 안으로 들어가는 것은 줄 전체에, 끼우는 것은 사이의 선에.
  *
- * 놓을 수 없는 자리는 아무 표시도 하지 않는다 — 금지 표시를 그리는 것보다
- * 반응이 없는 편이 조용하다.
+ * 두 표시가 서로 다른 것은 뜻이 다르기 때문이다 — 줄이 통째로 밝아지면 그
+ * 폴더 **안**이고, 선이 그어지면 그 자리에 **낀다.**
  */
-const dropClass = (dnd: EntryDnd, to: Path): string =>
-	dnd.isOver(to) ? "bg-accent ring-1 ring-ring" : "";
+function dropClass(dnd: EntryDnd, id: string): string {
+	return dnd.zoneOn(id) === "into" ? "bg-accent ring-1 ring-ring" : "";
+}
+
+/** 끼울 자리면 선을, 아니면 아무것도 */
+function dropLine(dnd: EntryDnd, id: string, depth: number) {
+	const zone = dnd.zoneOn(id);
+	if (zone !== "before" && zone !== "after") return null;
+	return <DropLine zone={zone} indent={indentAt(depth)} />;
+}
 
 /**
  * 폴더 트리.
@@ -120,20 +135,28 @@ export function ManuscriptTree({
 			return next;
 		});
 
+	/*
+	 * 놓을 자리를 색인의 자리로 옮긴다. 빈 곳이면 root 맨 끝이다.
+	 *
+	 * 폴더가 제 자손 안으로 가는 것도 여기서 걸러지지 않는다 — `placeEntry`가
+	 * 그것을 막고 색인을 그대로 돌려주므로, 아래 `canDrop`이 "달라진 것이
+	 * 없다"로 읽는다.
+	 */
+	const aimed = (to: { row: DropRow; zone: DropZone } | null): Placement =>
+		to === null
+			? { path: ROOT, before: null }
+			: placementFor(index, to.row, to.zone);
+
 	const dnd = useEntryDnd({
-		root: ROOT,
-		/** 지금 끌고 있는 것을 이 경로에 놓을 수 있는가 */
-		canDrop: (moving, to) => {
-			if (moving.kind === "folder") {
-				const folder = index.folders.find((f) => f.id === moving.id);
-				// 제 자신·제 자손 안으로는 갈 수 없다. 사슬이 끊긴다
-				return !!folder && canMoveFolder(folder, to);
-			}
-			// 이미 그 자리에 있으면 옮길 것이 없다
-			return index.docs.find((d) => d.id === moving.id)?.path !== to;
-		},
-		// 지금은 늘 그 자리 맨 끝이다. 사이에 끼우는 것은 아직 붙지 않았다
-		onDrop: (moving, to) => actions.drop(moving, { path: to, before: null }),
+		/*
+		 * 놓아 보고 색인이 그대로면 놓을 것이 없다.
+		 *
+		 * 제자리에 놓는 것, 제 자손 안으로 넣는 것, 이미 그 폴더에 있는 것 —
+		 * 갈 수 없는 경우를 여기서 하나씩 세지 않는다. **무엇이 제자리인지 아는
+		 * 것은 `placeEntry`고, 두 벌로 두면 언젠가 갈린다.**
+		 */
+		canDrop: (moving, to) => placeEntry(index, moving, aimed(to)) !== index,
+		onDrop: (moving, to) => actions.drop(moving, aimed(to)),
 	});
 
 	return (
@@ -145,7 +168,7 @@ export function ManuscriptTree({
 		<div
 			// 줄끼리 붙여 두면 어느 것을 눌렀는지 손가락이 헷갈린다
 			className={`flex min-w-max flex-1 flex-col gap-1 py-1 ${NO_CALLOUT} ${
-				dnd.isOver(ROOT) ? "bg-accent/60" : ""
+				dnd.isOverRoot ? "bg-accent/60" : ""
 			}`}
 			{...dnd.rootProps}
 		>
@@ -197,7 +220,7 @@ function Level({
 }) {
 	const { folders, docs } = childrenOf(index, path);
 	// 깊이를 패딩으로 준다. 이름이 길어지면 부모가 가로로 스크롤한다
-	const indent = { paddingLeft: `${depth * 0.75 + 0.5}rem` };
+	const indent = { paddingLeft: indentAt(depth) };
 
 	/*
 	 * 마지막 하나는 버릴 수 없다.
@@ -219,14 +242,15 @@ function Level({
 					<div key={folder.id} className="flex flex-col gap-1">
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
-							className={`group flex items-center rounded ${
+							className={`group relative flex items-center rounded ${
 								folder.id === currentFolderId ? "bg-muted font-medium" : ""
-							} ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
+							} ${dropClass(dnd, folder.id)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
 							{...dnd.dragProps({ kind: "folder", id: folder.id }, folder.name)}
-							{...dnd.dropProps(inside)}
+							{...dnd.dropProps({ kind: "folder", id: folder.id, path })}
 						>
+							{dropLine(dnd, folder.id, depth)}
 							{/*
 							 * 펴고 접는 일과 열어 보는 일을 나눈다. 셰브론은 여기 목록을
 							 * 늘였다 줄이고, 이름은 그 폴더 쪽으로 간다.
@@ -324,12 +348,13 @@ function Level({
 				 */
 				<div
 					key={doc.id}
-					className={`group flex items-center rounded ${
+					className={`group relative flex items-center rounded ${
 						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
-					} ${dropClass(dnd, path)} ${dnd.isDragging(doc.id) ? "opacity-40" : ""} ${NO_CALLOUT}`}
+					} ${dropClass(dnd, doc.id)} ${dnd.isDragging(doc.id) ? "opacity-40" : ""} ${NO_CALLOUT}`}
 					{...dnd.dragProps({ kind: "doc", id: doc.id }, displayTitle(doc))}
-					{...dnd.dropProps(path)}
+					{...dnd.dropProps({ kind: "doc", id: doc.id, path })}
 				>
+					{dropLine(dnd, doc.id, depth)}
 					<Link
 						to="/w/$docId"
 						params={{ docId: doc.id }}
