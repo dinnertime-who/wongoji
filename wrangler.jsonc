@@ -2,9 +2,28 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "wongoji",
 	"compatibility_date": "2026-08-11",
-	"compatibility_flags": ["nodejs_compat"],
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
 	"main": "@tanstack/react-start/server-entry",
 	"observability": {
 		"enabled": true
-	}
+	},
+	// better-auth의 표가 사는 곳.
+	//
+	// **한 벌만 둔다.** `wrangler d1 create`가 찍어 주는 스니펫은 binding을 DB
+	// 이름으로 잡아 주는데, 그것을 그대로 덧붙이면 같은 database_name이 둘이 된다.
+	// 그러면 `d1 migrations apply wongoji`가 앞엣것을 집으므로, 뒤에 붙인 진짜
+	// id는 쓰이지 않고 앞의 자리표시자로 요청이 나간다.
+	//
+	// binding은 `DB`여야 한다 — src/server/auth.ts가 env.DB를 부른다.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "wongoji",
+			"database_id": "34de310f-6a8b-41ed-8059-08a29d964445",
+			// drizzle-kit이 뽑아 둔 SQL을 wrangler가 그대로 적용한다
+			"migrations_dir": "drizzle"
+		}
+	]
 }

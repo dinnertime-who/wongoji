@@ -1,4 +1,5 @@
 import { CapacityMeter } from "#/entities/archive";
+import { AuthButton } from "#/features/auth";
 import { SidebarTrigger } from "#/shared/ui/sidebar";
 
 /**
@@ -40,6 +41,12 @@ export function PageHeader({
 				<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
 					<CapacityMeter />
 					{actions}
+					{/*
+					 * 로그인은 맨 오른쪽 끝. 아직 아무것도 막지 않으므로 이 단추는
+					 * 들어가는 문이 아니라 표시에 가깝다 — 원고는 로그인과 무관하게
+					 * 지금도 브라우저에 저장된다.
+					 */}
+					<AuthButton />
 				</div>
 			</div>
 		</header>

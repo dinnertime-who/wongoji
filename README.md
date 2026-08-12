@@ -71,20 +71,94 @@ pnpm build
 pnpm gate         # 위 넷 + 배럴 검사. 커밋 전에 이것만 돌리면 된다
 ```
 
-## 배포 — Cloudflare Workers
-
-설정은 되어 있다. 계정 인증만 하면 된다.
+로그인까지 돌려 보려면 두 가지가 더 필요하다. 원고를 쓰고 조판하는 데는 없어도
+된다 — 아무것도 막지 않기 때문이다.
 
 ```bash
-pnpm dlx wrangler login   # 최초 1회
-pnpm run deploy           # build + wrangler deploy
+cp .dev.vars.example .dev.vars    # 구글 자격증명과 시크릿을 채운다
+pnpm db:migrate                   # 로컬 D1에 표를 만든다
+```
+
+`.dev.vars`는 git에 올라가지 않는다. 값을 어디서 얻는지는 [배포 절](#배포--cloudflare-workers)에 적혀 있고, 리디렉션 URI에 `http://localhost:3000/api/auth/callback/google`이 있어야 로컬에서 로그인이 끝난다.
+
+## 배포 — Cloudflare Workers
+
+로그인이 들어오면서 D1과 시크릿이 필요해졌다. 아래 넷은 최초 1회만 하면 된다.
+
+### 1. 계정 인증
+
+```bash
+pnpm dlx wrangler login --device
+```
+
+`--device`는 브라우저를 띄우는 대신 짧은 코드와 주소를 화면에 적어 준다. 그
+주소를 손에 있는 아무 브라우저에서나 열어 코드를 넣으면 된다. **SSH로 붙어
+있거나 컨테이너 안이면 이쪽을 쓴다** — 기본 흐름은 `localhost:8976`으로 콜백을
+받는데, 원격 셸에서는 그 포트가 내 브라우저에 보이지 않아 로그인이 끝나지 않는다.
+
+사람이 없는 곳(CI)이면 토큰을 환경변수로 준다. 이러면 `login`이 아예 필요 없다:
+
+```bash
+export CLOUDFLARE_API_TOKEN=...     # Workers Scripts:Edit + D1:Edit
+export CLOUDFLARE_ACCOUNT_ID=...
+```
+
+토큰은 대시보드 → My Profile → API Tokens에서 만든다. `Edit Cloudflare Workers`
+템플릿에 **D1:Edit**을 더하면 배포와 마이그레이션이 둘 다 된다.
+
+### 2. D1 만들기
+
+```bash
+pnpm dlx wrangler d1 create wongoji
+```
+
+출력에 찍힌 `database_id`를 `wrangler.jsonc`의 자리표시자와 바꾼다. 그다음 표를
+만든다:
+
+```bash
+pnpm db:migrate:remote
+```
+
+로컬은 `pnpm db:migrate`. `.wrangler` 아래 SQLite에 같은 SQL을 넣으며, 이쪽은
+`database_id`를 보지 않으므로 자리표시자인 채로도 돌아간다.
+
+### 3. 시크릿 넷
+
+`.dev.vars`는 로컬 전용이라 배포에는 올라가지 않는다. 따로 넣어야 한다.
+
+```bash
+pnpm dlx wrangler secret put BETTER_AUTH_SECRET    # openssl rand -base64 32
+pnpm dlx wrangler secret put BETTER_AUTH_URL       # https://<배포주소> — 끝에 슬래시 없이
+pnpm dlx wrangler secret put GOOGLE_CLIENT_ID
+pnpm dlx wrangler secret put GOOGLE_CLIENT_SECRET
+```
+
+`BETTER_AUTH_URL`이 틀리면 구글이 엉뚱한 주소로 돌려보내 로그인이 조용히 실패
+한다. 배포 주소가 정해진 뒤에 넣는다.
+
+### 4. 구글 콘솔에 배포 주소 더하기
+
+[사용자 인증 정보](https://console.cloud.google.com/apis/credentials)의 승인된
+리디렉션 URI. 개발용과 **둘 다** 있어야 한다 — 하나로 갈아 끼우면 로컬이 죽는다.
+
+```
+http://localhost:3000/api/auth/callback/google
+https://<배포주소>/api/auth/callback/google
+```
+
+### 배포
+
+```bash
+pnpm run deploy    # build + wrangler deploy
 ```
 
 - `wrangler.jsonc` — Worker 이름은 `wongoji`. 배포 URL은 `wongoji.<계정>.workers.dev`
+- **`wrangler.jsonc`를 고쳤으면 `pnpm cf-typegen`을 다시 돌린다.** `env`의 타입이 거기서 나오고, 빠뜨리면 엉뚱한 곳에서 typecheck가 깨진다
 - `vite.config.ts` — `@cloudflare/vite-plugin`이 SSR 환경을 Workers 런타임으로 돌린다. 개발 서버도 workerd에서 실행된다
-- `pnpm dlx wrangler deploy --dry-run` 으로 배포 없이 번들을 검증할 수 있다 (현재 gzip 약 615 KiB, 첫 로드는 그중 약 280 KiB)
+- `pnpm dlx wrangler deploy --dry-run` 으로 배포 없이 번들을 검증할 수 있다
 
-서버 상태나 바인딩(KV·D1·R2)은 쓰지 않는다. 원고는 전부 브라우저에 있다.
+D1에는 로그인 정보(`user`·`session`·`account`·`verification`)만 있다. **원고는
+여전히 전부 브라우저에 있다** — 로그인해도 서버로 올라가지 않는다.
 
 ## 구조
 
@@ -135,6 +209,33 @@ docs/                규칙 명세서, 공모전 조사, 설계 기록
 override에 걸리면 뒤엣것만 산다. 그래서 `entities/archive/lib/**`용 블록이 위의
 entities 규칙을 통째로 다시 적고 있다. 여기에 규칙을 더할 때는 두 곳 다 고쳐야 한다.
 
+### 서버 코드는 FSD 밖에 있다
+
+FSD는 화면을 나누자고 만든 규칙이다. D1 바인딩과 OAuth 시크릿을 쥔 코드에
+슬라이스를 씌울 이유가 없어서 `src/server/`는 레이어 바깥에 둔다.
+
+| 파일 | 무엇 |
+| --- | --- |
+| `src/server/auth.ts` | better-auth 인스턴스 (D1 · 구글) |
+| `src/server/schema.ts` | drizzle 표. better-auth CLI가 만든다 |
+| `src/shared/api/auth-client.ts` | 브라우저 쪽 짝. 서버와 코드를 나눠 갖지 않고 HTTP로만 만난다 |
+| `src/routes/api.auth.$.ts` | `/api/auth/*`를 전부 받는 핸들러 |
+
+밖에 있다는 것이 규칙이 없다는 뜻은 아니다. 화면 쪽 규칙을 지지 않을 뿐이고,
+대신 선이 둘 있다. 둘 다 biome이 지킨다.
+
+- **프론트 → `#/server`는 막힌다.** `cloudflare:workers`가 브라우저 번들에
+  실리면 빌드가 깨진다. 부를 수 있는 곳은 `routes`의 서버 핸들러뿐이다
+- **`#/server` → `features`·`widgets`·`pages`는 막힌다.** 서버가 화면을 조립할
+  일은 없다. 순수한 도메인 로직이 필요하면 `entities`·`shared`에서 가져온다 —
+  그러라고 `operations.ts`를 저장소로부터 떼어 놓았다
+
+**함정** — `createFileRoute`의 `server` 옵션은 `@tanstack/react-router`가 아니라
+react-start가 `declare module`로 얹는다. `src/` 어디에서도 react-start를 부르지
+않으면 그 선언이 안 들어와 "`server`라는 속성이 없다"고 나온다. 그래서
+`api.auth.$.ts`에 `import type {} from "@tanstack/react-start"` 한 줄이 있다 —
+런타임에는 아무것도 하지 않는다.
+
 ### 조판 엔진
 
 `텍스트 → 셀 토큰 → 줄 배치 → 장 배치` 3단으로 나뉜다. 규칙 프로파일이 줄 배치 단계에만 영향을 주도록 토큰화와 분리했다.
@@ -161,7 +262,8 @@ Tiptap을 최소 스키마로 쓴다 — 문단, 글자, 빈 행뿐이고 마크
 - **첫 장 헤더** — 제목·소속을 첫 장에 앉히는 것. 엔진에 흔적이 남아 있었지만
   도달할 수 없는 코드라 걷어냈다. 다시 넣는다면 `Block`을 늘리는 것이 아니라
   원고지 첫 장을 따로 다루는 편이 맞다
-- **회원 · 서버 동기화** — 저장소를 만지는 곳은 `entities/*/api/` 두 파일뿐이라
-  거기서 갈아끼우면 된다. 다만 색인 키에 사용자 구분이 없고, 8자 랜덤 id가
-  경로 문자열 안에 박혀 있어 비회원 원고를 계정으로 합칠 때 다시 매길 방법이
+- **서버 동기화** — 로그인은 들어왔다(구글, better-auth). 다만 원고는 아직 전부
+  브라우저에 있고 계정과 이어져 있지 않다. 저장소를 만지는 곳은 `entities/*/api/`
+  두 파일뿐이라 거기서 갈아끼우면 되지만, 색인 키에 사용자 구분이 없고 8자 랜덤
+  id가 경로 문자열 안에 박혀 있어 비회원 원고를 계정으로 합칠 때 다시 매길 방법이
   없다 — 그 둘은 따로 풀어야 한다

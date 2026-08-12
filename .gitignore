@@ -11,3 +11,6 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# wrangler 로컬 시크릿
+.dev.vars
