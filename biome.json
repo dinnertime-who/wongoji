@@ -207,6 +207,7 @@
 		{
 			"includes": [
 				"src/entities/archive/model/operations.ts",
+				"src/entities/archive/model/migrate.ts",
 				"src/entities/archive/lib/**"
 			],
 			"linter": {

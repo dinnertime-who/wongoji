@@ -13,7 +13,7 @@ import {
 	RotateCcwIcon,
 	Trash2Icon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	ancestorIds,
 	canMoveFolder,
@@ -29,6 +29,11 @@ import {
 	type StoreIndex,
 	useStoreIndex,
 } from "#/entities/archive";
+import {
+	type EntryDnd,
+	NO_CALLOUT,
+	useEntryDnd,
+} from "#/features/reorder-entry";
 import { Button } from "#/shared/ui/button";
 import {
 	DropdownMenu,
@@ -59,103 +64,14 @@ export interface TreeActions {
 	nudge: (moving: Moving, dir: -1 | 1) => void;
 }
 
-/** 끌고 있는 것. 폴더는 제 자손에 들어갈 수 없어 종류를 알아야 한다 */
-type Drag = Moving;
-
-/** 트리 전체가 나눠 쓰는 끌어 놓기 상태 */
-interface Dnd {
-	drag: Drag | null;
-	/** 손이 올라가 있는 곳 */
-	over: Path | null;
-	canDrop: (to: Path) => boolean;
-	onDragStart: (drag: Drag) => void;
-	onDragEnd: () => void;
-	onDragOver: (to: Path) => void;
-	onDrop: (to: Path) => void;
-	/** 손가락으로 누르기 시작했다. 오래 붙들고 있으면 끌기가 된다 */
-	onPress: (drag: Drag, touch: React.Touch) => void;
-}
-
-/**
- * 손가락으로 이만큼 붙들고 있어야 끌기가 된다.
- *
- * 마우스에는 이 기다림이 없다 — 끌기와 누르기를 브라우저가 갈라 주기 때문이다.
- * 손가락은 그 둘이 같은 동작이라, 목록을 넘기려던 것과 구별하려면 시간이 든다.
- */
-const LONG_PRESS = 500;
-
-/** 기다리는 동안 이만큼 움직이면 넘기려던 손이다. 끌기로 치지 않는다 */
-const PRESS_SLOP = 10;
-
-/** 손을 뗀 뒤 이만큼은 뒤따라오는 탭을 삼킨다 */
-const TAP_SWALLOW = 300;
-
-/**
- * 길게 누르는 동안 글자가 잡히거나 확대 풍선이 뜨지 않게 한다.
- *
- * 목록의 제목은 읽는 것이지 긁어 가는 것이 아니라, 잃는 것이 없다.
- */
-const NO_CALLOUT = "select-none [-webkit-touch-callout:none]";
-
 /**
  * 놓을 수 있는 자리에 손이 올라왔을 때 줄에 입히는 표시.
  *
  * 놓을 수 없는 자리는 아무 표시도 하지 않는다 — 금지 표시를 그리는 것보다
  * 반응이 없는 편이 조용하다.
  */
-function dropClass(dnd: Dnd, to: Path): string {
-	return dnd.drag && dnd.over === to && dnd.canDrop(to)
-		? "bg-accent ring-1 ring-ring"
-		: "";
-}
-
-/**
- * 줄에 끌어 놓기를 붙인다. 폴더 줄은 제 안쪽을, 원고 줄은 제가 놓인 자리를 받는다.
- *
- * `data-drop-path`는 손가락 쪽에서 쓴다. 터치에는 "지금 이 줄 위에 있다"는 것을
- * 알려 주는 이벤트가 없어, 좌표로 줄을 찾아낸 뒤 이 값을 읽는다.
- */
-function dropProps(dnd: Dnd, to: Path) {
-	return {
-		"data-drop-path": to,
-		onDragOver: (e: React.DragEvent) => {
-			if (!dnd.canDrop(to)) return;
-			// 바깥의 root 영역까지 올라가면 목적지가 root로 덮인다
-			e.stopPropagation();
-			e.preventDefault();
-			dnd.onDragOver(to);
-		},
-		onDrop: (e: React.DragEvent) => {
-			e.stopPropagation();
-			e.preventDefault();
-			dnd.onDrop(to);
-		},
-	};
-}
-
-/**
- * 끌 수 있게 만든다.
- *
- * 마우스는 브라우저의 끌기를 그대로 쓴다 — dataTransfer를 채워야 시작된다.
- * 손가락에는 그 끌기가 오지 않으므로 길게 누르기로 따로 연다.
- */
-function dragProps(dnd: Dnd, item: Drag, label: string) {
-	return {
-		draggable: true,
-		onDragStart: (e: React.DragEvent) => {
-			e.stopPropagation();
-			e.dataTransfer.effectAllowed = "move";
-			e.dataTransfer.setData("text/plain", label);
-			dnd.onDragStart(item);
-		},
-		onDragEnd: dnd.onDragEnd,
-		onTouchStart: (e: React.TouchEvent) => {
-			const touch = e.touches[0];
-			// 손가락 두 개 이상은 확대하려는 것이다
-			if (e.touches.length === 1 && touch) dnd.onPress(item, touch);
-		},
-	};
-}
+const dropClass = (dnd: EntryDnd, to: Path): string =>
+	dnd.isOver(to) ? "bg-accent ring-1 ring-ring" : "";
 
 /**
  * 폴더 트리.
@@ -178,18 +94,6 @@ export function ManuscriptTree({
 	const [open, setOpen] = useState<Set<string>>(
 		() => new Set(current ? ancestorIds(current.path) : []),
 	);
-	const [drag, setDrag] = useState<Drag | null>(null);
-	/** 지금 손이 올라가 있는 폴더의 안쪽 경로. 빈 곳이면 root다 */
-	const [over, setOver] = useState<Path | null>(null);
-	/*
-	 * 같은 값을 ref로도 든다.
-	 *
-	 * 창에 건 리스너는 걸던 순간의 값에 갇힌다. 다시 걸어 새 값을 보게 하면
-	 * 손가락이 움직일 때마다 떼었다 붙이게 되므로, 읽기용으로 ref를 함께 둔다.
-	 */
-	const dragRef = useRef<Drag | null>(null);
-	const overRef = useRef<Path | null>(null);
-
 	/*
 	 * 보고 있는 것까지 가는 길은 열어 둔다. 처음 그릴 때뿐 아니라 옮겨 다닐 때마다
 	 * 따라 연다 — 폴더 쪽에서 안쪽 폴더로 들어가면 트리에서도 그 자리가 보여야 한다.
@@ -216,176 +120,21 @@ export function ManuscriptTree({
 			return next;
 		});
 
-	/** 지금 끌고 있는 것을 이 경로에 놓을 수 있는가 */
-	const canDrop = (to: Path): boolean => {
-		const dragging = dragRef.current ?? drag;
-		if (!dragging) return false;
-		if (dragging.kind === "folder") {
-			const folder = index.folders.find((f) => f.id === dragging.id);
-			// 제 자신·제 자손 안으로는 갈 수 없다. 사슬이 끊긴다
-			return !!folder && canMoveFolder(folder, to);
-		}
-		// 이미 그 자리에 있으면 옮길 것이 없다
-		return index.docs.find((d) => d.id === dragging.id)?.path !== to;
-	};
-
-	const drop = (to: Path) => {
-		const dragging = dragRef.current ?? drag;
+	const dnd = useEntryDnd({
+		root: ROOT,
+		/** 지금 끌고 있는 것을 이 경로에 놓을 수 있는가 */
+		canDrop: (moving, to) => {
+			if (moving.kind === "folder") {
+				const folder = index.folders.find((f) => f.id === moving.id);
+				// 제 자신·제 자손 안으로는 갈 수 없다. 사슬이 끊긴다
+				return !!folder && canMoveFolder(folder, to);
+			}
+			// 이미 그 자리에 있으면 옮길 것이 없다
+			return index.docs.find((d) => d.id === moving.id)?.path !== to;
+		},
 		// 지금은 늘 그 자리 맨 끝이다. 사이에 끼우는 것은 아직 붙지 않았다
-		if (dragging && canDrop(to)) {
-			actions.drop(dragging, { path: to, before: null });
-		}
-		dragRef.current = null;
-		overRef.current = null;
-		setDrag(null);
-		setOver(null);
-	};
-
-	/** 손가락이 붙들고 있는 중. 시간을 다 채우면 끌기가 된다 */
-	const press = useRef<{
-		item: Drag;
-		x: number;
-		y: number;
-		timer: number;
-	} | null>(null);
-	/** 방금 끌기로 끝났다. 뒤따라오는 탭을 삼키는 데 쓴다 */
-	const dragged = useRef(false);
-	/*
-	 * 손가락이 아직 화면에 있다.
-	 *
-	 * 브라우저의 링크 메뉴를 막을지 가리는 데 쓴다. drag 상태로는 늦다 — 메뉴가
-	 * 뜨는 때와 끌기가 열리는 때가 같은 0.5초라, 다시 그려지기 전에 판정해야 한다.
-	 */
-	const touching = useRef(false);
-
-	const forgetPress = () => {
-		if (press.current) window.clearTimeout(press.current.timer);
-		press.current = null;
-	};
-
-	const onPress = (item: Drag, touch: React.Touch) => {
-		forgetPress();
-		dragged.current = false;
-		touching.current = true;
-		track();
-		press.current = {
-			item,
-			x: touch.clientX,
-			y: touch.clientY,
-			timer: window.setTimeout(() => {
-				press.current = null;
-				dragRef.current = item;
-				setDrag(item);
-				// 끌기가 열렸다는 것을 손끝에 알린다. 없는 기기도 있다
-				navigator.vibrate?.(10);
-			}, LONG_PRESS),
-		};
-	};
-
-	/*
-	 * 손가락으로 끄는 동안의 추적.
-	 *
-	 * 창에 직접 얹는다. React가 거는 touchmove는 passive라 목록이 따라 스크롤되는
-	 * 것을 막을 수 없다.
-	 *
-	 * **손가락이 닿아 있는 동안에만 걸어 둔다.** 전에는 effect로 걸어서, 트리를
-	 * 그리는 내내 창에 non-passive touchmove가 얹혀 있었다 — 끌 생각이 전혀 없는
-	 * 사람의 스크롤까지 그 리스너를 거쳤다. 누르는 순간 걸고 떼는 순간 푼다.
-	 */
-	const detach = useRef<(() => void) | null>(null);
-
-	const track = () => {
-		// 앞선 손짓이 남아 있으면 먼저 푼다. 두 벌이 얹히면 놓기가 두 번 돈다
-		detach.current?.();
-
-		const move = (e: TouchEvent) => {
-			const touch = e.touches[0];
-			if (!touch) return;
-
-			if (dragRef.current) {
-				// 끌고 있는 동안에는 목록이 함께 움직이지 않아야 한다
-				e.preventDefault();
-				const row = document
-					.elementFromPoint(touch.clientX, touch.clientY)
-					?.closest<HTMLElement>("[data-drop-path]");
-				const next = row?.dataset.dropPath ?? null;
-				overRef.current = next;
-				setOver(next);
-				return;
-			}
-
-			// 아직 기다리는 중이다. 움직였으면 넘기려던 손으로 본다
-			const waiting = press.current;
-			if (!waiting) return;
-			const strayed = Math.hypot(
-				touch.clientX - waiting.x,
-				touch.clientY - waiting.y,
-			);
-			if (strayed > PRESS_SLOP) forgetPress();
-		};
-
-		const end = () => {
-			forgetPress();
-			touching.current = false;
-			untrack();
-
-			if (!dragRef.current) return;
-			// 놓을 자리를 벗어난 채 손을 떼면 아무 일도 없다
-			if (overRef.current) drop(overRef.current);
-			else {
-				setDrag(null);
-				setOver(null);
-			}
-			// 손을 뗀 뒤 따라오는 탭이 원고를 열거나 폴더를 접지 않게 한다
-			dragged.current = true;
-			window.setTimeout(() => {
-				dragged.current = false;
-			}, TAP_SWALLOW);
-		};
-
-		window.addEventListener("touchmove", move, { passive: false });
-		window.addEventListener("touchend", end);
-		window.addEventListener("touchcancel", end);
-		detach.current = () => {
-			window.removeEventListener("touchmove", move);
-			window.removeEventListener("touchend", end);
-			window.removeEventListener("touchcancel", end);
-			detach.current = null;
-		};
-	};
-
-	const untrack = () => detach.current?.();
-
-	// 세워 둔 타이머도 리스너도 남기지 않는다
-	useEffect(
-		() => () => {
-			if (press.current) window.clearTimeout(press.current.timer);
-			detach.current?.();
-		},
-		[],
-	);
-
-	const dnd: Dnd = {
-		drag,
-		over,
-		canDrop,
-		onDragStart: (item) => {
-			dragRef.current = item;
-			setDrag(item);
-		},
-		onDragEnd: () => {
-			dragRef.current = null;
-			overRef.current = null;
-			setDrag(null);
-			setOver(null);
-		},
-		onDragOver: (to) => {
-			overRef.current = to;
-			setOver(to);
-		},
-		onDrop: drop,
-		onPress,
-	};
+		onDrop: (moving, to) => actions.drop(moving, { path: to, before: null }),
+	});
 
 	return (
 		/*
@@ -393,43 +142,12 @@ export function ManuscriptTree({
 		 *
 		 * 트리가 짧으면 빈 곳도 좁으므로 아래로 넉넉히 늘린다.
 		 */
-		// biome-ignore lint/a11y/noStaticElementInteractions: 끌어 놓기는 마우스 전용이다. 키보드로는 ⋯ 메뉴의 이동을 쓴다
 		<div
 			// 줄끼리 붙여 두면 어느 것을 눌렀는지 손가락이 헷갈린다
 			className={`flex min-w-max flex-1 flex-col gap-1 py-1 ${NO_CALLOUT} ${
-				drag && over === ROOT && canDrop(ROOT) ? "bg-accent/60" : ""
+				dnd.isOver(ROOT) ? "bg-accent/60" : ""
 			}`}
-			data-drop-path={ROOT}
-			/*
-			 * 끌기로 끝난 손짓에는 탭이 뒤따라온다. 그대로 두면 옮기자마자 그 원고가
-			 * 열리거나 폴더가 접힌다.
-			 */
-			onClickCapture={(e) => {
-				if (!dragged.current) return;
-				dragged.current = false;
-				e.preventDefault();
-				e.stopPropagation();
-			}}
-			/*
-			 * 손가락으로 길게 누르면 브라우저가 링크 메뉴를 띄운다 — 원고 줄이 링크라
-			 * "새 탭에서 열기"가 끌기 위로 겹쳐 올라온다.
-			 *
-			 * 누르고 있는 중일 때만 막는다. 마우스 오른쪽 누르기는 그대로 두어야
-			 * 데스크톱에서 원고를 새 탭으로 여는 길이 남는다.
-			 */
-			onContextMenu={(e) => {
-				if (touching.current || drag) e.preventDefault();
-			}}
-			onDragOver={(e) => {
-				// 여기서 막지 않으면 브라우저가 놓기를 거부한다
-				if (!canDrop(ROOT)) return;
-				e.preventDefault();
-				setOver(ROOT);
-			}}
-			onDrop={(e) => {
-				e.preventDefault();
-				drop(ROOT);
-			}}
+			{...dnd.rootProps}
 		>
 			<Level
 				index={index}
@@ -475,7 +193,7 @@ function Level({
 	currentFolderId?: string;
 	actions: TreeActions;
 	onNavigate?: () => void;
-	dnd: Dnd;
+	dnd: EntryDnd;
 }) {
 	const { folders, docs } = childrenOf(index, path);
 	// 깊이를 패딩으로 준다. 이름이 길어지면 부모가 가로로 스크롤한다
@@ -495,7 +213,7 @@ function Level({
 			{folders.map((folder, i) => {
 				const expanded = open.has(folder.id);
 				const inside = fullPath(folder);
-				const dragging = dnd.drag?.id === folder.id;
+				const dragging = dnd.isDragging(folder.id);
 				return (
 					// 폴더 줄과 그 안의 것들 사이도 바깥과 같은 간격으로 벌린다
 					<div key={folder.id} className="flex flex-col gap-1">
@@ -506,12 +224,8 @@ function Level({
 							} ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
-							{...dragProps(
-								dnd,
-								{ kind: "folder", id: folder.id },
-								folder.name,
-							)}
-							{...dropProps(dnd, inside)}
+							{...dnd.dragProps({ kind: "folder", id: folder.id }, folder.name)}
+							{...dnd.dropProps(inside)}
 						>
 							{/*
 							 * 펴고 접는 일과 열어 보는 일을 나눈다. 셰브론은 여기 목록을
@@ -612,9 +326,9 @@ function Level({
 					key={doc.id}
 					className={`group flex items-center rounded ${
 						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
-					} ${dropClass(dnd, path)} ${dnd.drag?.id === doc.id ? "opacity-40" : ""} ${NO_CALLOUT}`}
-					{...dragProps(dnd, { kind: "doc", id: doc.id }, displayTitle(doc))}
-					{...dropProps(dnd, path)}
+					} ${dropClass(dnd, path)} ${dnd.isDragging(doc.id) ? "opacity-40" : ""} ${NO_CALLOUT}`}
+					{...dnd.dragProps({ kind: "doc", id: doc.id }, displayTitle(doc))}
+					{...dnd.dropProps(path)}
 				>
 					<Link
 						to="/w/$docId"
