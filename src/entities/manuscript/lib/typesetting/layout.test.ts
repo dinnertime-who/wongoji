@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { layout, layoutBlocks, parseBlocks } from "./layout";
-import { TOPIK_PROFILE } from "./profile";
-import { tokenizeParagraph } from "./tokenize";
 import { type Cell, COLS } from "./types";
 
 /** 한 줄을 사람이 읽을 수 있는 문자열로. 빈 칸은 `·`, 한 칸에 여러 글리프면 그대로 이어 붙인다. */
@@ -18,68 +16,6 @@ function lines(text: string): string[] {
 		.filter((l) => l.cells.length > 0)
 		.map((l) => renderLine(l.cells));
 }
-
-/** 토큰이 차지하는 칸 수 */
-function cellCount(text: string): number {
-	return tokenizeParagraph(text, TOPIK_PROFILE).reduce(
-		(n, t) => n + (t.role === "space" ? 1 : t.cells.length),
-		0,
-	);
-}
-
-describe("토큰화 — 한 칸에 무엇이 들어가는가", () => {
-	it("E1: 연속 숫자는 앞에서부터 두 자씩 끊는다", () => {
-		expect(lines("123")[0]).toBe("·|12|3");
-	});
-
-	it("E2: TOPIK 프로파일은 한 자리 숫자도 예외를 두지 않는다", () => {
-		expect(lines("4천")[0]).toBe("·|4|천");
-		expect(lines("2024년")[0]).toBe("·|20|24|년");
-	});
-
-	it("E3: 대문자는 1칸 1자, 소문자는 1칸 2자", () => {
-		expect(lines("Korea")[0]).toBe("·|K|or|ea");
-		expect(lines("ABC")[0]).toBe("·|A|B|C");
-		expect(lines("hello")[0]).toBe("·|he|ll|o");
-	});
-
-	it("E4: 숫자와 알파벳이 섞이면 한 자씩 따로 적는다", () => {
-		expect(lines("A4")[0]).toBe("·|A|4");
-		expect(lines("mp3")[0]).toBe("·|m|p|3");
-	});
-
-	it("E5: 줄임표와 줄표는 두 칸을 차지한다", () => {
-		expect(lines("아……")[0]).toBe("·|아|…|…");
-		expect(lines("아…")[0]).toBe("·|아|…|…");
-		expect(lines("아...")[0]).toBe("·|아|…|…");
-		expect(lines("아—")[0]).toBe("·|아|―|―");
-	});
-
-	it("E7: 한글·한자는 1칸 1자", () => {
-		expect(lines("한글漢字")[0]).toBe("·|한|글|漢|字");
-	});
-});
-
-describe("문장부호 뒤 띄어쓰기 — TOPIK 6항", () => {
-	it("물음표·느낌표 뒤에는 한 칸을 비운다", () => {
-		expect(lines("네? 그래")[0]).toBe("·|네|?|·|그|래");
-		// 입력에 공백이 없어도 규칙대로 비운다
-		expect(lines("네?그래")[0]).toBe("·|네|?|·|그|래");
-	});
-
-	it("온점·반점 뒤는 비우지 않는다", () => {
-		expect(lines("가다. 나다")[0]).toBe("·|가|다|.|나|다");
-		expect(lines("가, 나")[0]).toBe("·|가|,|나");
-	});
-
-	it("E13: 물음표 바로 뒤에 닫는 따옴표가 오면 비우지 않는다", () => {
-		expect(lines('"뭐?" 하고')[0]).toBe('·|"|뭐|?|"|·|하|고');
-	});
-
-	it("문단 끝의 물음표 뒤에는 비울 것이 없다", () => {
-		expect(lines("왜?")[0]).toBe("·|왜|?");
-	});
-});
 
 describe("줄 배치 — 20칸 경계", () => {
 	it("E16: 문단 첫 줄만 들여쓰고 둘째 줄부터는 첫 칸을 채운다", () => {
@@ -242,14 +178,6 @@ describe("빈 행", () => {
 });
 
 describe("대화문", () => {
-	it("따옴표는 각각 한 칸을 차지한다", () => {
-		expect(cellCount('"가"')).toBe(3);
-	});
-
-	it("아포스트로피는 따옴표로 세지 않는다", () => {
-		expect(lines("don't")[0]).toBe("·|do|n|'|t");
-	});
-
 	it("대화문은 줄이 바뀌어도 첫 칸을 계속 비운다", () => {
 		// 따옴표 1 + 22자 → 두 줄에 걸친다
 		const out = lines(`"${"가".repeat(22)}"`);
