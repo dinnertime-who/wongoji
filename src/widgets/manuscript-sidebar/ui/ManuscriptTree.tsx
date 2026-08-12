@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
+	ArrowDownIcon,
+	ArrowUpIcon,
 	ChevronDownIcon,
 	ChevronRightIcon,
 	CopyIcon,
@@ -53,6 +55,8 @@ export interface TreeActions {
 	 * 방법이 달라 따로 둔다 — 이쪽은 갈 곳이 이미 정해져 있다.
 	 */
 	drop: (moving: Moving, to: Placement) => void;
+	/** 형제 사이에서 한 칸 민다. 끌지 않고 차례를 바꾸는 길이다 */
+	nudge: (moving: Moving, dir: -1 | 1) => void;
 }
 
 /** 끌고 있는 것. 폴더는 제 자손에 들어갈 수 없어 종류를 알아야 한다 */
@@ -488,7 +492,7 @@ function Level({
 
 	return (
 		<>
-			{folders.map((folder) => {
+			{folders.map((folder, i) => {
 				const expanded = open.has(folder.id);
 				const inside = fullPath(folder);
 				const dragging = dnd.drag?.id === folder.id;
@@ -557,6 +561,13 @@ function Level({
 										<PencilIcon />
 										이름 바꾸기
 									</DropdownMenuItem>
+									<DropdownMenuSeparator />
+									<NudgeItems
+										moving={{ kind: "folder", id: folder.id }}
+										first={i === 0}
+										last={i === folders.length - 1}
+										onNudge={actions.nudge}
+									/>
 									<DropdownMenuItem onSelect={() => actions.moveFolder(folder)}>
 										<FolderIcon />
 										이동
@@ -591,7 +602,7 @@ function Level({
 				);
 			})}
 
-			{docs.map((doc) => (
+			{docs.map((doc, i) => (
 				/*
 				 * 원고 줄도 놓는 자리를 받는다. 제가 놓인 폴더를 목적지로 넘기므로,
 				 * 원고 사이에 떨어뜨려도 그 폴더로 들어간다. 촘촘한 목록에서 폴더 줄만
@@ -622,6 +633,13 @@ function Level({
 								<CopyIcon />
 								복제
 							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<NudgeItems
+								moving={{ kind: "doc", id: doc.id }}
+								first={i === 0}
+								last={i === docs.length - 1}
+								onNudge={actions.nudge}
+							/>
 							<DropdownMenuItem onSelect={() => actions.moveDoc(doc)}>
 								<FolderIcon />
 								이동
@@ -648,6 +666,40 @@ function Level({
 					</div>
 				</div>
 			))}
+		</>
+	);
+}
+
+/**
+ * 차례를 한 칸씩 미는 메뉴 항목.
+ *
+ * **끌어 놓기만 두면 키보드로는 차례를 바꿀 길이 없다.** 이 메뉴에 이미 이동이
+ * 들어 있는 것과 같은 짝이다 — 끌기로 할 수 있는 일에는 늘 메뉴 쪽 길이 있다.
+ *
+ * 양 끝에서는 흐리게 둔다. 눌러도 아무 일이 없는 것보다, 여기가 끝이라고
+ * 보여 주는 편이 낫다.
+ */
+function NudgeItems({
+	moving,
+	first,
+	last,
+	onNudge,
+}: {
+	moving: Moving;
+	first: boolean;
+	last: boolean;
+	onNudge: (moving: Moving, dir: -1 | 1) => void;
+}) {
+	return (
+		<>
+			<DropdownMenuItem disabled={first} onSelect={() => onNudge(moving, -1)}>
+				<ArrowUpIcon />
+				위로
+			</DropdownMenuItem>
+			<DropdownMenuItem disabled={last} onSelect={() => onNudge(moving, 1)}>
+				<ArrowDownIcon />
+				아래로
+			</DropdownMenuItem>
 		</>
 	);
 }

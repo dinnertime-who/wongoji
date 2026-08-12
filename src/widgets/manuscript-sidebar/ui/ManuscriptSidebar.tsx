@@ -8,6 +8,7 @@ import {
 	displayTitle,
 	type FolderEntry,
 	fullPath,
+	nudgeEntry,
 	type Path,
 	placeEntry,
 	ROOT,
@@ -119,6 +120,8 @@ export function ManuscriptSidebar() {
 		 * `placeEntry`도 제 안에서 한 번 더 막는다.
 		 */
 		drop: (moving, to) => change((current) => placeEntry(current, moving, to)),
+		nudge: (moving, dir) =>
+			change((current) => nudgeEntry(current, moving, dir)),
 
 		duplicateDoc: (doc) => open(duplicateDocById(doc.id)),
 
