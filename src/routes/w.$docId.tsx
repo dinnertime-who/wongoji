@@ -2,11 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Breadcrumb } from "#/components/Breadcrumb";
 import { CapacityMeter } from "#/components/CapacityMeter";
 import { CopyManuscript } from "#/components/CopyManuscript";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
-import { ManuscriptBreadcrumb } from "#/components/ManuscriptSidebar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { SaveErrorBanner } from "#/components/SaveErrorBanner";
 import { Shell } from "#/components/Shell";
@@ -117,6 +117,8 @@ function Editor() {
 	const { docId } = Route.useParams();
 	const navigate = useNavigate();
 	const index = useStoreIndex();
+	/** 목록에 적힌 지금 원고. 브레드크럼이 놓일 자리를 여기서 읽는다 */
+	const opened = index.docs.find((d) => d.id === docId);
 
 	const [load, setLoad] = useState<Load>({ state: "loading" });
 	const [blocks, setBlocks] = useState<Block[]>([]);
@@ -382,7 +384,13 @@ function Editor() {
 					 */}
 					<SidebarTrigger title="보관함" aria-label="보관함" />
 
-					<ManuscriptBreadcrumb index={index} docId={docId} />
+					{opened && (
+						<Breadcrumb
+							index={index}
+							path={opened.path}
+							leaf={title.trim() || "제목 없는 원고"}
+						/>
+					)}
 
 					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
 						<CapacityMeter index={index} />

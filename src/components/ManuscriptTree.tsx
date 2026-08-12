@@ -156,11 +156,14 @@ function dragProps(dnd: Dnd, item: Drag, label: string) {
 export function ManuscriptTree({
 	index,
 	currentDocId,
+	currentFolderId,
 	actions,
 	onNavigate,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
+	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
+	currentFolderId?: string;
 	actions: TreeActions;
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
@@ -173,6 +176,25 @@ export function ManuscriptTree({
 	const [drag, setDrag] = useState<Drag | null>(null);
 	/** 지금 손이 올라가 있는 폴더의 안쪽 경로. 빈 곳이면 root다 */
 	const [over, setOver] = useState<Path | null>(null);
+
+	/*
+	 * 보고 있는 것까지 가는 길은 열어 둔다. 처음 그릴 때뿐 아니라 옮겨 다닐 때마다
+	 * 따라 연다 — 폴더 쪽에서 안쪽 폴더로 들어가면 트리에서도 그 자리가 보여야 한다.
+	 *
+	 * 이미 다 열려 있으면 그대로 돌려준다. 새 Set을 만들면 색인이 바뀔 때마다
+	 * 한 번씩 더 그린다.
+	 */
+	useEffect(() => {
+		const path = currentFolderId
+			? index.folders.find((f) => f.id === currentFolderId)?.path
+			: index.docs.find((d) => d.id === currentDocId)?.path;
+		if (path === undefined) return;
+
+		const trail = ancestorIds(path);
+		setOpen((prev) =>
+			trail.every((id) => prev.has(id)) ? prev : new Set([...prev, ...trail]),
+		);
+	}, [currentDocId, currentFolderId, index]);
 
 	const toggle = (id: string) =>
 		setOpen((prev) => {
@@ -378,6 +400,7 @@ export function ManuscriptTree({
 				open={open}
 				onToggle={toggle}
 				currentDocId={currentDocId}
+				currentFolderId={currentFolderId}
 				actions={{
 					...actions,
 					addDoc: (path) => {
@@ -400,6 +423,7 @@ function Level({
 	open,
 	onToggle,
 	currentDocId,
+	currentFolderId,
 	actions,
 	onNavigate,
 	dnd,
@@ -410,6 +434,7 @@ function Level({
 	open: Set<string>;
 	onToggle: (id: string) => void;
 	currentDocId: string;
+	currentFolderId?: string;
 	actions: TreeActions;
 	onNavigate?: () => void;
 	dnd: Dnd;
@@ -438,7 +463,9 @@ function Level({
 					<div key={folder.id} className="flex flex-col gap-1">
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
-							className={`group flex items-center rounded ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
+							className={`group flex items-center rounded ${
+								folder.id === currentFolderId ? "bg-muted font-medium" : ""
+							} ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
 							{...dragProps(
@@ -520,6 +547,7 @@ function Level({
 								open={open}
 								onToggle={onToggle}
 								currentDocId={currentDocId}
+								currentFolderId={currentFolderId}
 								actions={actions}
 								onNavigate={onNavigate}
 								dnd={dnd}

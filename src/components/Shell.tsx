@@ -23,6 +23,7 @@ const ROOMY = 1280;
 export function Shell({
 	index,
 	currentDocId,
+	currentFolderId,
 	onReport,
 	onReset,
 	children,
@@ -30,6 +31,8 @@ export function Shell({
 	index: StoreIndex;
 	/** 지금 열어 둔 원고. 폴더 쪽에는 없다 */
 	currentDocId: string;
+	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
+	currentFolderId?: string;
 	onReport: (result: SaveResult) => void;
 	/**
 	 * 하나뿐인 원고를 비운다.
@@ -82,6 +85,7 @@ export function Shell({
 				<ManuscriptSidebar
 					index={index}
 					currentDocId={currentDocId}
+					currentFolderId={currentFolderId}
 					onReport={onReport}
 					onReset={onReset}
 				/>

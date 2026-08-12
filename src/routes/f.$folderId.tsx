@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FileTextIcon, FolderIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "#/components/Breadcrumb";
 import { CapacityMeter } from "#/components/CapacityMeter";
 import { PageTitle } from "#/components/PageTitle";
 import { SaveErrorBanner } from "#/components/SaveErrorBanner";
@@ -16,7 +17,6 @@ import {
 	type FolderEntry,
 	fullPath,
 	mutateIndex,
-	pathNames,
 	readIndex,
 	renameFolder,
 	type SaveFailure,
@@ -71,7 +71,6 @@ function FolderPage() {
 
 	const inside = fullPath(folder);
 	const { folders, docs } = childrenOf(index, inside);
-	const trail = pathNames(folder.path, index.folders);
 
 	const change = (edit: Parameters<typeof mutateIndex>[0]) => {
 		const { result } = mutateIndex(edit);
@@ -117,26 +116,26 @@ function FolderPage() {
 		<Shell
 			index={index}
 			currentDocId=""
+			currentFolderId={folder.id}
 			onReport={(result) => setSaveFailure(result.ok ? null : result)}
 			onReset={resetOnlyDoc}
 		>
+			{/* 원고 쪽 머리말과 같은 짜임이다. 쪽을 옮겨도 같은 자리에 같은 크기로 있어야 한다 */}
 			<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
-				<div className="mx-auto flex max-w-3xl items-center gap-x-3 px-6 py-2.5">
+				<div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-1 px-6 py-2.5">
 					<SidebarTrigger title="보관함" aria-label="보관함" />
-					<CapacityMeter index={index} />
+
+					<Breadcrumb index={index} path={folder.path} leaf={folder.name} />
+
+					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
+						<CapacityMeter index={index} />
+					</div>
 				</div>
 			</header>
 
 			{saveFailure && <SaveErrorBanner failure={saveFailure} />}
 
 			<div className="mx-auto w-full max-w-3xl overflow-auto px-6 py-10">
-				{/* 어디에 있는 폴더인지. 이름만으로는 같은 이름이 여럿일 때 가려지지 않는다 */}
-				{trail.length > 0 && (
-					<p className="mb-2 truncate text-muted-foreground text-xs">
-						{trail.join(" / ")}
-					</p>
-				)}
-
 				<PageTitle
 					value={folder.name}
 					onChange={rename}

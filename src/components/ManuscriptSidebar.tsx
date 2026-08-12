@@ -30,6 +30,7 @@ import {
 	displayTitle,
 	duplicateDoc,
 	type FolderEntry,
+	fullPath,
 	moveDoc,
 	moveFolder,
 	mutateIndex,
@@ -68,11 +69,14 @@ const EMPTY_BODY = { type: "doc", content: [{ type: "paragraph" }] };
 export function ManuscriptSidebar({
 	index,
 	currentDocId,
+	currentFolderId,
 	onReport,
 	onReset,
 }: {
 	index: StoreIndex;
 	currentDocId: string;
+	/** 지금 열어 둔 폴더. 원고 쪽에는 없다 */
+	currentFolderId?: string;
 	onReport: (result: SaveResult) => void;
 	/**
 	 * 지금 열어 둔 원고를 비운다.
@@ -85,7 +89,16 @@ export function ManuscriptSidebar({
 	const navigate = useNavigate();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
-	const here = index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT;
+	/*
+	 * 새 원고와 새 폴더가 놓일 자리.
+	 *
+	 * 폴더를 열어 두었으면 그 안이다. 열어 놓고 새 원고를 누르는 사람은 거기에
+	 * 만들려는 것이지, 원고 쪽에서 마지막으로 보던 자리에 만들려는 것이 아니다.
+	 */
+	const openedFolder = index.folders.find((f) => f.id === currentFolderId);
+	const here = openedFolder
+		? fullPath(openedFolder)
+		: (index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT);
 
 	/**
 	 * 원고를 고르면 서랍을 닫는다.
@@ -211,6 +224,7 @@ export function ManuscriptSidebar({
 					<ManuscriptTree
 						index={index}
 						currentDocId={currentDocId}
+						currentFolderId={currentFolderId}
 						actions={actions}
 						onNavigate={closeDrawer}
 					/>
@@ -324,36 +338,5 @@ export function ManuscriptSidebar({
 				</AlertDialogContent>
 			</AlertDialog>
 		</>
-	);
-}
-
-/** 헤더에 놓는 현재 위치. 사이드바를 접었을 때 유일한 단서다 */
-export function ManuscriptBreadcrumb({
-	index,
-	docId,
-}: {
-	index: StoreIndex;
-	docId: string;
-}) {
-	const doc = index.docs.find((d) => d.id === docId);
-	if (!doc) return null;
-
-	const byId = new Map(index.folders.map((f) => [f.id, f]));
-	const names = ancestorIds(doc.path)
-		.map((id) => byId.get(id)?.name)
-		.filter((name): name is string => Boolean(name));
-
-	// 길어지면 앞을 줄인다
-	const shown = names.length > 2 ? ["…", ...names.slice(-2)] : names;
-
-	return (
-		<span className="min-w-0 truncate text-muted-foreground text-xs">
-			{shown.map((name) => (
-				<span key={name}>{name} / </span>
-			))}
-			<span className="text-foreground">
-				{doc.title.trim() || "제목 없는 원고"}
-			</span>
-		</span>
 	);
 }
