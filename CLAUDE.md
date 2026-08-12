@@ -29,3 +29,8 @@ Feature-Sliced Design. 레이어와 슬라이스 규칙, 그리고 `biome.json` 
 
 지켜야 할 관례는 한 줄이다 — **별칭(`#/`) import는 슬라이스를 건너고, 상대
 import(`./`)는 슬라이스 안에 머문다.**
+
+**`src/server/`는 FSD 밖이다.** 서버 전용 코드(better-auth·D1·스키마)가 거기 산다.
+프론트에서 `#/server`를 부르면 안 되고 — `cloudflare:workers`가 브라우저 번들에
+실려 빌드가 깨진다 — 부를 수 있는 곳은 `routes`의 서버 핸들러뿐이다. 반대로
+서버에서 `features`·`widgets`·`pages`를 부르는 것도 막혀 있다. 둘 다 biome이 잡는다.
