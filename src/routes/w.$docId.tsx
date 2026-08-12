@@ -11,7 +11,6 @@ import {
 } from "#/components/ManuscriptSidebar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { SaveErrorBanner } from "#/components/SaveErrorBanner";
-import { SidebarSwipe } from "#/components/SidebarSwipe";
 import { Button } from "#/components/ui/button";
 import {
 	Sidebar,
@@ -416,10 +415,6 @@ function Editor() {
 					onReset={resetDoc}
 				/>
 			</Sidebar>
-
-			{/* Sidebar 바깥이어야 한다. 서랍은 닫혀 있는 동안 그려지지 않는다 */}
-			<SidebarSwipe />
-
 			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 				<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
 					<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
