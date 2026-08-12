@@ -13,16 +13,8 @@
 import { env } from "cloudflare:workers";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { drizzle } from "drizzle-orm/d1";
+import { db } from "./db";
 import * as schema from "./schema/index";
-
-/*
- * D1 바인딩은 요청 컨텍스트 안에서만 질의할 수 있다. 다만 `env.DB`를 **참조**
- * 하는 것과 그것으로 **질의하는** 것은 다르다 — drizzle()도 betterAuth()도
- * 만들어지는 시점에는 아무것도 묻지 않으므로, 여기 최상단에서 조립해도 된다.
- * 실제 질의는 auth.handler()가 요청을 받은 뒤에야 일어난다.
- */
-const db = drizzle(env.DB, { schema });
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, { provider: "sqlite", schema }),
