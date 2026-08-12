@@ -3,6 +3,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CapacityMeter } from "#/components/CapacityMeter";
+import { CopyManuscript } from "#/components/CopyManuscript";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import {
@@ -477,8 +478,9 @@ function Editor() {
 										initialContent={docRef.current ?? load.content}
 										onChange={handleChange}
 										overlay={
-											<span className="rounded bg-background/85 px-1.5 py-0.5 text-[0.7rem] text-muted-foreground tabular-nums">
+											<span className="flex items-center gap-0.5 rounded bg-background/85 py-0.5 pr-0.5 pl-1.5 text-[0.7rem] text-muted-foreground tabular-nums">
 												{statsText}
+												<CopyManuscript manuscript={{ title, blocks }} />
 											</span>
 										}
 									/>
