@@ -338,18 +338,22 @@ function Editor() {
 	 * 저장소만 비우면 안 된다 — 에디터가 옛 내용을 그대로 들고 있어서 다음 타이핑에
 	 * 다시 저장된다. 밀린 저장까지 걷어내고 화면을 함께 갈아 끼운다.
 	 */
-	const resetDoc = () => {
+	const resetDoc = (docId: string) => {
 		pending.current = null;
 		window.clearTimeout(saveTimer.current);
 		saveTimer.current = undefined;
 
 		const doc = blocksToDoc([]);
+		// 받은 원고에 쓴다. 열어 둔 것이라고 짐작하면 언젠가 엉뚱한 원고를 비운다
+		save(docId, { title: "", goal: 0, content: doc, blocks: [] });
+
+		// 화면은 그 원고를 보고 있을 때만 갈아 끼운다
+		if (docId !== openedRef.current) return;
 		docRef.current = doc;
 		setTitle("");
 		setGoal(0);
 		setBlocks([]);
 		setLoad({ state: "ready", content: doc });
-		persist({ title: "", goal: 0, content: doc, blocks: [] });
 		setEditorKey((k) => k + 1);
 	};
 

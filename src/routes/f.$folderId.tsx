@@ -10,16 +10,18 @@ import { Button } from "#/components/ui/button";
 import { SidebarTrigger } from "#/components/ui/sidebar";
 import {
 	childrenOf,
-	createDoc,
+	createDocIn,
 	createFolder,
 	type DocEntry,
 	displayTitle,
+	EMPTY_DOC,
 	type FolderEntry,
 	fullPath,
 	mutateIndex,
 	readIndex,
 	renameFolder,
 	type SaveFailure,
+	type SaveResult,
 	tidy,
 	updateDoc,
 	useStoreIndex,
@@ -27,9 +29,6 @@ import {
 } from "#/lib/store";
 
 export const Route = createFileRoute("/f/$folderId")({ component: FolderPage });
-
-/** 새 원고의 빈 본문. ManuscriptSidebar와 같은 값이다 */
-const EMPTY_BODY = { type: "doc", content: [{ type: "paragraph" }] };
 
 /**
  * 폴더 안을 펼쳐 보이는 쪽.
@@ -72,24 +71,21 @@ function FolderPage() {
 	const inside = fullPath(folder);
 	const { folders, docs } = childrenOf(index, inside);
 
-	const change = (edit: Parameters<typeof mutateIndex>[0]) => {
-		const { result } = mutateIndex(edit);
+	const report = (result: SaveResult) =>
 		setSaveFailure(result.ok ? null : result);
+
+	const change = (edit: Parameters<typeof mutateIndex>[0]) => {
+		report(mutateIndex(edit).result);
 	};
 
 	const rename = (name: string) =>
 		change((current) => renameFolder(current, folder.id, name));
 
 	const addDoc = () => {
-		let createdId = "";
-		change((current) => {
-			const made = createDoc(current, { path: inside });
-			createdId = made.doc.id;
-			return made.index;
-		});
-		if (!createdId) return;
-		writeDoc(createdId, EMPTY_BODY);
-		navigate({ to: "/w/$docId", params: { docId: createdId } });
+		const { docId, result } = createDocIn(inside);
+		report(result);
+		// 만들지 못했으면 옮기지 않는다. 없는 원고로 보내면 곧바로 되돌아온다
+		if (docId) navigate({ to: "/w/$docId", params: { docId } });
 	};
 
 	const addFolder = () =>
@@ -103,12 +99,10 @@ function FolderPage() {
 	 * 여기서는 저장소만 고치면 된다. 원고 쪽과 달리 에디터가 떠 있지 않아, 갈아
 	 * 끼운 내용을 곧바로 되덮을 것이 없다.
 	 */
-	const resetOnlyDoc = () => {
-		const only = readIndex().docs[0];
-		if (!only) return;
-		writeDoc(only.id, EMPTY_BODY);
+	const resetDoc = (docId: string) => {
+		report(writeDoc(docId, EMPTY_DOC));
 		change((current) =>
-			updateDoc(current, only.id, { title: "", goal: 0, chars: 0, sheets: 1 }),
+			updateDoc(current, docId, { title: "", goal: 0, chars: 0, sheets: 1 }),
 		);
 	};
 
@@ -117,8 +111,8 @@ function FolderPage() {
 			index={index}
 			currentDocId=""
 			currentFolderId={folder.id}
-			onReport={(result) => setSaveFailure(result.ok ? null : result)}
-			onReset={resetOnlyDoc}
+			onReport={report}
+			onReset={resetDoc}
 		>
 			{/* 원고 쪽 머리말과 같은 짜임이다. 쪽을 옮겨도 같은 자리에 같은 크기로 있어야 한다 */}
 			<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">

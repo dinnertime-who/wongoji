@@ -33,6 +33,26 @@ export function canMoveFolder(folder: FolderEntry, toPath: Path): boolean {
 	return !toPath.startsWith(own);
 }
 
+/**
+ * 살아 있는 조상까지만 남긴 경로.
+ *
+ * 폴더가 사라졌는데 그 아래를 가리키는 것이 남아 있으면 화면에서 영영 보이지
+ * 않는다. 사슬을 위에서부터 훑다가 처음 끊긴 자리에서 멈춘다 — 거기까지가
+ * 실제로 갈 수 있는 곳이고, 하나도 못 가면 root다.
+ *
+ * 휴지통에서 되살릴 때와 앱을 열 때 다듬을 때 둘 다 이 규칙이다. 두 곳이
+ * 달라지면 원고가 트리에서 사라지므로 한 벌만 둔다. 무엇을 살아 있다고 볼지는
+ * 부르는 쪽이 정한다 — 되살릴 때는 함께 돌아오는 폴더도 살아 있는 것이다.
+ */
+export function settleUnder(path: Path, alive: ReadonlySet<string>): Path {
+	const kept: string[] = [];
+	for (const id of ancestorIds(path)) {
+		if (!alive.has(id)) break;
+		kept.push(id);
+	}
+	return kept.length ? `/${kept.join("/")}/` : ROOT;
+}
+
 /** 경로를 이름으로 옮긴다. 중간에 사라진 폴더가 있으면 거기서 멈춘다 */
 export function pathNames(path: Path, folders: FolderEntry[]): string[] {
 	const byId = new Map(folders.map((f) => [f.id, f]));

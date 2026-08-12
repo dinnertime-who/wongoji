@@ -24,11 +24,12 @@ import {
 } from "#/components/ui/sidebar";
 import {
 	ancestorIds,
-	createDoc,
+	type Created,
+	createDocIn,
 	createFolder,
 	type DocEntry,
 	displayTitle,
-	duplicateDoc,
+	duplicateDocById,
 	type FolderEntry,
 	fullPath,
 	moveDoc,
@@ -36,13 +37,11 @@ import {
 	mutateIndex,
 	type Path,
 	ROOT,
-	readDoc,
 	renameFolder,
 	type SaveResult,
 	type StoreIndex,
 	trashDoc,
 	trashFolder,
-	writeDoc,
 } from "#/lib/store";
 
 /** 어떤 창을 열어 두었는가. 한 번에 하나만 뜬다 */
@@ -52,13 +51,10 @@ type Sheet =
 	| { kind: "renameFolder"; folder: FolderEntry }
 	| { kind: "moveFolder"; folder: FolderEntry }
 	| { kind: "moveDoc"; doc: DocEntry }
-	| { kind: "resetDoc" }
+	| { kind: "resetDoc"; doc: DocEntry }
 	| { kind: "trash" };
 
 const CLOSED: Sheet = { kind: "none" };
-
-/** 새 원고의 빈 본문. 키가 아예 없으면 "본문을 잃었다"는 뜻이 된다 */
-const EMPTY_BODY = { type: "doc", content: [{ type: "paragraph" }] };
 
 /**
  * 원고 보관함.
@@ -79,12 +75,12 @@ export function ManuscriptSidebar({
 	currentFolderId?: string;
 	onReport: (result: SaveResult) => void;
 	/**
-	 * 지금 열어 둔 원고를 비운다.
+	 * 그 원고를 비운다.
 	 *
 	 * 저장소만 고쳐서는 안 된다 — 에디터가 들고 있는 내용은 그대로 남아 곧바로
 	 * 다시 저장된다. 화면을 쥔 쪽이 함께 처리해야 한다.
 	 */
-	onReset: () => void;
+	onReset: (docId: string) => void;
 }) {
 	const navigate = useNavigate();
 	const { isMobile, setOpenMobile } = useSidebar();
@@ -117,19 +113,15 @@ export function ManuscriptSidebar({
 		return result.ok;
 	};
 
-	const addDoc = (path: Path) => {
-		let createdId = "";
-		const ok = change((current) => {
-			const made = createDoc(current, { path });
-			createdId = made.doc.id;
-			return made.index;
-		});
-		if (!ok) return;
-
-		writeDoc(createdId, EMPTY_BODY);
-		navigate({ to: "/w/$docId", params: { docId: createdId } });
+	/** 새로 만들거나 복제한 원고를 연다. 실패는 배너가 받는다 */
+	const open = ({ docId, result }: Created) => {
+		onReport(result);
+		if (!docId) return;
+		navigate({ to: "/w/$docId", params: { docId } });
 		closeDrawer();
 	};
+
+	const addDoc = (path: Path) => open(createDocIn(path));
 
 	const actions: TreeActions = {
 		addDoc,
@@ -148,22 +140,7 @@ export function ManuscriptSidebar({
 		dropFolder: (folderId, to) =>
 			change((current) => moveFolder(current, folderId, to)),
 
-		duplicateDoc: (doc) => {
-			// 본문을 먼저 읽는다. 색인만 늘려 놓고 본문을 못 읽으면 빈 사본이 남는다
-			const body = readDoc(doc.id);
-			let copyId = "";
-			const ok = change((current) => {
-				const made = duplicateDoc(current, doc.id);
-				if (!made) return current;
-				copyId = made.doc.id;
-				return made.index;
-			});
-			if (!ok || !copyId) return;
-
-			onReport(writeDoc(copyId, body ?? EMPTY_BODY));
-			navigate({ to: "/w/$docId", params: { docId: copyId } });
-			closeDrawer();
-		},
+		duplicateDoc: (doc) => open(duplicateDocById(doc.id)),
 
 		/*
 		 * 버릴 때 확인을 받지 않는다. 30일 동안 휴지통에 있으므로 되돌릴 수 있고,
@@ -176,7 +153,7 @@ export function ManuscriptSidebar({
 			if (doc.id === currentDocId) navigate({ to: "/", replace: true });
 		},
 
-		resetDoc: () => setSheet({ kind: "resetDoc" }),
+		resetDoc: (doc) => setSheet({ kind: "resetDoc", doc }),
 
 		trashFolder: (folder) => {
 			change((current) => trashFolder(current, folder.id));
@@ -329,7 +306,7 @@ export function ManuscriptSidebar({
 					<AlertDialogFooter>
 						<AlertDialogCancel>취소</AlertDialogCancel>
 						<AlertDialogAction
-							onClick={onReset}
+							onClick={() => sheet.kind === "resetDoc" && onReset(sheet.doc.id)}
 							className="bg-destructive text-white hover:bg-destructive/90"
 						>
 							비우기

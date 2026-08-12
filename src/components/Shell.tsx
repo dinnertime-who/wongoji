@@ -40,7 +40,7 @@ export function Shell({
 	 * 비우는 방법이 쪽마다 다르다. 원고 쪽은 에디터가 들고 있는 내용까지 함께
 	 * 갈아야 하고, 폴더 쪽은 에디터가 없어 저장소만 고치면 된다.
 	 */
-	onReset: () => void;
+	onReset: (docId: string) => void;
 	children: React.ReactNode;
 }) {
 	const [open, setOpen] = useState(false);

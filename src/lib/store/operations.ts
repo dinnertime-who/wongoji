@@ -1,4 +1,4 @@
-import { canMoveFolder, fullPath, isUnder, ROOT } from "./path";
+import { canMoveFolder, fullPath, isUnder, ROOT, settleUnder } from "./path";
 import type {
 	DocEntry,
 	FolderEntry,
@@ -273,24 +273,14 @@ export function restore(index: StoreIndex, id: string): StoreIndex {
 		...coming.filter((t) => t.kind === "folder").map((t) => t.id),
 	]);
 
-	/** 살아 있는 조상까지만 남긴다 */
-	const settle = (path: Path): Path => {
-		const ids = path.split("/").filter(Boolean);
-		const kept: string[] = [];
-		for (const segment of ids) {
-			if (!alive.has(segment)) break;
-			kept.push(segment);
-		}
-		return kept.length ? `/${kept.join("/")}/` : ROOT;
-	};
-
 	const folders = [...index.folders];
 	const docs = [...index.docs];
 	for (const item of coming) {
+		const path = settleUnder(item.path, alive);
 		if (item.kind === "folder") {
-			folders.push({ id: item.id, name: item.name, path: settle(item.path) });
+			folders.push({ id: item.id, name: item.name, path });
 		} else {
-			docs.push(reviveDoc(item, settle(item.path)));
+			docs.push(reviveDoc(item, path));
 		}
 	}
 
@@ -383,14 +373,7 @@ export const daysLeft = (
  */
 export function repairPaths(index: StoreIndex): StoreIndex {
 	const alive = new Set(index.folders.map((f) => f.id));
-	const settle = (path: Path): Path => {
-		const kept: string[] = [];
-		for (const segment of path.split("/").filter(Boolean)) {
-			if (!alive.has(segment)) break;
-			kept.push(segment);
-		}
-		return kept.length ? `/${kept.join("/")}/` : ROOT;
-	};
+	const settle = (path: Path) => settleUnder(path, alive);
 
 	return {
 		...index,
