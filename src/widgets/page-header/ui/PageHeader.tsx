@@ -1,4 +1,3 @@
-import { CapacityMeter } from "#/entities/archive";
 import { AuthButton } from "#/features/auth";
 import { SidebarTrigger } from "#/shared/ui/sidebar";
 
@@ -20,7 +19,7 @@ export function PageHeader({
 	width?: "wide" | "narrow";
 	/** 지금 어디인지. 보통 브레드크럼이 온다 */
 	children: React.ReactNode;
-	/** 오른쪽에 붙는 것들. 보관함 용량은 늘 여기 있다 */
+	/** 오른쪽에 붙는 것들. 로그인 단추 왼편에 온다 */
 	actions?: React.ReactNode;
 }) {
 	return (
@@ -39,7 +38,6 @@ export function PageHeader({
 				{children}
 
 				<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-					<CapacityMeter />
 					{actions}
 					{/*
 					 * 로그인은 맨 오른쪽 끝. 아직 아무것도 막지 않으므로 이 단추는

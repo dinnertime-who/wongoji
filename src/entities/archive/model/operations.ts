@@ -424,16 +424,6 @@ export function countDocsUnder(index: StoreIndex, folderId: string): number {
 	);
 }
 
-/**
- * 보관함이 쓴 분량. 목록에 든 값을 더한다 — 세느라 원고를 열지 않는다.
- *
- * 휴지통은 세지 않는다. 30일 뒤 저절로 비워지는 것이라 지금 쓴 분량으로 보기
- * 어렵고, 휴지통은 제 개수를 따로 보여준다.
- */
-export function usedSheets(index: StoreIndex): number {
-	return index.docs.reduce((sum, doc) => sum + doc.sheets, 0);
-}
-
 // ─── 계정으로 올릴 때 ───
 
 /**

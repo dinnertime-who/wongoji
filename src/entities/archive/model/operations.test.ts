@@ -24,7 +24,6 @@ import {
 	trashDoc,
 	trashFolder,
 	updateDoc,
-	usedSheets,
 } from "./operations";
 import { emptyIndex, type StoreIndex } from "./types";
 
@@ -345,43 +344,6 @@ describe("휴지통이 들고 가는 값", () => {
 		expect(revived.docs.find((d) => d.id === made.doc.id)?.title).toBe(
 			"눈 오는 날",
 		);
-	});
-});
-
-describe("usedSheets", () => {
-	it("빈 보관함은 0매다", () => {
-		expect(usedSheets(emptyIndex())).toBe(0);
-	});
-
-	it("원고들의 매수를 더한다", () => {
-		let index = emptyIndex();
-		index = updateDoc(createDoc(index, {}, seq("d")).index, "d1", {
-			sheets: 3,
-		});
-		index = updateDoc(createDoc(index, {}, seq("e")).index, "e1", {
-			sheets: 7,
-		});
-		expect(usedSheets(index)).toBe(10);
-	});
-
-	it("폴더 안에 든 것도 센다 — 자리와 무관하다", () => {
-		const made = createFolder(emptyIndex(), "폴더", ROOT, seq("f"));
-		let index = createDoc(
-			made.index,
-			{ path: fullPath(made.folder) },
-			seq("d"),
-		).index;
-		index = updateDoc(index, "d1", { sheets: 5 });
-		expect(usedSheets(index)).toBe(5);
-	});
-
-	it("휴지통은 세지 않는다 — 30일 뒤 저절로 비워진다", () => {
-		let index = createDoc(emptyIndex(), {}, seq("d")).index;
-		index = updateDoc(index, "d1", { sheets: 9 });
-		expect(usedSheets(index)).toBe(9);
-
-		index = trashDoc(index, "d1", NOW);
-		expect(usedSheets(index)).toBe(0);
 	});
 });
 

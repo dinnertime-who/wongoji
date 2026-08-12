@@ -11,7 +11,7 @@ export {
 	writeIndex,
 	writeLastOpened,
 } from "./api/index-storage";
-export { SHEET_LIMIT, TRASH_DAYS } from "./config/limits";
+export { TRASH_DAYS } from "./config/limits";
 export {
 	ancestorIds,
 	canMoveFolder,
@@ -39,7 +39,6 @@ export {
 	trashDoc,
 	trashFolder,
 	updateDoc,
-	usedSheets,
 } from "./model/operations";
 export {
 	SaveStatusProvider,
@@ -56,4 +55,3 @@ export {
 } from "./model/types";
 export { useStoreIndex } from "./model/use-store-index";
 export { Breadcrumb } from "./ui/Breadcrumb";
-export { CapacityMeter } from "./ui/CapacityMeter";
