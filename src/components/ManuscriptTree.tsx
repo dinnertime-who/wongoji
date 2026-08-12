@@ -22,6 +22,7 @@ import {
 } from "#/components/ui/dropdown-menu";
 import {
 	ancestorIds,
+	canMoveFolder,
 	childrenOf,
 	type DocEntry,
 	displayTitle,
@@ -43,6 +44,71 @@ export interface TreeActions {
 	trashDoc: (doc: DocEntry) => void;
 	/** 하나뿐인 원고를 비운다. 버리는 대신이다 */
 	resetDoc: (doc: DocEntry) => void;
+	/*
+	 * 끌어다 놓아 옮긴다. 다이얼로그를 거치는 moveDoc·moveFolder와 목적지는 같지만
+	 * 고르는 방법이 달라 따로 둔다 — 이쪽은 갈 곳이 이미 정해져 있다.
+	 */
+	dropDoc: (docId: string, to: Path) => void;
+	dropFolder: (folderId: string, to: Path) => void;
+}
+
+/** 끌고 있는 것. 폴더는 제 자손에 들어갈 수 없어 종류를 알아야 한다 */
+type Drag = { kind: "doc" | "folder"; id: string };
+
+/** 트리 전체가 나눠 쓰는 끌어 놓기 상태 */
+interface Dnd {
+	drag: Drag | null;
+	/** 손이 올라가 있는 곳 */
+	over: Path | null;
+	canDrop: (to: Path) => boolean;
+	onDragStart: (drag: Drag) => void;
+	onDragEnd: () => void;
+	onDragOver: (to: Path) => void;
+	onDrop: (to: Path) => void;
+}
+
+/**
+ * 놓을 수 있는 자리에 손이 올라왔을 때 줄에 입히는 표시.
+ *
+ * 놓을 수 없는 자리는 아무 표시도 하지 않는다 — 금지 표시를 그리는 것보다
+ * 반응이 없는 편이 조용하다.
+ */
+function dropClass(dnd: Dnd, to: Path): string {
+	return dnd.drag && dnd.over === to && dnd.canDrop(to)
+		? "bg-accent ring-1 ring-ring"
+		: "";
+}
+
+/** 줄에 끌어 놓기를 붙인다. 폴더 줄은 제 안쪽을, 원고 줄은 제가 놓인 자리를 받는다 */
+function dropProps(dnd: Dnd, to: Path) {
+	return {
+		onDragOver: (e: React.DragEvent) => {
+			if (!dnd.canDrop(to)) return;
+			// 바깥의 root 영역까지 올라가면 목적지가 root로 덮인다
+			e.stopPropagation();
+			e.preventDefault();
+			dnd.onDragOver(to);
+		},
+		onDrop: (e: React.DragEvent) => {
+			e.stopPropagation();
+			e.preventDefault();
+			dnd.onDrop(to);
+		},
+	};
+}
+
+/** 끌 수 있게 만든다. dataTransfer를 채워야 브라우저가 끌기를 시작한다 */
+function dragProps(dnd: Dnd, item: Drag, label: string) {
+	return {
+		draggable: true,
+		onDragStart: (e: React.DragEvent) => {
+			e.stopPropagation();
+			e.dataTransfer.effectAllowed = "move";
+			e.dataTransfer.setData("text/plain", label);
+			dnd.onDragStart(item);
+		},
+		onDragEnd: dnd.onDragEnd,
+	};
 }
 
 /**
@@ -68,6 +134,9 @@ export function ManuscriptTree({
 	const [open, setOpen] = useState<Set<string>>(
 		() => new Set(current ? ancestorIds(current.path) : []),
 	);
+	const [drag, setDrag] = useState<Drag | null>(null);
+	/** 지금 손이 올라가 있는 폴더의 안쪽 경로. 빈 곳이면 root다 */
+	const [over, setOver] = useState<Path | null>(null);
 
 	const toggle = (id: string) =>
 		setOpen((prev) => {
@@ -76,8 +145,62 @@ export function ManuscriptTree({
 			return next;
 		});
 
+	/** 지금 끌고 있는 것을 이 경로에 놓을 수 있는가 */
+	const canDrop = (to: Path): boolean => {
+		if (!drag) return false;
+		if (drag.kind === "folder") {
+			const folder = index.folders.find((f) => f.id === drag.id);
+			// 제 자신·제 자손 안으로는 갈 수 없다. 사슬이 끊긴다
+			return !!folder && canMoveFolder(folder, to);
+		}
+		// 이미 그 자리에 있으면 옮길 것이 없다
+		return index.docs.find((d) => d.id === drag.id)?.path !== to;
+	};
+
+	const drop = (to: Path) => {
+		if (drag && canDrop(to)) {
+			if (drag.kind === "doc") actions.dropDoc(drag.id, to);
+			else actions.dropFolder(drag.id, to);
+		}
+		setDrag(null);
+		setOver(null);
+	};
+
+	const dnd: Dnd = {
+		drag,
+		over,
+		canDrop,
+		onDragStart: setDrag,
+		onDragEnd: () => {
+			setDrag(null);
+			setOver(null);
+		},
+		onDragOver: setOver,
+		onDrop: drop,
+	};
+
 	return (
-		<div className="min-w-max py-1">
+		/*
+		 * 빈 곳에 놓으면 root로 나온다. 폴더 밖으로 꺼낼 다른 길이 없다.
+		 *
+		 * 트리가 짧으면 빈 곳도 좁으므로 아래로 넉넉히 늘린다.
+		 */
+		// biome-ignore lint/a11y/noStaticElementInteractions: 끌어 놓기는 마우스 전용이다. 키보드로는 ⋯ 메뉴의 이동을 쓴다
+		<div
+			className={`min-w-max flex-1 py-1 ${
+				drag && over === ROOT && canDrop(ROOT) ? "bg-accent/60" : ""
+			}`}
+			onDragOver={(e) => {
+				// 여기서 막지 않으면 브라우저가 놓기를 거부한다
+				if (!canDrop(ROOT)) return;
+				e.preventDefault();
+				setOver(ROOT);
+			}}
+			onDrop={(e) => {
+				e.preventDefault();
+				drop(ROOT);
+			}}
+		>
 			<Level
 				index={index}
 				path={ROOT}
@@ -94,6 +217,7 @@ export function ManuscriptTree({
 					},
 				}}
 				onNavigate={onNavigate}
+				dnd={dnd}
 			/>
 		</div>
 	);
@@ -108,6 +232,7 @@ function Level({
 	currentDocId,
 	actions,
 	onNavigate,
+	dnd,
 }: {
 	index: StoreIndex;
 	path: Path;
@@ -117,6 +242,7 @@ function Level({
 	currentDocId: string;
 	actions: TreeActions;
 	onNavigate?: () => void;
+	dnd: Dnd;
 }) {
 	const { folders, docs } = childrenOf(index, path);
 	// 깊이를 패딩으로 준다. 이름이 길어지면 부모가 가로로 스크롤한다
@@ -135,9 +261,22 @@ function Level({
 		<>
 			{folders.map((folder) => {
 				const expanded = open.has(folder.id);
+				const inside = fullPath(folder);
+				const dragging = dnd.drag?.id === folder.id;
 				return (
 					<div key={folder.id}>
-						<div className="group flex items-center">
+						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
+						<div
+							className={`group flex items-center rounded ${dropClass(dnd, inside)} ${
+								dragging ? "opacity-40" : ""
+							}`}
+							{...dragProps(
+								dnd,
+								{ kind: "folder", id: folder.id },
+								folder.name,
+							)}
+							{...dropProps(dnd, inside)}
+						>
 							<button
 								type="button"
 								onClick={() => onToggle(folder.id)}
@@ -191,13 +330,14 @@ function Level({
 						{expanded && (
 							<Level
 								index={index}
-								path={fullPath(folder)}
+								path={inside}
 								depth={depth + 1}
 								open={open}
 								onToggle={onToggle}
 								currentDocId={currentDocId}
 								actions={actions}
 								onNavigate={onNavigate}
+								dnd={dnd}
 							/>
 						)}
 					</div>
@@ -205,11 +345,18 @@ function Level({
 			})}
 
 			{docs.map((doc) => (
+				/*
+				 * 원고 줄도 놓는 자리를 받는다. 제가 놓인 폴더를 목적지로 넘기므로,
+				 * 원고 사이에 떨어뜨려도 그 폴더로 들어간다. 촘촘한 목록에서 폴더 줄만
+				 * 노려 맞히지 않아도 된다.
+				 */
 				<div
 					key={doc.id}
 					className={`group flex items-center rounded ${
 						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
-					}`}
+					} ${dropClass(dnd, path)} ${dnd.drag?.id === doc.id ? "opacity-40" : ""}`}
+					{...dragProps(dnd, { kind: "doc", id: doc.id }, displayTitle(doc))}
+					{...dropProps(dnd, path)}
 				>
 					<Link
 						to="/w/$docId"

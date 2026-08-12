@@ -419,3 +419,19 @@ export function countDocsUnder(index: StoreIndex, folderId: string): number {
 		index.trash.filter((t) => t.kind === "doc" && isUnder(t.path, under)).length
 	);
 }
+
+/**
+ * 보관함이 쓴 분량과 그 한계.
+ *
+ * 매수로 잰다. 바이트로 적으면 얼마나 더 쓸 수 있는지 가늠할 수 없지만, 매수는
+ * 원고지를 쓰는 사람이 이미 아는 단위다.
+ *
+ * 휴지통은 세지 않는다. 30일 뒤 저절로 비워지는 것이라 지금 쓴 분량으로 보기
+ * 어렵고, 휴지통은 제 개수를 따로 보여준다.
+ */
+export const SHEET_LIMIT = 100;
+
+/** 목록에 든 값을 더한다. 세느라 원고를 열지 않는다 */
+export function usedSheets(index: StoreIndex): number {
+	return index.docs.reduce((sum, doc) => sum + doc.sheets, 0);
+}

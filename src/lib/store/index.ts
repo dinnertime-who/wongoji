@@ -23,10 +23,12 @@ export {
 	renameFolder,
 	repairPaths,
 	restore,
+	SHEET_LIMIT,
 	TRASH_DAYS,
 	trashDoc,
 	trashFolder,
 	updateDoc,
+	usedSheets,
 } from "./operations";
 export {
 	ancestorIds,

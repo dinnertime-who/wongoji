@@ -125,6 +125,16 @@ export function ManuscriptSidebar({
 		moveFolder: (folder) => setSheet({ kind: "moveFolder", folder }),
 		moveDoc: (doc) => setSheet({ kind: "moveDoc", doc }),
 
+		/*
+		 * 끌어다 놓은 이동. 갈 곳이 이미 정해져 있어 다이얼로그를 열지 않는다.
+		 *
+		 * 갈 수 없는 자리는 트리가 미리 걸러 놓으므로 여기서 다시 묻지 않는다.
+		 * moveFolder도 제 안에서 한 번 더 막는다.
+		 */
+		dropDoc: (docId, to) => change((current) => moveDoc(current, docId, to)),
+		dropFolder: (folderId, to) =>
+			change((current) => moveFolder(current, folderId, to)),
+
 		duplicateDoc: (doc) => {
 			// 본문을 먼저 읽는다. 색인만 늘려 놓고 본문을 못 읽으면 빈 사본이 남는다
 			const body = readDoc(doc.id);
@@ -196,7 +206,8 @@ export function ManuscriptSidebar({
 				// 정본은 가로 넘침을 숨긴다. 트리는 밀어내야 하므로 되돌린다
 				className="overflow-x-auto px-1"
 			>
-				<nav aria-label="원고 보관함">
+				{/* 트리가 짧아도 아래 빈 곳까지 늘어나야 한다. 거기가 root로 꺼내는 자리다 */}
+				<nav aria-label="원고 보관함" className="flex flex-1 flex-col">
 					<ManuscriptTree
 						index={index}
 						currentDocId={currentDocId}

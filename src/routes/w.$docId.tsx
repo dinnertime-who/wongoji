@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CapacityMeter } from "#/components/CapacityMeter";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
 import {
@@ -427,6 +428,7 @@ function Editor() {
 						<ManuscriptBreadcrumb index={index} docId={docId} />
 
 						<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
+							<CapacityMeter index={index} />
 							<RulesDialog />
 							<ExportDialog
 								manuscript={{ title, blocks }}
