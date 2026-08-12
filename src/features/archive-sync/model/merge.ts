@@ -1,5 +1,5 @@
 import { clearIndexIn, readIndexIn, remapIds } from "#/entities/archive";
-import { clearDocsIn, readDocIn } from "#/entities/manuscript";
+import { clearDocsIn, readDocIn, writeDoc } from "#/entities/manuscript";
 import { fetchTakenIds, pushArchive, pushDocContent } from "../api/archive-api";
 
 /**
@@ -69,7 +69,21 @@ export async function mergeLocalIntoAccount(): Promise<void> {
 		const content = await readDocIn(null, oldId);
 		// 본문이 없는 원고는 색인만 올라간다. 여기서 빈 것을 올리면 잃은 것을 덮는다
 		if (content == null) continue;
-		await pushDocContent(renamed.get(oldId) ?? oldId, content);
+
+		const id = renamed.get(oldId) ?? oldId;
+		await pushDocContent(id, content);
+
+		/*
+		 * 계정 칸에도 둔다. **이것을 빠뜨리면 옮긴 원고가 본문을 잃는다.**
+		 *
+		 * 지금 우리는 계정 칸에 있고, 그 칸의 IndexedDB는 비어 있다. 색인만
+		 * 들어오면 목록에는 보이는데 본문이 없어 "본문을 찾을 수 없다"가 된다.
+		 * 서버에 있으니 언젠가 받아 오기는 하지만, 받아 오기는 로그인할 때 한 번
+		 * 돌고 끝이라 그 뒤에 옮긴 것은 아무도 채워 주지 않는다.
+		 *
+		 * 손에 이미 들고 있으므로 다녀올 이유도 없다.
+		 */
+		await writeDoc(id, content);
 	}
 
 	// 여기까지 왔으면 계정에 다 있다. 이제 비운다

@@ -1,17 +1,16 @@
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
-import { useArchiveSync } from "../model/use-archive-sync";
+import { useMergePrompt } from "../model/use-merge-prompt";
 
 /**
- * 계정 보관함과 이 기기를 맞추고, 물어볼 것이 있으면 묻는다.
+ * 로그인했을 때 이 기기에 두고 온 원고를 옮길지 묻는다.
  *
- * 그리는 것은 다이얼로그 하나뿐이고 나머지는 뒤에서 돈다. 어디에 두어도 되지만
- * 보관함을 쓰는 모든 쪽이 지나는 자리에 두어야 한다 — `_app` 레이아웃이 그것이다.
+ * **root에 둔다.** 홈에서도 떠 있어야 하기 때문이다 — 답하기 전에는 보관함이
+ * 열리지 않으므로, `_app` 안에만 두면 아무도 없는 화면에서 서로를 기다린다.
  *
- * 아무것도 막지 않는다. 묻는 동안에도 뒤에서 원고를 쓸 수 있고, 올리지 않기를
- * 골라도 잃는 것이 없다.
+ * 올리지 않기를 골라도 잃는 것이 없다. 비로그인 원고는 그 칸에 그대로 남는다.
  */
-export function ArchiveSync() {
-	const { ask, merging, accept, decline } = useArchiveSync();
+export function MergePrompt() {
+	const { ask, merging, accept, decline } = useMergePrompt();
 
 	if (!ask) return null;
 

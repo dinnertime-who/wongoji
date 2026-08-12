@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
 	readIndex,
 	subscribeToIndex,
@@ -13,12 +13,9 @@ import {
 	pushArchive,
 	pushDocContent,
 } from "../api/archive-api";
-import { mergeLocalIntoAccount, pendingUpload } from "./merge";
 
 /** 색인을 밀어 넣기까지 기다리는 시간. 타이핑 한 번에 한 번씩 보내지 않는다 */
 const PUSH_DEBOUNCE = 1500;
-
-export type MergeAsk = { docs: number; folders: number } | null;
 
 /**
  * 계정 보관함과 이 기기를 맞춘다.
@@ -38,10 +35,6 @@ export function useArchiveSync() {
 	const { data: session } = authClient.useSession();
 	const userId = session?.user.id ?? null;
 	const { report } = useSaveStatus();
-
-	/** 물어봐야 할 것이 있으면 몇 개인지. 없으면 null */
-	const [ask, setAsk] = useState<MergeAsk>(null);
-	const [merging, setMerging] = useState(false);
 
 	const pushTimer = useRef<number | undefined>(undefined);
 	/** 이 계정으로 이미 받아 왔는가. 그릴 때마다 다시 받지 않는다 */
@@ -104,16 +97,6 @@ export function useArchiveSync() {
 		};
 	}, [userId, report]);
 
-	/* 로그인 직후, 이 기기에 두고 온 비로그인 원고가 있으면 묻는다 */
-	useEffect(() => {
-		if (!userId) {
-			setAsk(null);
-			return;
-		}
-		const waiting = pendingUpload();
-		if (waiting.docs || waiting.folders) setAsk(waiting);
-	}, [userId]);
-
 	/* 색인이 바뀌면 뒤에서 밀어 넣는다 */
 	useEffect(() => {
 		if (!userId) return;
@@ -140,24 +123,4 @@ export function useArchiveSync() {
 			window.clearTimeout(pushTimer.current);
 		};
 	}, [userId]);
-
-	return {
-		/** 물어볼 것. 없으면 null */
-		ask,
-		merging,
-		/** 올린다. 끝나면 비로그인 칸은 비워진다 */
-		accept: async () => {
-			setMerging(true);
-			try {
-				await mergeLocalIntoAccount();
-				// 올린 것이 계정 색인에 들어왔으니 다시 받아 온다
-				report(writeIndex(await fetchArchive()));
-			} finally {
-				setMerging(false);
-				setAsk(null);
-			}
-		},
-		/** 올리지 않는다. 비로그인 원고는 그대로 남고 로그아웃하면 다시 보인다 */
-		decline: () => setAsk(null),
-	};
 }

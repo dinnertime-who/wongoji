@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { MergePrompt } from "#/features/archive-sync";
 import { useArchiveScope } from "#/features/auth";
 import { QueryProvider } from "#/shared/api/query";
 
@@ -40,7 +41,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<QueryProvider>
-					<ArchiveScope>{children}</ArchiveScope>
+					<ArchiveScope>
+						{/*
+						 * 옮길지 묻는 창. 답하기 전에는 보관함이 열리지 않으므로
+						 * 홈에서도 떠 있어야 한다 — `_app` 안에 두면 서로 기다린다.
+						 */}
+						<MergePrompt />
+						{children}
+					</ArchiveScope>
 				</QueryProvider>
 				{/*
 				 * TanStack Devtools는 띄우지 않는다. 떠 있는 뱃지가 화면 구석을 가린다.

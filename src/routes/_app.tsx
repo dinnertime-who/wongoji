@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SaveStatusProvider, useSaveStatus } from "#/entities/archive";
 import { tidy } from "#/features/archive-bootstrap";
-import { ArchiveSync } from "#/features/archive-sync";
+import { useArchiveSync } from "#/features/archive-sync";
 import { requestPersistentStorage } from "#/shared/lib/storage";
 import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 import { AppShell } from "#/widgets/app-shell";
@@ -24,8 +24,8 @@ export const Route = createFileRoute("/_app")({ component: AppLayout });
 function AppLayout() {
 	return (
 		<SaveStatusProvider>
-			{/* 계정 보관함과 맞춘다. 그리는 것은 물어볼 때의 다이얼로그뿐이다 */}
-			<ArchiveSync />
+			{/* 계정 보관함과 주고받는다. 그리는 것은 없다 */}
+			<ArchiveSyncRunner />
 			<AppShell sidebar={<ManuscriptSidebar />}>
 				<Chrome />
 			</AppShell>
@@ -58,4 +58,15 @@ function Chrome() {
 			<Outlet />
 		</>
 	);
+}
+
+/**
+ * 계정 보관함과 주고받는다.
+ *
+ * 컴포넌트로 감싼 이유는 `SaveStatusProvider` **안**이어야 하기 때문이다 —
+ * 저장 실패를 알릴 자리가 필요하다. 묻는 창은 그보다 먼저 떠야 해서 root에 있다.
+ */
+function ArchiveSyncRunner() {
+	useArchiveSync();
+	return null;
 }
