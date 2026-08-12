@@ -10,7 +10,15 @@ export type SaveFailure =
 	/** 5MB 상한에 닿았다 */
 	| { kind: "quota"; message: string }
 	/** 사생활 보호 모드 등으로 저장소 자체를 쓸 수 없다 */
-	| { kind: "unavailable"; message: string };
+	| { kind: "unavailable"; message: string }
+	/**
+	 * 색인이 있는데 읽어내지 못했다.
+	 *
+	 * 읽기 실패지만 저장 실패로 다룬다. 읽지 못한 색인 위에 쓰면 목록을 통째로
+	 * 덮어쓰기 때문에, 이 상태에서 우리가 하는 일은 "쓰지 않는 것"이다.
+	 * 부르는 쪽은 다른 실패와 똑같이 배너로 알리면 된다.
+	 */
+	| { kind: "corrupt"; message: string };
 
 export type SaveResult = { ok: true } | ({ ok: false } & SaveFailure);
 

@@ -43,6 +43,15 @@ export interface Bootstrap {
 
 export function bootstrap(now = Date.now()): Bootstrap {
 	const tidied = tidy(now);
+
+	/*
+	 * 다듬기가 실패했으면 여기서 멈춘다.
+	 *
+	 * 이 아래는 "원고가 하나도 없으면 만든다"인데, 색인을 못 읽어 비어 보이는 것도
+	 * 여기로 들어온다. 그대로 두면 멀쩡한 보관함 위에 새 원고 하나짜리 목록이 써진다.
+	 */
+	if (!tidied.result.ok) return { docId: "", result: tidied.result };
+
 	let index = tidied.index;
 
 	if (index.docs.length === 0) {

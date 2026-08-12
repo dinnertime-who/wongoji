@@ -64,12 +64,20 @@ export function TrashDialog({
 	};
 
 	const erase = (entry: TrashEntry) => {
+		let bodies: string[] = [];
 		const { result } = mutateIndex((current) => {
 			const { index: next, removedDocIds } = purge(current, [entry.id]);
-			// 색인에서 뺀 본문 키도 함께 지운다. 두면 자리만 먹는 고아가 된다
-			for (const id of removedDocIds) removeDoc(id);
+			bodies = removedDocIds;
 			return next;
 		});
+
+		/*
+		 * 색인에서 뺀 본문 키도 함께 지운다 — 두면 자리만 먹는 고아가 된다.
+		 * 다만 색인이 실제로 써진 뒤다. 순서를 뒤집으면 쓰기가 실패했을 때
+		 * 휴지통에는 그대로 있는데 본문만 사라져 되살릴 수 없게 된다.
+		 */
+		if (result.ok) for (const id of bodies) removeDoc(id);
+
 		onReport(result);
 		setConfirming(null);
 	};

@@ -9,6 +9,7 @@ import {
 	duplicateDoc,
 	moveDoc,
 	moveFolder,
+	purge,
 	purgeExpired,
 	repairPaths,
 	restore,
@@ -374,5 +375,42 @@ describe("usedSheets", () => {
 
 		index = trashDoc(index, "d1", NOW);
 		expect(usedSheets(index)).toBe(0);
+	});
+});
+
+describe("완전 삭제", () => {
+	it("폴더를 지우면 그 아래 것들도 함께 간다", () => {
+		const { index, 신춘문예, 감나무 } = sample();
+		const trashed = trashFolder(index, 신춘문예.id, NOW);
+		// 폴더 3 + 원고 1이 휴지통에 있다
+		expect(trashed.trash).toHaveLength(4);
+
+		const { index: next, removedDocIds } = purge(trashed, [신춘문예.id]);
+
+		// 하나도 남지 않는다. 남기면 갈 곳 없는 항목이 된다
+		expect(next.trash).toHaveLength(0);
+		// 본문을 지울 원고를 빠짐없이 알려 준다 — 목록이 "원고 1편"이라 적어 둔 그것이다
+		expect(removedDocIds).toEqual([감나무.id]);
+	});
+
+	it("가운데 폴더만 지우면 그 위는 남는다", () => {
+		const { index, 신춘문예, y2026, 초고, 감나무 } = sample();
+		const trashed = trashFolder(index, 신춘문예.id, NOW);
+
+		const { index: next, removedDocIds } = purge(trashed, [y2026.id]);
+
+		expect(next.trash.map((t) => t.id)).toEqual([신춘문예.id]);
+		expect(removedDocIds).toEqual([감나무.id]);
+		expect(next.trash.some((t) => t.id === 초고.id)).toBe(false);
+	});
+
+	it("원고 하나만 지우면 그것만 간다", () => {
+		const { index, 감나무 } = sample();
+		const trashed = trashDoc(index, 감나무.id, NOW);
+
+		const { index: next, removedDocIds } = purge(trashed, [감나무.id]);
+
+		expect(next.trash).toHaveLength(0);
+		expect(removedDocIds).toEqual([감나무.id]);
 	});
 });

@@ -320,7 +320,13 @@ function reviveDoc(
 	};
 }
 
-/** 되돌릴 수 없는 삭제 */
+/**
+ * 되돌릴 수 없는 삭제.
+ *
+ * 폴더를 지우면 그 아래 것들도 함께 간다 — 버릴 때 함께 왔고, 되살릴 때도 함께
+ * 오므로 지울 때만 남겨 두면 갈 곳 없는 항목이 된다. 목록이 "원고 3편"이라고
+ * 적어 두는 것도 이 약속이다.
+ */
 export function purge(
 	index: StoreIndex,
 	ids: string[],
@@ -329,11 +335,20 @@ export function purge(
 	removedDocIds: string[];
 } {
 	const gone = new Set(ids);
+
+	// 지우기로 한 폴더들의 안쪽 경로. 그 아래 있는 휴지통 항목이 함께 간다
+	const under = index.trash
+		.filter((t) => gone.has(t.id) && t.kind === "folder")
+		.map(fullPath);
+	const goes = (entry: TrashEntry) =>
+		gone.has(entry.id) || under.some((u) => isUnder(entry.path, u));
+
 	const removedDocIds = index.trash
-		.filter((t) => gone.has(t.id) && t.kind === "doc")
+		.filter((t) => t.kind === "doc" && goes(t))
 		.map((t) => t.id);
+
 	return {
-		index: { ...index, trash: index.trash.filter((t) => !gone.has(t.id)) },
+		index: { ...index, trash: index.trash.filter((t) => !goes(t)) },
 		removedDocIds,
 	};
 }
