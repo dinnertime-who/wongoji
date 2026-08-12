@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import {
 	readIndex,
@@ -5,7 +6,12 @@ import {
 	useSaveStatus,
 	writeIndex,
 } from "#/entities/archive";
-import { readDoc, subscribeToDocWrites, writeDoc } from "#/entities/manuscript";
+import {
+	docQueryKey,
+	readDoc,
+	subscribeToDocWrites,
+	writeDoc,
+} from "#/entities/manuscript";
 import { authClient } from "#/shared/api/auth-client";
 import {
 	fetchArchive,
@@ -35,6 +41,7 @@ export function useArchiveSync() {
 	const { data: session } = authClient.useSession();
 	const userId = session?.user.id ?? null;
 	const { report } = useSaveStatus();
+	const queryClient = useQueryClient();
 
 	const pushTimer = useRef<number | undefined>(undefined);
 	/** 이 계정으로 이미 받아 왔는가. 그릴 때마다 다시 받지 않는다 */
@@ -85,7 +92,15 @@ export function useArchiveSync() {
 				if ((await readDoc(doc.id)) != null) continue;
 
 				const content = await fetchDocContent(doc.id);
-				if (content != null) await writeDoc(doc.id, content);
+				if (content == null) continue;
+
+				await writeDoc(doc.id, content);
+				/*
+				 * 캐시도 채운다. **이것이 없으면 화면이 "본문을 찾을 수 없습니다"에
+				 * 머문다.** 에디터가 우리보다 먼저 읽어 없다고 본 뒤인데, 캐시는
+				 * 스스로 낡지 않으므로(`staleTime: Infinity`) 다시 읽지 않는다.
+				 */
+				queryClient.setQueryData(docQueryKey(doc.id), content);
 			}
 		})().catch(() => {
 			// 못 받아 왔으면 로컬에 있는 것으로 계속 쓴다. 다음 로그인에 다시 해 본다
@@ -95,7 +110,7 @@ export function useArchiveSync() {
 		return () => {
 			cancelled = true;
 		};
-	}, [userId, report]);
+	}, [userId, report, queryClient]);
 
 	/* 색인이 바뀌면 뒤에서 밀어 넣는다 */
 	useEffect(() => {

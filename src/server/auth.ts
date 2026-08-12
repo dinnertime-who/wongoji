@@ -22,10 +22,18 @@ export const auth = betterAuth({
 	baseURL: env.BETTER_AUTH_URL,
 
 	/*
-	 * 자체 회원가입은 없다. `emailAndPassword`는 켜지 않으면 꺼진 것이 기본값
-	 * 이라 여기서 할 일이 없지만, 빠뜨린 것이 아니라 정한 것임을 적어 둔다.
-	 * 계정을 만드는 길은 아래 구글 하나뿐이다.
+	 * 자체 회원가입은 없다 — **배포된 앱에서 계정을 만드는 길은 구글 하나뿐이다.**
+	 *
+	 * 개발 서버에서만 이메일·비밀번호를 연다. 구글 동의 화면은 사람이 눌러야
+	 * 지날 수 있어서, 그것 없이는 로그인한 뒤의 흐름(보관함 옮기기, 동기화)을
+	 * 자동으로 확인할 방법이 없다.
+	 *
+	 * `import.meta.env.DEV`는 vite가 빌드할 때 `false`로 **바꿔 박는다.** 그래서
+	 * 배포본에서는 이 가지가 죽은 코드가 되어 통째로 사라진다 — 실수로 켜진 채
+	 * 나갈 수가 없다. 환경변수로 걸면 그렇지 않다.
 	 */
+	emailAndPassword: import.meta.env.DEV ? { enabled: true } : undefined,
+
 	socialProviders: {
 		google: {
 			clientId: env.GOOGLE_CLIENT_ID,

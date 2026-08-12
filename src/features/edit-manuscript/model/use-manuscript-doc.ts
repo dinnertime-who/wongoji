@@ -225,18 +225,23 @@ export function useManuscriptDoc(docId: string) {
 		if (!docId || reading) return;
 		// 이 원고는 이미 앉혔다. 다시 하면 타이핑 도중에 에디터가 갈린다
 		if (shownRef.current === docId) return;
-		shownRef.current = docId;
 
 		if (stored == null) {
 			/*
 			 * 본문이 사라졌다. 빈 에디터를 띄우면 그대로 저장되어 마지막 흔적까지
 			 * 덮어쓴다. 열지 않고 알린다.
+			 *
+			 * **여기서는 앉혔다고 표시하지 않는다.** 동기화가 다른 기기에서 쓴 본문을
+			 * 뒤늦게 받아 올 수 있는데, 표시해 두면 그것이 도착해도 화면은 "찾을 수
+			 * 없습니다"에 머문다. 표시하지 않으면 `stored`가 바뀔 때 다시 돌아 앉힌다.
 			 */
 			docRef.current = null;
 			setBlocks([]);
 			setLoad({ state: "lost" });
 			return;
 		}
+
+		shownRef.current = docId;
 
 		const content = toEditorContent(stored);
 		docRef.current = content;

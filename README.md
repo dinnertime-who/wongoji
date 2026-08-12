@@ -81,6 +81,36 @@ pnpm db:migrate                   # 로컬 D1에 표를 만든다
 
 `.dev.vars`는 git에 올라가지 않는다. 값을 어디서 얻는지는 [배포 절](#배포--cloudflare-workers)에 적혀 있고, 리디렉션 URI에 `http://localhost:3000/api/auth/callback/google`이 있어야 로컬에서 로그인이 끝난다.
 
+### 개발 서버에서만 쓰는 계정
+
+구글 동의 화면은 사람이 눌러야 지나므로, 그것 없이는 로그인한 뒤의 흐름(보관함
+옮기기, 동기화)을 확인할 수 없다. 개발 서버에서만 이메일·비밀번호를 연다.
+
+```bash
+curl -c jar.txt -X POST http://localhost:3000/api/auth/sign-up/email \
+  -H "Content-Type: application/json" -H "Origin: http://localhost:3000" \
+  -d '{"email":"test@wongoji.local","password":"wongoji-test-1234","name":"테스트"}'
+
+# 그 뒤로는 쿠키를 들고 다닌다
+curl -b jar.txt http://localhost:3000/api/archive
+```
+
+브라우저에서 그 계정으로 들어가려면 개발자 콘솔에서 한 번 부르면 된다. 쿠키가
+심기므로 새로고침하면 로그인 상태다.
+
+```js
+await fetch("/api/auth/sign-in/email", {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: "test@wongoji.local", password: "wongoji-test-1234" }),
+});
+```
+
+**Origin 헤더가 없으면 403이다** (`MISSING_OR_NULL_ORIGIN`). curl은 붙여 주지 않는다.
+
+`import.meta.env.DEV`는 vite가 빌드할 때 `false`로 바꿔 박으므로 배포본에서는 이
+길이 죽은 코드가 되어 사라진다 — `dist`에서 `emailAndPassword: void 0`으로 남는
+것을 확인할 수 있다. 환경변수로 걸면 그렇게 되지 않으므로 바꾸지 않는다.
+
 ## 배포 — Cloudflare Workers
 
 로그인이 들어오면서 D1과 시크릿이 필요해졌다. 아래 넷은 최초 1회만 하면 된다.
