@@ -32,6 +32,15 @@ const SCOPE_KEY = "wongoji:v1:scope";
 
 let current: StorageScope = null;
 let restored = false;
+/**
+ * 세션이 도착해 칸이 확정되었는가.
+ *
+ * 그 전까지는 지난번 칸을 쓰고 있는데, 그것이 맞는지 아직 모른다. 보관함을
+ * 세우는 일처럼 **원고를 만들어 내는 일**은 이것이 참이 될 때까지 기다려야
+ * 한다 — 아니면 로그인해서 돌아온 사람이 비로그인 칸에 빈 원고를 만들고,
+ * 칸이 옮겨진 뒤 그것을 찾지 못해 화면이 왕복한다.
+ */
+let settled = false;
 
 const listeners = new Set<() => void>();
 
@@ -94,6 +103,30 @@ export function scopedDbName(scope: StorageScope = currentScope()): string {
 export function subscribeToScope(listener: () => void): () => void {
 	listeners.add(listener);
 	return () => void listeners.delete(listener);
+}
+
+export const scopeSettled = (): boolean => settled;
+
+/**
+ * 칸이 확정되었다고 알린다. 세션이 도착했을 때 한 번.
+ *
+ * `setStorageScope`와 나눠 둔 이유는 대개 칸이 바뀌지 않기 때문이다 — 이미
+ * 맞는 칸을 쓰고 있어도 "이제 확실하다"는 것은 알려야 한다.
+ */
+export function markScopeSettled(): void {
+	if (settled) return;
+	settled = true;
+	notify();
+}
+
+function notify(): void {
+	for (const listener of listeners) {
+		try {
+			listener();
+		} catch {
+			// 듣는 쪽 사정이다
+		}
+	}
 }
 
 export function setStorageScope(next: StorageScope): void {

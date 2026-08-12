@@ -63,6 +63,24 @@ export function useArchiveSync() {
 			const remote = await fetchArchive();
 			if (cancelled) return;
 
+			/*
+			 * 서버가 비어 있는데 이 기기의 계정 칸에는 원고가 있으면 **덮지 않는다.**
+			 *
+			 * 아직 올리지 못한 원고다. 처음 로그인한 계정은 서버가 비어 있으므로,
+			 * 받아 온 것을 그대로 적으면 방금 만든 원고가 사라지고 — 화면은 없는
+			 * 원고를 가리킨 채 홈으로 튕겼다가 다시 만들기를 되풀이한다.
+			 */
+			const local = readIndex();
+			const 서버가빔 =
+				!remote.docs.length && !remote.folders.length && !remote.trash.length;
+			const 로컬에있음 =
+				local.docs.length || local.folders.length || local.trash.length;
+
+			if (서버가빔 && 로컬에있음) {
+				await pushArchive(local);
+				return;
+			}
+
 			report(writeIndex(remote));
 
 			/*

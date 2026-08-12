@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { setStorageScope } from "#/shared/lib/storage";
+import { markScopeSettled, setStorageScope } from "#/shared/lib/storage";
 import { useSession } from "./use-session";
 
 /**
@@ -19,5 +19,10 @@ export function useArchiveScope() {
 	useEffect(() => {
 		if (isPending) return;
 		setStorageScope(userId);
+		/*
+		 * 칸이 바뀌지 않았어도 알린다. 대개는 지난번 칸이 맞아서 옮길 것이 없지만,
+		 * 기다리는 쪽에게는 "이제 확실하다"가 따로 필요하다.
+		 */
+		markScopeSettled();
 	}, [userId, isPending]);
 }

@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { bootstrap } from "#/features/archive-bootstrap";
-import type { SaveFailure } from "#/shared/lib/storage";
+import { type SaveFailure, useScopeSettled } from "#/shared/lib/storage";
 import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 
 /**
@@ -14,8 +14,18 @@ import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 export function HomePage() {
 	const navigate = useNavigate();
 	const [failure, setFailure] = useState<SaveFailure | null>(null);
+	/*
+	 * 어느 보관함인지 정해지기를 기다린다.
+	 *
+	 * 세션은 물어봐야 알고, 그 전까지 저장소는 지난번 칸을 쓴다. 로그인해서 막
+	 * 돌아온 사람에게는 그것이 틀린 칸이라, 여기서 원고를 만들면 비로그인 칸에
+	 * 빈 원고가 생긴다. 그 뒤 칸이 옮겨지면 방금 연 원고를 찾지 못해 이리로
+	 * 되돌아오고, 또 만들고 — 화면이 그 왕복만 돈다.
+	 */
+	const settled = useScopeSettled();
 
 	useEffect(() => {
+		if (!settled) return;
 		// 본문이 IndexedDB로 가면서 보관함을 세우는 일이 비동기가 되었다.
 		// 그새 사용자가 다른 곳으로 갔으면 옮기지 않는다.
 		let cancelled = false;
@@ -46,7 +56,7 @@ export function HomePage() {
 		return () => {
 			cancelled = true;
 		};
-	}, [navigate]);
+	}, [navigate, settled]);
 
 	if (!failure) return null;
 	return <SaveErrorBanner failure={failure} />;

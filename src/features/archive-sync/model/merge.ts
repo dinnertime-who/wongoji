@@ -13,14 +13,26 @@ import { fetchTakenIds, pushArchive, pushDocContent } from "../api/archive-api";
  * 것인데, 사이드바 생김새가 똑같아 "쓴 것이 사라졌다"로 읽힌다.
  */
 
-/** 올릴 것이 있는가. 물어볼지 정하는 데 쓴다 */
+/**
+ * 옮길 만한 것이 있는가. 물어볼지 정하는 데 쓴다.
+ *
+ * **제목도 내용도 없는 원고는 세지 않는다.** 보관함은 비어 있을 수 없어서 열
+ * 때마다 빈 원고 하나가 저절로 생기는데, 그것 하나 때문에 "옮길까요?"를 물으면
+ * 성가시기만 하고 옮겨 봐야 얻는 것이 없다.
+ */
 export function pendingUpload(): { docs: number; folders: number } {
 	const local = readIndexIn(null);
-	return {
-		docs:
-			local.docs.length + local.trash.filter((t) => t.kind === "doc").length,
-		folders: local.folders.length,
-	};
+
+	const 쓴것 = (entry: { title: string; chars?: number }) =>
+		entry.title.trim().length > 0 || (entry.chars ?? 0) > 0;
+
+	const docs = [
+		...local.docs.filter(쓴것),
+		// 버린 원고는 되살릴 것이라 제목만 있어도 옮길 값이 있다
+		...local.trash.filter((t) => t.kind === "doc" && 쓴것(t)),
+	];
+
+	return { docs: docs.length, folders: local.folders.length };
 }
 
 export async function mergeLocalIntoAccount(): Promise<void> {
