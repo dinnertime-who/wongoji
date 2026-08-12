@@ -1,3 +1,4 @@
+import { PageTitle } from "#/components/PageTitle";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Progress } from "#/components/ui/progress";
@@ -34,13 +35,14 @@ export function ManuscriptBar({
 	return (
 		<div className="mx-auto w-full max-w-6xl px-4 pt-4">
 			<div className="flex flex-wrap items-center gap-2">
-				<Input
-					value={title}
-					onChange={(e) => onTitleChange(e.target.value)}
-					placeholder="제목"
-					aria-label="제목"
-					className="h-10 min-w-0 flex-1 bg-[var(--paper)] text-center text-lg"
-				/>
+				<div className="min-w-0 flex-1">
+					<PageTitle
+						value={title}
+						onChange={onTitleChange}
+						placeholder="제목 없음"
+						label="제목"
+					/>
+				</div>
 				<div className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--paper)] px-2.5 text-xs">
 					<Label htmlFor="goal" className="text-muted-foreground">
 						목표

@@ -6,18 +6,12 @@ import { CapacityMeter } from "#/components/CapacityMeter";
 import { CopyManuscript } from "#/components/CopyManuscript";
 import { ExportDialog } from "#/components/ExportDialog";
 import { ManuscriptBar } from "#/components/ManuscriptBar";
-import {
-	ManuscriptBreadcrumb,
-	ManuscriptSidebar,
-} from "#/components/ManuscriptSidebar";
+import { ManuscriptBreadcrumb } from "#/components/ManuscriptSidebar";
 import { RulesDialog } from "#/components/RulesDialog";
 import { SaveErrorBanner } from "#/components/SaveErrorBanner";
+import { Shell } from "#/components/Shell";
 import { Button } from "#/components/ui/button";
-import {
-	Sidebar,
-	SidebarProvider,
-	SidebarTrigger,
-} from "#/components/ui/sidebar";
+import { SidebarTrigger } from "#/components/ui/sidebar";
 import { Switch } from "#/components/ui/switch";
 import { WongojiEditor } from "#/components/WongojiEditor";
 import { WongojiPager } from "#/components/WongojiPager";
@@ -44,10 +38,6 @@ export const Route = createFileRoute("/w/$docId")({ component: Editor });
 
 /** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
 const PANE_KEY = "wongoji:mainPane";
-const SIDEBAR_KEY = "wongoji:sidebar";
-
-/** 이 너비 아래에서는 사이드바를 접은 채로 시작한다 */
-const ROOMY = 1280;
 
 /** 모바일에서 화면 전체를 차지할 쪽 */
 type Pane = "write" | "preview";
@@ -133,7 +123,6 @@ function Editor() {
 	const [title, setTitle] = useState("");
 	const [goal, setGoal] = useState(0);
 	const [mainPane, setMainPane] = useState<Pane>("write");
-	const [sidebarOpen, setSidebarOpen] = useState(false);
 	// 불러오기로 내용을 갈아끼울 때 에디터를 다시 마운트시키는 열쇠.
 	// Tiptap은 만들어진 뒤 content 옵션을 다시 보지 않는다.
 	const [editorKey, setEditorKey] = useState(0);
@@ -167,12 +156,6 @@ function Editor() {
 		const savedPane = safeGetItem(PANE_KEY);
 		if (savedPane === "write" || savedPane === "preview")
 			setMainPane(savedPane);
-
-		const savedSidebar = safeGetItem(SIDEBAR_KEY);
-		// 처음 오는 사람에게는 화면이 넉넉할 때만 펴 준다
-		setSidebarOpen(
-			savedSidebar === null ? window.innerWidth >= ROOMY : savedSidebar === "1",
-		);
 
 		// 기한 지난 휴지통 비우기·끊어진 경로 고치기. 여기로 바로 들어올 수도 있다
 		tidy();
@@ -317,15 +300,6 @@ function Editor() {
 		report(safeSetItem(PANE_KEY, pane));
 	};
 
-	/*
-	 * 접힘 상태는 이 앱의 다른 화면 설정과 같이 localStorage에 둔다. 정본은 쿠키에
-	 * 적지만, 그러면 저장이 실패해도 알릴 길이 없다.
-	 */
-	const openSidebar = (open: boolean) => {
-		setSidebarOpen(open);
-		report(safeSetItem(SIDEBAR_KEY, open ? "1" : "0"));
-	};
-
 	const changeTitle = (value: string) => {
 		setTitle(value);
 		persist({ title: value });
@@ -394,115 +368,97 @@ function Editor() {
 		 * 자기 높이를 정하지 못하고, 원고지가 길어질 때 페이지 전체가 늘어난다.
 		 * 정본의 `min-h-svh`를 min-h-0으로 눌러야 그 못이 풀리지 않는다.
 		 */
-		<SidebarProvider
-			open={sidebarOpen}
-			onOpenChange={openSidebar}
-			className="h-[100dvh] min-h-0 overflow-hidden bg-background text-foreground"
+		<Shell
+			index={index}
+			currentDocId={docId}
+			onReport={report}
+			onReset={resetDoc}
 		>
-			{/*
-			 * 보관함은 가운데 정렬된 본문 바깥에 둔다. 안에 넣으면 원고 폭을 깎는다.
-			 *
-			 * 한 벌만 쓴다. 넓으면 옆에 붙고 좁으면 서랍이 되는 분기는 Sidebar가 안에서
-			 * 가른다 — 두 벌을 각각 그리던 것을 여기 한 곳으로 모았다.
-			 *
-			 * 접어도 DOM에는 남는다. 폭을 0으로 미끄러뜨려 접는 그림을 얻으려면
-			 * 그려 두어야 한다. 예전에는 아예 그리지 않았다.
-			 */}
-			<Sidebar>
-				<ManuscriptSidebar
-					index={index}
-					currentDocId={docId}
-					onReport={report}
-					onReset={resetDoc}
-				/>
-			</Sidebar>
-			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-				<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
-					<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-						{/*
-						 * 단추 하나로 족하다. 넓으면 옆의 보관함을 접었다 펴고, 좁으면
-						 * 서랍을 연다 — 어느 쪽인지는 Sidebar가 안에서 가른다.
-						 */}
-						<SidebarTrigger title="보관함" aria-label="보관함" />
+			<header className="sticky top-0 z-10 border-border border-b bg-background/90 backdrop-blur">
+				<div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+					{/*
+					 * 단추 하나로 족하다. 넓으면 옆의 보관함을 접었다 펴고, 좁으면
+					 * 서랍을 연다 — 어느 쪽인지는 Sidebar가 안에서 가른다.
+					 */}
+					<SidebarTrigger title="보관함" aria-label="보관함" />
 
-						<ManuscriptBreadcrumb index={index} docId={docId} />
+					<ManuscriptBreadcrumb index={index} docId={docId} />
 
-						<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
-							<CapacityMeter index={index} />
-							<RulesDialog />
-							<ExportDialog
-								manuscript={{ title, blocks }}
-								onImport={handleImport}
-							/>
-						</div>
-					</div>
-				</header>
-
-				{saveFailure && (
-					<SaveErrorBanner
-						failure={saveFailure}
-						onBackup={() => exportBackup({ title, blocks })}
-					/>
-				)}
-
-				{load.state === "lost" ? (
-					<LostBody onStartBlank={startBlank} />
-				) : (
-					<>
-						{/* 제목과 분량은 원고·원고지 어느 쪽을 보고 있든 늘 보여야 한다 */}
-						<ManuscriptBar
-							title={title}
-							onTitleChange={changeTitle}
-							goal={goal}
-							onGoalChange={changeGoal}
-							stats={stats}
+					<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
+						<CapacityMeter index={index} />
+						<RulesDialog />
+						<ExportDialog
+							manuscript={{ title, blocks }}
+							onImport={handleImport}
 						/>
+					</div>
+				</div>
+			</header>
 
-						{/*
-						 * 넓은 화면에서는 원고와 원고지를 나란히, 좁은 화면에서는 한 쪽만
-						 * 보여준다.
-						 *
-						 * DOM은 한 벌만 두고 CSS로 가린다. 그래야 에디터가 늘 한 번만
-						 * 마운트되어 쪽을 오가도 다시 만들어지지 않는다 — undo 히스토리도
-						 * 살아남는다.
-						 */}
-						<main className="mx-auto grid min-h-0 w-full max-w-6xl flex-1 gap-6 px-4 pt-4 pb-20 lg:grid-cols-2 lg:pb-6">
-							<div
-								className={`flex min-h-0 flex-col ${
-									mainPane === "write" ? "" : "hidden lg:flex"
-								}`}
-							>
-								{load.state === "ready" && (
-									<WongojiEditor
-										key={editorKey}
-										initialContent={docRef.current ?? load.content}
-										onChange={handleChange}
-										overlay={
-											<span className="flex items-center gap-0.5 rounded bg-background/85 py-0.5 pr-0.5 pl-1.5 text-[0.7rem] text-muted-foreground tabular-nums">
-												{statsText}
-												<CopyManuscript manuscript={{ title, blocks }} />
-											</span>
-										}
-									/>
-								)}
-							</div>
-							<div
-								className={`flex min-h-0 flex-col ${
-									mainPane === "preview" ? "" : "hidden lg:flex"
-								}`}
-							>
-								<WongojiPager pages={pages} />
-							</div>
-						</main>
+			{saveFailure && (
+				<SaveErrorBanner
+					failure={saveFailure}
+					onBackup={() => exportBackup({ title, blocks })}
+				/>
+			)}
 
-						{/* 좁은 화면에서만 고른다. 넓은 화면에서는 둘 다 보이니 고를 것이 없다 */}
-						<div className="fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
-							<PaneToggle mainPane={mainPane} onChoose={choosePane} />
+			{load.state === "lost" ? (
+				<LostBody onStartBlank={startBlank} />
+			) : (
+				<>
+					{/* 제목과 분량은 원고·원고지 어느 쪽을 보고 있든 늘 보여야 한다 */}
+					<ManuscriptBar
+						title={title}
+						onTitleChange={changeTitle}
+						goal={goal}
+						onGoalChange={changeGoal}
+						stats={stats}
+					/>
+
+					{/*
+					 * 넓은 화면에서는 원고와 원고지를 나란히, 좁은 화면에서는 한 쪽만
+					 * 보여준다.
+					 *
+					 * DOM은 한 벌만 두고 CSS로 가린다. 그래야 에디터가 늘 한 번만
+					 * 마운트되어 쪽을 오가도 다시 만들어지지 않는다 — undo 히스토리도
+					 * 살아남는다.
+					 */}
+					<main className="mx-auto grid min-h-0 w-full max-w-6xl flex-1 gap-6 px-4 pt-4 pb-20 lg:grid-cols-2 lg:pb-6">
+						<div
+							className={`flex min-h-0 flex-col ${
+								mainPane === "write" ? "" : "hidden lg:flex"
+							}`}
+						>
+							{load.state === "ready" && (
+								<WongojiEditor
+									key={editorKey}
+									initialContent={docRef.current ?? load.content}
+									onChange={handleChange}
+									overlay={
+										<span className="flex items-center gap-0.5 rounded bg-background/85 py-0.5 pr-0.5 pl-1.5 text-[0.7rem] text-muted-foreground tabular-nums">
+											{statsText}
+											<CopyManuscript manuscript={{ title, blocks }} />
+										</span>
+									}
+								/>
+							)}
 						</div>
-					</>
-				)}
-			</div>
-		</SidebarProvider>
+						<div
+							className={`flex min-h-0 flex-col ${
+								mainPane === "preview" ? "" : "hidden lg:flex"
+							}`}
+						>
+							<WongojiPager pages={pages} />
+						</div>
+					</main>
+
+					{/* 좁은 화면에서만 고른다. 넓은 화면에서는 둘 다 보이니 고를 것이 없다 */}
+					<div className="fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
+						<PaneToggle mainPane={mainPane} onChoose={choosePane} />
+					</div>
+				</>
+			)}
+		</Shell>
 	);
 }
 

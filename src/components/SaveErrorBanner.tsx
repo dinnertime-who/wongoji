@@ -13,7 +13,13 @@ export function SaveErrorBanner({
 	onBackup,
 }: {
 	failure: SaveFailure;
-	onBackup: () => void;
+	/**
+	 * 지금 보고 있는 원고를 파일로 내려받는다.
+	 *
+	 * 내려받을 원고가 없는 화면도 있다 — 폴더 쪽에서 실패하는 것은 색인이라
+	 * 백업할 본문이 없다. 그때는 단추를 그리지 않는다.
+	 */
+	onBackup?: () => void;
 }) {
 	return (
 		<output
@@ -25,9 +31,11 @@ export function SaveErrorBanner({
 				<span className="min-w-0 flex-1 text-destructive">
 					{failure.message}
 				</span>
-				<Button size="sm" variant="outline" onClick={onBackup}>
-					백업 받기
-				</Button>
+				{onBackup && (
+					<Button size="sm" variant="outline" onClick={onBackup}>
+						백업 받기
+					</Button>
+				)}
 			</div>
 		</output>
 	);

@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FFolderIdRouteImport } from './routes/f.$folderId'
 import { Route as WDocIdRouteImport } from './routes/w.$docId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FFolderIdRoute = FFolderIdRouteImport.update({
+  id: '/f/$folderId',
+  path: '/f/$folderId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WDocIdRoute = WDocIdRouteImport.update({
@@ -25,27 +31,31 @@ const WDocIdRoute = WDocIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/f/$folderId': typeof FFolderIdRoute
   '/w/$docId': typeof WDocIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/f/$folderId': typeof FFolderIdRoute
   '/w/$docId': typeof WDocIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/f/$folderId': typeof FFolderIdRoute
   '/w/$docId': typeof WDocIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/w/$docId'
+  fullPaths: '/' | '/f/$folderId' | '/w/$docId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/w/$docId'
-  id: '__root__' | '/' | '/w/$docId'
+  to: '/' | '/f/$folderId' | '/w/$docId'
+  id: '__root__' | '/' | '/f/$folderId' | '/w/$docId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FFolderIdRoute: typeof FFolderIdRoute
   WDocIdRoute: typeof WDocIdRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/f/$folderId': {
+      id: '/f/$folderId'
+      path: '/f/$folderId'
+      fullPath: '/f/$folderId'
+      preLoaderRoute: typeof FFolderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/w/$docId': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FFolderIdRoute: FFolderIdRoute,
   WDocIdRoute: WDocIdRoute,
 }
 export const routeTree = rootRouteImport

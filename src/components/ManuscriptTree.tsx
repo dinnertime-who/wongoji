@@ -448,20 +448,34 @@ function Level({
 							)}
 							{...dropProps(dnd, inside)}
 						>
+							{/*
+							 * 펴고 접는 일과 열어 보는 일을 나눈다. 셰브론은 여기 목록을
+							 * 늘였다 줄이고, 이름은 그 폴더 쪽으로 간다.
+							 */}
 							<button
 								type="button"
 								onClick={() => onToggle(folder.id)}
 								style={indent}
-								className="flex flex-1 items-center gap-1 rounded py-1 pr-2 text-left text-sm hover:bg-muted"
+								className="shrink-0 rounded py-1 pr-0.5 hover:bg-muted"
+								title={expanded ? "접기" : "펼치기"}
+								aria-label={`${folder.name} ${expanded ? "접기" : "펼치기"}`}
+								aria-expanded={expanded}
 							>
 								{expanded ? (
 									<ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								) : (
 									<ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								)}
+							</button>
+							<Link
+								to="/f/$folderId"
+								params={{ folderId: folder.id }}
+								onClick={onNavigate}
+								className="flex flex-1 items-center gap-1 rounded py-1 pr-2 text-left text-sm hover:bg-muted"
+							>
 								<FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
 								<span className="whitespace-nowrap">{folder.name}</span>
-							</button>
+							</Link>
 
 							{/*
 							 * 가로 스크롤을 따라 흘러가지 않게 오른쪽에 붙여 둔다.
