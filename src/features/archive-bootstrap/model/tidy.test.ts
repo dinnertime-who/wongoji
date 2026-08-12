@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import "fake-indexeddb/auto";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	createDoc,
 	emptyIndex,
@@ -8,7 +9,12 @@ import {
 	subscribeToIndex,
 	writeIndex,
 } from "#/entities/archive";
-import { writeDoc } from "#/entities/manuscript";
+import {
+	listDocIds,
+	readDoc,
+	removeDoc,
+	writeDoc,
+} from "#/entities/manuscript";
 import { tidy } from "./tidy";
 
 /**
@@ -56,56 +62,65 @@ function mount(): FakeStorage {
 	return storage;
 }
 
-const docKey = (id: string) => `wongoji:v1:doc:${id}`;
+/** 본문이 남아 있는가. 이제 IndexedDB에 있다 */
+const hasBody = async (id: string) => (await readDoc(id)) !== null;
 
 /** 원고 하나가 든 색인과 그 본문 */
-function withOneDoc(storage: FakeStorage): { index: StoreIndex; id: string } {
+async function withOneDoc(
+	storage: FakeStorage,
+): Promise<{ index: StoreIndex; id: string }> {
 	const { index, doc } = createDoc(emptyIndex(), { title: "감나무" });
 	storage.setItem(INDEX_KEY, JSON.stringify(index));
-	writeDoc(doc.id, { type: "doc" });
+	await writeDoc(doc.id, { type: "doc" });
 	return { index, id: doc.id };
 }
+
+// IndexedDB는 테스트 사이에 살아남는다. 앞 테스트의 본문이 다음 테스트의
+// 고아가 되지 않도록 비우고 시작한다
+beforeEach(async () => {
+	for (const id of await listDocIds()) await removeDoc(id);
+});
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("색인이 깨졌을 때", () => {
-	it("본문을 하나도 지우지 않고, 색인도 덮어쓰지 않는다", () => {
+	it("본문을 하나도 지우지 않고, 색인도 덮어쓰지 않는다", async () => {
 		const storage = mount();
-		const { id } = withOneDoc(storage);
+		const { id } = await withOneDoc(storage);
 
 		// 한 바이트가 깨졌다
 		storage.setItem(INDEX_KEY, '{"version":1,"docs":[{ 깨짐');
 		const corrupt = storage.getItem(INDEX_KEY);
 
-		const { result } = tidy();
+		const { result } = await tidy();
 
 		expect(result.ok).toBe(false);
 		expect(result.ok === false && result.kind).toBe("corrupt");
 		// 본문이 그대로 있어야 한다. 이것을 잃으면 되돌릴 길이 없다
-		expect(storage.getItem(docKey(id))).not.toBeNull();
+		expect(await hasBody(id)).toBe(true);
 		// 색인도 건드리지 않는다 — 손으로 고칠 여지를 남긴다
 		expect(storage.getItem(INDEX_KEY)).toBe(corrupt);
 	});
 
-	it("색인이 아예 없는 것은 깨진 것이 아니다 — 처음 온 사람이다", () => {
+	it("색인이 아예 없는 것은 깨진 것이 아니다 — 처음 온 사람이다", async () => {
 		mount();
-		expect(tidy().result.ok).toBe(true);
+		expect((await tidy()).result.ok).toBe(true);
 	});
 });
 
 describe("고아 본문 정리", () => {
-	it("색인에 없는 본문 키를 지운다", () => {
+	it("색인에 없는 본문을 지운다", async () => {
 		const storage = mount();
-		const { id } = withOneDoc(storage);
-		writeDoc("고아", { type: "doc" });
+		const { id } = await withOneDoc(storage);
+		await writeDoc("고아", { type: "doc" });
 
-		tidy();
+		await tidy();
 
-		expect(storage.getItem(docKey(id))).not.toBeNull();
-		expect(storage.getItem(docKey("고아"))).toBeNull();
+		expect(await hasBody(id)).toBe(true);
+		expect(await hasBody("고아")).toBe(false);
 	});
 
-	it("휴지통에 있는 원고의 본문은 고아가 아니다 — 되살릴 것이다", () => {
+	it("휴지통에 있는 원고의 본문은 고아가 아니다 — 되살릴 것이다", async () => {
 		const storage = mount();
 		storage.setItem(
 			INDEX_KEY,
@@ -123,23 +138,23 @@ describe("고아 본문 정리", () => {
 				],
 			}),
 		);
-		writeDoc("버린것", { type: "doc" });
+		await writeDoc("버린것", { type: "doc" });
 
-		tidy();
+		await tidy();
 
-		expect(storage.getItem(docKey("버린것"))).not.toBeNull();
+		expect(await hasBody("버린것")).toBe(true);
 	});
 
-	it("색인 저장이 실패하면 본문을 지우지 않는다", () => {
+	it("색인 저장이 실패하면 본문을 지우지 않는다", async () => {
 		const storage = mount();
-		const { id } = withOneDoc(storage);
-		writeDoc("고아", { type: "doc" });
+		const { id } = await withOneDoc(storage);
+		await writeDoc("고아", { type: "doc" });
 		storage.failWrites = true;
 
-		expect(tidy().result.ok).toBe(false);
+		expect((await tidy()).result.ok).toBe(false);
 		// 색인은 옛 상태 그대로다. 그 색인이 가리키지 않는다고 지워 버리면 어긋난다
-		expect(storage.getItem(docKey("고아"))).not.toBeNull();
-		expect(storage.getItem(docKey(id))).not.toBeNull();
+		expect(await hasBody("고아")).toBe(true);
+		expect(await hasBody(id)).toBe(true);
 	});
 });
 

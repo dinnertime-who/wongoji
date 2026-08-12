@@ -40,8 +40,8 @@ export interface Bootstrap {
 	result: SaveResult;
 }
 
-export function bootstrap(now = Date.now()): Bootstrap {
-	const tidied = tidy(now);
+export async function bootstrap(now = Date.now()): Promise<Bootstrap> {
+	const tidied = await tidy(now);
 
 	/*
 	 * 다듬기가 실패했으면 여기서 멈춘다.
@@ -67,7 +67,7 @@ export function bootstrap(now = Date.now()): Bootstrap {
 		 */
 		if (legacy) {
 			// 옛 값을 그대로 옮긴다. 평문이든 Tiptap 문서든 읽는 쪽이 가린다.
-			writeDoc(created.doc.id, legacy.content);
+			await writeDoc(created.doc.id, legacy.content);
 			if (legacy.goal > 0) {
 				index = {
 					...index,
@@ -84,7 +84,7 @@ export function bootstrap(now = Date.now()): Bootstrap {
 			 * 방금 버린 자리에 낯선 글이 들어앉는다. 한 번이라도 원고를 연 적이
 			 * 있으면 빈 원고로 시작한다.
 			 */
-			writeDoc(created.doc.id, isFirstVisit(index) ? WELCOME : "");
+			await writeDoc(created.doc.id, isFirstVisit(index) ? WELCOME : "");
 		}
 	}
 

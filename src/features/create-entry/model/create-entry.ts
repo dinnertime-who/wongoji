@@ -31,7 +31,7 @@ export interface Created {
 }
 
 /** 그 폴더 안에 빈 원고를 만든다 */
-export function createDocIn(path: Path, now?: number): Created {
+export async function createDocIn(path: Path, now?: number): Promise<Created> {
 	let docId = "";
 	const { result } = mutateIndex((current) => {
 		const made = createDoc(current, { path, now });
@@ -40,7 +40,7 @@ export function createDocIn(path: Path, now?: number): Created {
 	});
 	if (!result.ok) return { docId: "", result };
 
-	const body = writeDoc(docId, emptyDoc());
+	const body = await writeDoc(docId, emptyDoc());
 	if (!body.ok) {
 		mutateIndex(dropDoc(docId));
 		return { docId: "", result: body };
@@ -49,9 +49,12 @@ export function createDocIn(path: Path, now?: number): Created {
 }
 
 /** 원고를 복제한다. 본문까지 함께 뜬다 */
-export function duplicateDocById(id: string, now?: number): Created {
+export async function duplicateDocById(
+	id: string,
+	now?: number,
+): Promise<Created> {
 	// 본문을 먼저 읽는다. 색인만 늘려 놓고 못 읽으면 빈 사본이 남는다
-	const body = readDoc(id);
+	const body = await readDoc(id);
 
 	let copyId = "";
 	const { result } = mutateIndex((current) => {
@@ -64,7 +67,7 @@ export function duplicateDocById(id: string, now?: number): Created {
 	// 없는 원고를 복제하려 했다. 실패는 아니지만 갈 곳도 없다
 	if (!copyId) return { docId: "", result };
 
-	const written = writeDoc(copyId, body ?? emptyDoc());
+	const written = await writeDoc(copyId, body ?? emptyDoc());
 	if (!written.ok) {
 		mutateIndex(dropDoc(copyId));
 		return { docId: "", result: written };

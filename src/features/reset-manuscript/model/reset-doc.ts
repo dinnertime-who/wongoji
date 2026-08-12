@@ -24,8 +24,8 @@ export function onDocReset(listener: Listener): () => void {
 	return () => void listeners.delete(listener);
 }
 
-export function resetDoc(docId: string): SaveResult {
-	const body = writeDoc(docId, emptyDoc());
+export async function resetDoc(docId: string): Promise<SaveResult> {
+	const body = await writeDoc(docId, emptyDoc());
 	if (!body.ok) return body;
 
 	const { result } = mutateIndex((current) =>

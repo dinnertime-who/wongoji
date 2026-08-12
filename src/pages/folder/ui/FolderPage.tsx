@@ -59,8 +59,8 @@ export function FolderPage({ folderId }: { folderId: string }) {
 	const rename = (name: string) =>
 		change((current) => renameFolder(current, folder.id, name));
 
-	const addDoc = () => {
-		const { docId, result } = createDocIn(inside);
+	const addDoc = async () => {
+		const { docId, result } = await createDocIn(inside);
 		report(result);
 		// 만들지 못했으면 옮기지 않는다. 없는 원고로 보내면 곧바로 되돌아온다
 		if (docId) navigate({ to: "/w/$docId", params: { docId } });

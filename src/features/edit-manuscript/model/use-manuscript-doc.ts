@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,12 +14,12 @@ import {
 	type Block,
 	blocksFromDoc,
 	blocksToDoc,
+	docQueryKey,
 	layoutBlocks,
 	readDoc,
 	toEditorContent,
 	writeDoc,
 } from "#/entities/manuscript";
-import type { SaveResult } from "#/shared/lib/storage";
 
 /** 타이핑이 멎고 이만큼 뒤에 저장한다 */
 const DEBOUNCE = 300;
@@ -46,6 +47,7 @@ interface Patch {
  */
 export function useManuscriptDoc(docId: string) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const index = useStoreIndex();
 	const { report } = useSaveStatus();
 
@@ -71,6 +73,8 @@ export function useManuscriptDoc(docId: string) {
 	const openedRef = useRef("");
 	/** 아직 쓰지 않은 저장. 어느 원고 것인지 함께 들고 있다 */
 	const pending = useRef<{ docId: string; patch: Patch } | null>(null);
+	/** 화면에 이미 앉힌 원고. 같은 것을 다시 앉히면 타이핑 도중에 에디터가 갈린다 */
+	const shownRef = useRef("");
 
 	/**
 	 * 본문과 색인을 함께 저장한다. 어느 원고에 쓸지는 인자로 받는다.
@@ -86,23 +90,34 @@ export function useManuscriptDoc(docId: string) {
 			if (!id) return;
 			const { content, blocks: counted, ...entry } = patch;
 
-			const results: SaveResult[] = [];
-			if (content !== undefined) results.push(writeDoc(id, content));
-
-			// 목록에 보여줄 분량은 본문이 바뀔 때만 다시 잰다
+			/*
+			 * 색인을 먼저 쓴다. 색인은 localStorage라 동기로 끝나므로, 탭이 닫히는
+			 * 중이어도 제목과 분량은 남는다. 본문은 IndexedDB라 기다려야 한다.
+			 */
 			const stats = counted ? layoutBlocks(counted).stats : undefined;
+			const indexed = mutateIndex((current) =>
+				updateDoc(current, id, {
+					...entry,
+					...(stats && { chars: stats.chars, sheets: stats.sheets }),
+				}),
+			).result;
 
-			results.push(
-				mutateIndex((current) =>
-					updateDoc(current, id, {
-						...entry,
-						...(stats && { chars: stats.chars, sheets: stats.sheets }),
-					}),
-				).result,
-			);
-			report(...results);
+			if (content === undefined) {
+				report(indexed);
+				return;
+			}
+
+			/*
+			 * 캐시도 함께 고친다. 이 원고를 떠났다가 돌아오면 캐시에서 읽는데,
+			 * 갱신하지 않으면 방금 쓴 것이 옛것으로 되돌아간 것처럼 보인다.
+			 */
+			queryClient.setQueryData(docQueryKey(id), content);
+
+			const written = writeDoc(id, content);
+			written.then((body) => report(indexed, body));
+			return written;
 		},
-		[report],
+		[report, queryClient],
 	);
 
 	/**
@@ -148,8 +163,25 @@ export function useManuscriptDoc(docId: string) {
 		[flush],
 	);
 
+	/**
+	 * 주소에 있는 원고의 본문.
+	 *
+	 * 저장소가 IndexedDB라 기다려야 하는데, **늦게 온 본문이 남의 원고 위에
+	 * 얹히는 문제는 여기서 다루지 않는다.** 캐시가 키(`docId`)별로 갈라져 있어
+	 * `stored`는 언제나 지금 `docId`의 것이다. 원고를 바꾸면 앞 원고의 읽기가
+	 * 늦게 끝나도 그 결과는 앞 원고의 칸으로 들어간다.
+	 *
+	 * 전에는 이것을 ref로 손수 가렸는데, 그 가림막이 effect의 cleanup과 물려서
+	 * 색인이 바뀔 때마다 진행 중인 읽기를 버리고 다시 읽지도 않는 상태가 됐다.
+	 */
+	const { data: stored, isPending: reading } = useQuery({
+		queryKey: docQueryKey(docId),
+		queryFn: () => readDoc(docId),
+		enabled: Boolean(docId),
+	});
+
 	/*
-	 * 주소에 있는 원고를 읽는다. 사이드바에서 다른 원고를 고르면 다시 돈다.
+	 * 주소가 가리키는 원고로 갈아탄다. 사이드바에서 다른 원고를 고르면 다시 돈다.
 	 *
 	 * 저장 중인 것이 있으면 먼저 밀어 넣는다. 디바운스가 아직 안 터진 채로
 	 * 원고를 바꾸면 마지막 몇 글자가 사라진다.
@@ -169,7 +201,7 @@ export function useManuscriptDoc(docId: string) {
 			return;
 		}
 
-		// 이미 열어 둔 원고면 다시 읽지 않는다. 색인이 바뀔 때마다 되읽으면
+		// 이미 열어 둔 원고면 다시 앉히지 않는다. 색인이 바뀔 때마다 되읽으면
 		// 타이핑 도중에 에디터가 통째로 갈린다
 		if (openedRef.current === docId) return;
 
@@ -178,11 +210,26 @@ export function useManuscriptDoc(docId: string) {
 		writeLastOpened(docId);
 		setTitle(entry.title);
 		setGoal(entry.goal);
+		// 새 본문이 올 때까지 앞 원고를 그대로 두지 않는다
+		if (shownRef.current !== docId) setLoad({ state: "loading" });
+	}, [docId, index, navigate]);
 
-		const stored = readDoc(docId);
+	/*
+	 * 본문이 도착하면 화면에 앉힌다.
+	 *
+	 * 위 effect와 나눈 이유는 시점이 다르기 때문이다. 제목과 목표는 색인에 있어
+	 * 곧바로 알 수 있고, 본문은 기다려야 한다.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 한 원고를 한 번만 앉힌다
+	useEffect(() => {
+		if (!docId || reading) return;
+		// 이 원고는 이미 앉혔다. 다시 하면 타이핑 도중에 에디터가 갈린다
+		if (shownRef.current === docId) return;
+		shownRef.current = docId;
+
 		if (stored == null) {
 			/*
-			 * 본문 키가 사라졌다. 빈 에디터를 띄우면 그대로 저장되어 마지막 흔적까지
+			 * 본문이 사라졌다. 빈 에디터를 띄우면 그대로 저장되어 마지막 흔적까지
 			 * 덮어쓴다. 열지 않고 알린다.
 			 */
 			docRef.current = null;
@@ -209,6 +256,9 @@ export function useManuscriptDoc(docId: string) {
 		 * `updatedAt`은 건드리지 않는다. 읽기만 했는데 목록에서 맨 위로 올라오면
 		 * "최근 수정순"이 거짓말이 된다.
 		 */
+		const entry = readIndex().docs.find((d) => d.id === docId);
+		if (!entry) return;
+
 		const stats = layoutBlocks(opened).stats;
 		if (entry.chars !== stats.chars || entry.sheets !== stats.sheets) {
 			report(
@@ -222,12 +272,24 @@ export function useManuscriptDoc(docId: string) {
 				).result,
 			);
 		}
-	}, [docId, index, navigate]);
+	}, [docId, stored, reading]);
 
-	// 탭을 닫거나 새로고침할 때 마지막 몇 글자를 지킨다
+	/*
+	 * 화면을 떠날 때 마지막 몇 글자를 지킨다.
+	 *
+	 * `pagehide`만으로는 모자라다. 색인은 localStorage라 동기로 끝나지만 본문은
+	 * IndexedDB라, 탭이 닫히는 중에 건 쓰기는 끝나지 못하고 잘릴 수 있다.
+	 * `visibilitychange`가 먼저 오고 더 자주 오므로 그쪽에서도 밀어 넣는다 —
+	 * 다른 탭으로 옮기거나 앱을 배경으로 내리는 것이 전부 여기로 온다.
+	 */
 	useEffect(() => {
+		const onHide = () => {
+			if (document.visibilityState === "hidden") flush();
+		};
+		document.addEventListener("visibilitychange", onHide);
 		window.addEventListener("pagehide", flush);
 		return () => {
+			document.removeEventListener("visibilitychange", onHide);
 			window.removeEventListener("pagehide", flush);
 			flush();
 		};
@@ -255,11 +317,19 @@ export function useManuscriptDoc(docId: string) {
 			if (resetId !== openedRef.current) return;
 			pending.current = null;
 			window.clearTimeout(saveTimer.current);
+
+			/*
+			 * 캐시도 비운다. 비우는 쪽(resetDoc)은 저장소만 갈아서 캐시는 옛 본문을
+			 * 그대로 들고 있다 — 다른 원고에 갔다 돌아오면 방금 비운 것이 되살아난다.
+			 */
+			const blank = blocksToDoc([]);
+			queryClient.setQueryData(docQueryKey(resetId), blank);
+
 			setTitle("");
 			setGoal(0);
-			showContent(blocksToDoc([]), []);
+			showContent(blank, []);
 		},
-		[showContent],
+		[showContent, queryClient],
 	);
 
 	return {

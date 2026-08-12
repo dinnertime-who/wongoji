@@ -92,7 +92,12 @@ export function ManuscriptSidebar() {
 	};
 
 	/** 새로 만들거나 복제한 원고를 연다. 실패는 배너가 받는다 */
-	const open = ({ docId, result }: Created) => {
+	/*
+	 * 만들어지기를 기다렸다가 연다. 본문이 IndexedDB로 가면서 만드는 일이
+	 * 비동기가 되었다 — 기다리지 않고 옮기면 본문이 아직 없는 원고를 연다.
+	 */
+	const open = async (creating: Promise<Created>) => {
+		const { docId, result } = await creating;
 		report(result);
 		if (!docId) return;
 		navigate({ to: "/w/$docId", params: { docId } });
@@ -266,9 +271,9 @@ export function ManuscriptSidebar() {
 				title="이 원고를 비울까요?"
 				description="하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고 빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저 내보내세요."
 				confirmLabel="비우기"
-				onConfirm={() =>
-					sheet.kind === "resetDoc" && report(resetDoc(sheet.doc.id))
-				}
+				onConfirm={() => {
+					if (sheet.kind === "resetDoc") resetDoc(sheet.doc.id).then(report);
+				}}
 			/>
 		</>
 	);

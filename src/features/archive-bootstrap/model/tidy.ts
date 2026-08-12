@@ -7,8 +7,8 @@ import {
 	type StoreIndex,
 	writeIndex,
 } from "#/entities/archive";
-import { docIdFromKey, removeDoc } from "#/entities/manuscript";
-import { listStorageKeys, type SaveResult } from "#/shared/lib/storage";
+import { listDocIds, removeDoc } from "#/entities/manuscript";
+import type { SaveResult } from "#/shared/lib/storage";
 
 /**
  * 앱을 열 때 색인을 다듬는다.
@@ -30,10 +30,10 @@ const CORRUPT: SaveResult = {
 		"보관함 목록을 읽지 못했습니다. 원고 본문은 그대로 있습니다. 덮어쓰지 않도록 저장을 멈췄습니다 — 백업을 받고 다른 탭을 모두 닫은 뒤 새로고침해 주세요.",
 };
 
-export function tidy(now = Date.now()): {
+export async function tidy(now = Date.now()): Promise<{
 	index: StoreIndex;
 	result: SaveResult;
-} {
+}> {
 	/*
 	 * 색인을 못 읽었으면 아무것도 하지 않는다.
 	 *
@@ -52,21 +52,26 @@ export function tidy(now = Date.now()): {
 	 * 색인에는 남아 있는데 본문만 없는 원고가 된다 — 되살릴 길이 없다.
 	 */
 	if (result.ok) {
-		for (const id of purged.removedDocIds) removeDoc(id);
-		removeOrphanDocs(index);
+		for (const id of purged.removedDocIds) await removeDoc(id);
+		await removeOrphanDocs(index);
 	}
 
 	return { index, result };
 }
 
-function removeOrphanDocs(index: StoreIndex): void {
+/**
+ * 색인에 없는 본문을 지운다.
+ *
+ * 전에는 localStorage 키를 전부 훑어 앞머리를 떼어 냈다. 이제 본문이 저희들만
+ * 쓰는 IndexedDB store에 있어서 키가 곧 원고 id다 — 남의 칸을 볼 길이 없다.
+ */
+async function removeOrphanDocs(index: StoreIndex): Promise<void> {
 	const known = new Set([
 		...index.docs.map((d) => d.id),
 		...index.trash.filter((t) => t.kind === "doc").map((t) => t.id),
 	]);
 
-	for (const key of listStorageKeys()) {
-		const id = docIdFromKey(key);
-		if (id !== null && !known.has(id)) removeDoc(id);
+	for (const id of await listDocIds()) {
+		if (!known.has(id)) await removeDoc(id);
 	}
 }

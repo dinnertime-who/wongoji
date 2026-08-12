@@ -1,7 +1,8 @@
 export {
-	DOC_PREFIX,
+	clearDocs,
 	type DocContent,
-	docIdFromKey,
+	docQueryKey,
+	listDocIds,
 	readDoc,
 	removeDoc,
 	writeDoc,
