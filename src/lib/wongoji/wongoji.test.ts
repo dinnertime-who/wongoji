@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layout, layoutBlocks, parseBlocks, splitParagraphs } from "./layout";
+import { layout, layoutBlocks, parseBlocks } from "./layout";
 import { TOPIK_PROFILE } from "./profile";
 import { tokenizeParagraph } from "./tokenize";
 import { type Cell, COLS } from "./types";
@@ -166,14 +166,14 @@ describe("문단·페이지", () => {
 		expect(lines("   가나   ")[0]).toBe("·|가|나");
 	});
 
-	it("splitParagraphs는 줄바꿈과 빈 줄을 똑같이 다룬다", () => {
-		expect(splitParagraphs("가\n나\n\n다\r\n\r\n라")).toEqual([
+	it("줄바꿈 한 번과 빈 줄을 똑같이 문단 구분으로 본다", () => {
+		expect(parseBlocks("가\n나\n\n다\r\n\r\n라").map((b) => b.text)).toEqual([
 			"가",
 			"나",
 			"다",
 			"라",
 		]);
-		expect(splitParagraphs("   \n\t\n")).toEqual([]);
+		expect(parseBlocks("   \n\t\n")).toEqual([]);
 	});
 
 	it("E23: 10줄을 넘으면 다음 장으로 넘어간다", () => {
@@ -230,53 +230,6 @@ describe("빈 행", () => {
 	it("평문에는 빈 행 표기법이 없다 — 하이픈은 본문 그대로다", () => {
 		expect(parseBlocks("---")).toEqual([{ type: "paragraph", text: "---" }]);
 		expect(lines("가--나")[0]).toBe("·|가|―|―|나");
-	});
-});
-
-describe("첫 장 헤더 — 제목·소속", () => {
-	const render = (blocks: Parameters<typeof layoutBlocks>[0]) =>
-		layoutBlocks(blocks)
-			.pages[0].lines.map((l) => renderLine(l.cells))
-			.slice(0, 6);
-
-	it("제목은 첫 줄을 비우고 둘째 줄 가운데에 놓는다", () => {
-		const out = render([{ type: "title", text: "가나다라" }]);
-		expect(out[0]).toBe("");
-		// (20 - 4) / 2 = 8칸을 앞에 비운다
-		expect(out[1]).toBe(
-			[...Array(8).fill("·"), "가", "나", "다", "라"].join("|"),
-		);
-	});
-
-	it("제목이 20칸을 넘으면 첫 줄은 왼쪽, 둘째 줄은 오른쪽에 붙인다", () => {
-		const out = render([{ type: "title", text: "가".repeat(23) }]);
-		expect(out[1]).toBe(Array(20).fill("가").join("|"));
-		expect(out[2]).toBe([...Array(17).fill("·"), "가", "가", "가"].join("|"));
-	});
-
-	it("소속은 오른쪽에 붙이되 끝에서 두 칸을 비운다", () => {
-		const out = render([{ type: "affiliation", text: "홍길동" }]);
-		// 15칸을 앞에 비우면 18번째 칸에서 끝난다 — 뒤 두 칸이 남는다.
-		// 남는 칸은 데이터로 두지 않는다. 격자는 렌더러가 20칸으로 그린다.
-		expect(out[1]).toBe([...Array(15).fill("·"), "홍", "길", "동"].join("|"));
-	});
-
-	it("제목·소속·본문 사이를 한 줄씩 띄운다", () => {
-		const out = render([
-			{ type: "title", text: "제목" },
-			{ type: "affiliation", text: "홍길동" },
-			{ type: "paragraph", text: "본문" },
-		]);
-		expect(out[0]).toBe(""); // 1줄: 비움
-		expect(out[1].includes("제")).toBe(true); // 2줄: 제목
-		expect(out[2]).toBe(""); // 3줄: 비움
-		expect(out[3].includes("홍")).toBe(true); // 4줄: 소속
-		expect(out[4]).toBe(""); // 5줄: 비움
-		expect(out[5]).toBe("·|본|문"); // 6줄: 본문
-	});
-
-	it("헤더 없이 본문만 있으면 첫 줄부터 시작한다", () => {
-		expect(render([{ type: "paragraph", text: "본문" }])[0]).toBe("·|본|문");
 	});
 });
 

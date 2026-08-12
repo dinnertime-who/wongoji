@@ -47,21 +47,18 @@ const cloneCell = (c: Cell): Cell => ({ ...c, glyphs: [...c.glyphs] });
  * `layoutBlocks`로 직접 넘어온다. 평문에 표기법을 두면 본문에 쓴 하이픈과 부딪힌다.
  *
  * 문단 앞뒤 공백은 버린다. 남겨두면 들여쓴 첫 칸 다음에 빈 칸이 하나 더 생긴다.
+ *
+ * 돌려주는 것은 문단뿐이다 — 평문에 빈 행을 적을 방법이 없으므로 타입으로 못박는다.
  */
-export function parseBlocks(text: string): Block[] {
+export function parseBlocks(
+	text: string,
+): Extract<Block, { type: "paragraph" }>[] {
 	return text
 		.replace(/\r\n?/g, "\n")
 		.split("\n")
 		.map((line) => line.trim())
 		.filter((line) => line !== "")
 		.map((line) => ({ type: "paragraph", text: line }) as const);
-}
-
-/** 평문에서 문단 텍스트만 뽑는다. */
-export function splitParagraphs(text: string): string[] {
-	return parseBlocks(text)
-		.filter((b) => b.type === "paragraph")
-		.map((b) => b.text);
 }
 
 /** 원문을 200자 원고지 위에 조판한다. */
@@ -90,8 +87,6 @@ export function layoutBlocks(
 
 	const lines: Cell[][] = [];
 	let cur: Cell[] = [];
-	/** 헤더를 쓴 직후인가 — 본문이 시작될 때 한 줄 띄우려고 본다 */
-	let headerOpen = false;
 	/**
 	 * 줄이 바뀔 때마다 앞에 비울 칸 수.
 	 *
@@ -188,30 +183,6 @@ export function layoutBlocks(
 			continue;
 		}
 
-		if (block.type === "title") {
-			// 제목은 둘째 줄에 놓는 것이 관행이라 첫 줄을 비운다.
-			// 여기서는 blankRow와 달리 맨 위 빈 줄을 버리지 않는다.
-			if (lines.length === 0) lines.push([]);
-			for (const line of titleLines(block.text, profile)) lines.push(line);
-			headerOpen = true;
-			continue;
-		}
-
-		if (block.type === "affiliation") {
-			// 제목 다음이면 한 줄 띄우고, 헤더의 첫머리라면 관행대로 첫 줄을 비운다.
-			// 어느 쪽이든 빈 줄 하나가 앞에 온다.
-			lines.push([]);
-			lines.push(affiliationLine(block.text, profile));
-			headerOpen = true;
-			continue;
-		}
-
-		// 헤더와 본문 사이도 한 줄 띄운다
-		if (headerOpen) {
-			lines.push([]);
-			headerOpen = false;
-		}
-
 		// 대화문은 따옴표가 끝날 때까지 모든 줄의 첫 칸을 비운다 (docs 4.7).
 		// 보통 문단은 첫 줄만 비운다 (TOPIK 2항).
 		lineIndent =
@@ -238,50 +209,6 @@ export function layoutBlocks(
 			sheets: Math.max(1, Math.ceil(normalized.length / CELLS_PER_SHEET)),
 		},
 	};
-}
-
-/** 헤더 한 줄을 칸으로 쪼갠다. 문단과 달리 들여쓰기가 없다. */
-function headerCells(text: string, profile: Profile): Cell[] {
-	return tokenizeParagraph(text, profile).flatMap((token) =>
-		token.role === "space"
-			? [spaceCell()]
-			: token.cells.map((c) => cloneCell(c)),
-	);
-}
-
-const padStart = (cells: Cell[], count: number): Cell[] => [
-	...Array.from({ length: Math.max(0, count) }, emptyCell),
-	...cells,
-];
-
-/**
- * 제목 줄.
- *
- * "제목은 행의 중간쯤에 놓이도록" 쓴다. 20칸을 넘으면 두 줄로 나누되
- * 가운데가 아니라 첫 행은 왼쪽, 둘째 행은 오른쪽에 붙인다(docs 2.2).
- */
-function titleLines(text: string, profile: Profile): Cell[][] {
-	const cells = headerCells(text, profile);
-
-	if (cells.length <= COLS) {
-		return [padStart(cells, Math.floor((COLS - cells.length) / 2))];
-	}
-
-	const first = cells.slice(0, COLS);
-	const rest = cells.slice(COLS, COLS * 2);
-	return [first, padStart(rest, COLS - rest.length)];
-}
-
-/**
- * 소속·이름 줄.
- *
- * 오른쪽에 붙이되 끝에서 몇 칸을 비운다. 몇 칸인지는 자료마다 다르므로
- * 프로파일이 정한다(docs 2.4).
- */
-function affiliationLine(text: string, profile: Profile): Cell[] {
-	const cells = headerCells(text, profile).slice(0, COLS);
-	const tail = Math.min(profile.affiliationTailGap, COLS - cells.length);
-	return padStart(cells, COLS - cells.length - tail);
 }
 
 /** 10줄씩 끊어 장으로 나눈다. 빈 문서도 빈 원고지 한 장은 나온다. */

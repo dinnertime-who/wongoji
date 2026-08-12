@@ -3,25 +3,20 @@ export {
 	type SaveFailure,
 	type SaveResult,
 	safeGetItem,
-	safeRemoveItem,
 	safeSetItem,
 } from "./local";
 export {
 	childrenOf,
-	copyTitle,
 	countDocsUnder,
 	createDoc,
 	createFolder,
 	daysLeft,
 	displayTitle,
 	duplicateDoc,
-	makeId,
 	moveDoc,
 	moveFolder,
 	purge,
-	purgeExpired,
 	renameFolder,
-	repairPaths,
 	restore,
 	SHEET_LIMIT,
 	TRASH_DAYS,
@@ -30,37 +25,22 @@ export {
 	updateDoc,
 	usedSheets,
 } from "./operations";
-export {
-	ancestorIds,
-	canMoveFolder,
-	fullPath,
-	isUnder,
-	parentId,
-	pathNames,
-	ROOT,
-	reparent,
-} from "./path";
+export { ancestorIds, canMoveFolder, fullPath, ROOT } from "./path";
 export {
 	type DocContent,
-	hasDoc,
-	INDEX_KEY,
 	mutateIndex,
 	readDoc,
 	readIndex,
-	readLastOpened,
 	removeDoc,
-	subscribeToIndex,
 	tidy,
 	writeDoc,
-	writeIndex,
 	writeLastOpened,
 } from "./store";
-export {
-	type DocEntry,
-	emptyIndex,
-	type FolderEntry,
-	type Path,
-	type StoreIndex,
-	type TrashEntry,
+export type {
+	DocEntry,
+	FolderEntry,
+	Path,
+	StoreIndex,
+	TrashEntry,
 } from "./types";
 export { useStoreIndex } from "./useStoreIndex";

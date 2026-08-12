@@ -12,12 +12,6 @@ export const ROOT: Path = "/";
 export const fullPath = (entry: { id: string; path: Path }): Path =>
 	`${entry.path}${entry.id}/`;
 
-/** 바로 위 폴더의 id. root 바로 아래면 null */
-export function parentId(path: Path): string | null {
-	const ids = ancestorIds(path);
-	return ids.length ? ids[ids.length - 1] : null;
-}
-
 /** 위에서부터 늘어놓은 조상 id들. 브레드크럼이 이것이다 */
 export function ancestorIds(path: Path): string[] {
 	return path.split("/").filter(Boolean);
@@ -26,15 +20,6 @@ export function ancestorIds(path: Path): string[] {
 /** `ancestor` 아래에 있는가. 자기 자신은 아니다 */
 export const isUnder = (path: Path, ancestorFull: Path): boolean =>
 	path.startsWith(ancestorFull);
-
-/**
- * 옮긴 뒤의 경로.
- *
- * mpath의 대가가 여기다 — 폴더를 옮기면 그 아래 전부의 경로를 고쳐야 한다.
- * 색인이 어차피 JSON 한 덩어리라 통째로 다시 쓰므로 실제 비용은 아니다.
- */
-export const reparent = (path: Path, fromFull: Path, toFull: Path): Path =>
-	path.startsWith(fromFull) ? toFull + path.slice(fromFull.length) : path;
 
 /**
  * 그 폴더 안으로 옮길 수 있는가.

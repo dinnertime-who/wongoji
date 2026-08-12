@@ -2,7 +2,6 @@ import { type SaveResult, safeGetItem } from "./local";
 import { createDoc } from "./operations";
 import {
 	type DocContent,
-	readIndex,
 	readLastOpened,
 	tidy,
 	writeDoc,
@@ -36,18 +35,15 @@ const LEGACY = {
 } as const;
 
 export interface Bootstrap {
-	index: StoreIndex;
 	/** 열어야 할 원고 */
 	docId: string;
-	/** 옛 원고를 옮겨 왔는가 */
-	migrated: boolean;
+	/** 색인 저장 결과. 실패하면 부르는 쪽이 화면에 알린다 */
 	result: SaveResult;
 }
 
 export function bootstrap(now = Date.now()): Bootstrap {
 	const tidied = tidy(now);
 	let index = tidied.index;
-	let migrated = false;
 
 	if (index.docs.length === 0) {
 		const legacy = readLegacy();
@@ -72,7 +68,6 @@ export function bootstrap(now = Date.now()): Bootstrap {
 					),
 				};
 			}
-			migrated = true;
 		} else {
 			/*
 			 * 예시 원고는 정말 처음 온 사람에게만 보인다.
@@ -85,12 +80,7 @@ export function bootstrap(now = Date.now()): Bootstrap {
 		}
 	}
 
-	return {
-		index,
-		docId: pickDoc(index),
-		migrated,
-		result: writeIndex(index),
-	};
+	return { docId: pickDoc(index), result: writeIndex(index) };
 }
 
 /**
@@ -144,9 +134,3 @@ function pickDoc(index: StoreIndex): string {
 	const recent = [...index.docs].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 	return recent?.id ?? "";
 }
-
-/** 옛 원고가 남아 있는가 — 나중에 정리할 때 본다 */
-export const hasLegacyDraft = (): boolean => safeGetItem(LEGACY.draft) !== null;
-
-/** 지금 색인을 그대로 읽되 다듬지는 않는다 */
-export { readIndex };

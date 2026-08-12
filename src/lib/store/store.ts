@@ -86,8 +86,6 @@ export function readDoc(id: string): DocContent | null {
 	}
 }
 
-export const hasDoc = (id: string): boolean => safeGetItem(docKey(id)) !== null;
-
 export const writeDoc = (id: string, content: DocContent): SaveResult =>
 	safeSetItem(docKey(id), JSON.stringify(content));
 

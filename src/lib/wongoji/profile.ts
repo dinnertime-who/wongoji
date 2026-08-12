@@ -47,12 +47,6 @@ export interface Profile {
 	keepWidePunctTogether: boolean;
 
 	/**
-	 * 소속·이름을 오른쪽에 붙일 때 끝에서 비우는 칸 수.
-	 * 자료마다 1~3칸으로 갈린다. 2칸이 가장 흔하다(docs 2.4).
-	 */
-	affiliationTailGap: number;
-
-	/**
 	 * 대화문은 블록 전체를 한 칸 들여쓴다 — 따옴표가 끝날 때까지 모든 줄의 첫 칸을
 	 * 비운다(docs 4.7).
 	 *
@@ -71,7 +65,6 @@ export const TOPIK_PROFILE: Profile = {
 	dropSpaceAfterPeriod: true,
 	pushOpenerToNextLine: true,
 	keepWidePunctTogether: true,
-	affiliationTailGap: 2,
 	dialogueHangingIndent: true,
 };
 
