@@ -1,20 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
+import { ConfirmDialog } from "#/components/ConfirmDialog";
 import { FolderPicker } from "#/components/FolderPicker";
 import { ManuscriptTree, type TreeActions } from "#/components/ManuscriptTree";
 import { NameDialog } from "#/components/NameDialog";
 import { TrashDialog } from "#/components/TrashDialog";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "#/components/ui/alert-dialog";
 import { Button } from "#/components/ui/button";
 import {
 	SidebarContent,
@@ -290,30 +281,14 @@ export function ManuscriptSidebar({
 			 * 초기화는 휴지통을 거치지 않는다. 되돌릴 수 없으므로 묻는다 —
 			 * 버리기와 달리 물어야 하는 쪽이다.
 			 */}
-			<AlertDialog
+			<ConfirmDialog
 				open={sheet.kind === "resetDoc"}
 				onOpenChange={(open) => !open && setSheet(CLOSED)}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>이 원고를 비울까요?</AlertDialogTitle>
-						<AlertDialogDescription>
-							하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고
-							빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저
-							내보내세요.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>취소</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => sheet.kind === "resetDoc" && onReset(sheet.doc.id)}
-							className="bg-destructive text-white hover:bg-destructive/90"
-						>
-							비우기
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				title="이 원고를 비울까요?"
+				description="하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고 빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저 내보내세요."
+				confirmLabel="비우기"
+				onConfirm={() => sheet.kind === "resetDoc" && onReset(sheet.doc.id)}
+			/>
 		</>
 	);
 }

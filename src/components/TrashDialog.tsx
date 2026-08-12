@@ -1,15 +1,6 @@
 import { FileTextIcon, FolderIcon, Undo2Icon } from "lucide-react";
 import { useState } from "react";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "#/components/ui/alert-dialog";
+import { ConfirmDialog } from "#/components/ConfirmDialog";
 import { Button } from "#/components/ui/button";
 import {
 	Dialog,
@@ -113,29 +104,14 @@ export function TrashDialog({
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog
+			<ConfirmDialog
 				open={confirming !== null}
 				onOpenChange={(next) => !next && setConfirming(null)}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>완전히 삭제할까요?</AlertDialogTitle>
-						<AlertDialogDescription>
-							{confirming ? label(confirming, index) : ""}을(를) 지웁니다. 이
-							작업은 되돌릴 수 없습니다.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>취소</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => confirming && erase(confirming)}
-							className="bg-destructive text-white hover:bg-destructive/90"
-						>
-							지우기
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				title="완전히 삭제할까요?"
+				description={`${confirming ? label(confirming, index) : ""}을(를) 지웁니다. 이 작업은 되돌릴 수 없습니다.`}
+				confirmLabel="지우기"
+				onConfirm={() => confirming && erase(confirming)}
+			/>
 		</>
 	);
 }
