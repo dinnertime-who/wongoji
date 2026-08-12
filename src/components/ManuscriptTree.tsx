@@ -11,7 +11,7 @@ import {
 	RotateCcwIcon,
 	Trash2Icon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
 	DropdownMenu,
@@ -65,7 +65,27 @@ interface Dnd {
 	onDragEnd: () => void;
 	onDragOver: (to: Path) => void;
 	onDrop: (to: Path) => void;
+	/** 손가락으로 누르기 시작했다. 오래 붙들고 있으면 끌기가 된다 */
+	onPress: (drag: Drag, touch: React.Touch) => void;
 }
+
+/**
+ * 손가락으로 이만큼 붙들고 있어야 끌기가 된다.
+ *
+ * 마우스에는 이 기다림이 없다 — 끌기와 누르기를 브라우저가 갈라 주기 때문이다.
+ * 손가락은 그 둘이 같은 동작이라, 목록을 넘기려던 것과 구별하려면 시간이 든다.
+ */
+const LONG_PRESS = 500;
+
+/** 기다리는 동안 이만큼 움직이면 넘기려던 손이다. 끌기로 치지 않는다 */
+const PRESS_SLOP = 10;
+
+/**
+ * 길게 누르는 동안 글자가 잡히거나 확대 풍선이 뜨지 않게 한다.
+ *
+ * 목록의 제목은 읽는 것이지 긁어 가는 것이 아니라, 잃는 것이 없다.
+ */
+const NO_CALLOUT = "select-none [-webkit-touch-callout:none]";
 
 /**
  * 놓을 수 있는 자리에 손이 올라왔을 때 줄에 입히는 표시.
@@ -79,9 +99,15 @@ function dropClass(dnd: Dnd, to: Path): string {
 		: "";
 }
 
-/** 줄에 끌어 놓기를 붙인다. 폴더 줄은 제 안쪽을, 원고 줄은 제가 놓인 자리를 받는다 */
+/**
+ * 줄에 끌어 놓기를 붙인다. 폴더 줄은 제 안쪽을, 원고 줄은 제가 놓인 자리를 받는다.
+ *
+ * `data-drop-path`는 손가락 쪽에서 쓴다. 터치에는 "지금 이 줄 위에 있다"는 것을
+ * 알려 주는 이벤트가 없어, 좌표로 줄을 찾아낸 뒤 이 값을 읽는다.
+ */
 function dropProps(dnd: Dnd, to: Path) {
 	return {
+		"data-drop-path": to,
 		onDragOver: (e: React.DragEvent) => {
 			if (!dnd.canDrop(to)) return;
 			// 바깥의 root 영역까지 올라가면 목적지가 root로 덮인다
@@ -97,7 +123,12 @@ function dropProps(dnd: Dnd, to: Path) {
 	};
 }
 
-/** 끌 수 있게 만든다. dataTransfer를 채워야 브라우저가 끌기를 시작한다 */
+/**
+ * 끌 수 있게 만든다.
+ *
+ * 마우스는 브라우저의 끌기를 그대로 쓴다 — dataTransfer를 채워야 시작된다.
+ * 손가락에는 그 끌기가 오지 않으므로 길게 누르기로 따로 연다.
+ */
 function dragProps(dnd: Dnd, item: Drag, label: string) {
 	return {
 		draggable: true,
@@ -108,6 +139,11 @@ function dragProps(dnd: Dnd, item: Drag, label: string) {
 			dnd.onDragStart(item);
 		},
 		onDragEnd: dnd.onDragEnd,
+		onTouchStart: (e: React.TouchEvent) => {
+			const touch = e.touches[0];
+			// 손가락 두 개 이상은 확대하려는 것이다
+			if (e.touches.length === 1 && touch) dnd.onPress(item, touch);
+		},
 	};
 }
 
@@ -166,6 +202,108 @@ export function ManuscriptTree({
 		setOver(null);
 	};
 
+	/** 손가락이 붙들고 있는 중. 시간을 다 채우면 끌기가 된다 */
+	const press = useRef<{
+		item: Drag;
+		x: number;
+		y: number;
+		timer: number;
+	} | null>(null);
+	/** 방금 끌기로 끝났다. 뒤따라오는 탭을 삼키는 데 쓴다 */
+	const dragged = useRef(false);
+
+	const forgetPress = () => {
+		if (press.current) window.clearTimeout(press.current.timer);
+		press.current = null;
+	};
+
+	const onPress = (item: Drag, touch: React.Touch) => {
+		forgetPress();
+		dragged.current = false;
+		press.current = {
+			item,
+			x: touch.clientX,
+			y: touch.clientY,
+			timer: window.setTimeout(() => {
+				press.current = null;
+				setDrag(item);
+				// 끌기가 열렸다는 것을 손끝에 알린다. 없는 기기도 있다
+				navigator.vibrate?.(10);
+			}, LONG_PRESS),
+		};
+	};
+
+	/*
+	 * 손가락으로 끄는 동안의 추적.
+	 *
+	 * 창에 직접 얹는다. React가 거는 touchmove는 passive라 목록이 따라 스크롤되는
+	 * 것을 막을 수 없다.
+	 *
+	 * 끌기 상태가 바뀔 때만 다시 건다. 의존성을 비우면 손가락이 움직일 때마다
+	 * 리스너를 떼었다 붙이게 된다 — touchmove마다 렌더가 도는 자리다. drop이 들고
+	 * 있는 색인은 끄는 동안 바뀌지 않는다. 색인을 고치는 것이 놓는 순간이라,
+	 * 그때는 이미 이 손짓이 끝나 있다.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 위 설명 참고
+	useEffect(() => {
+		const move = (e: TouchEvent) => {
+			const touch = e.touches[0];
+			if (!touch) return;
+
+			if (drag) {
+				// 끌고 있는 동안에는 목록이 함께 움직이지 않아야 한다
+				e.preventDefault();
+				const row = document
+					.elementFromPoint(touch.clientX, touch.clientY)
+					?.closest<HTMLElement>("[data-drop-path]");
+				setOver(row?.dataset.dropPath ?? null);
+				return;
+			}
+
+			// 아직 기다리는 중이다. 움직였으면 넘기려던 손으로 본다
+			const waiting = press.current;
+			if (!waiting) return;
+			const strayed = Math.hypot(
+				touch.clientX - waiting.x,
+				touch.clientY - waiting.y,
+			);
+			if (strayed > PRESS_SLOP) forgetPress();
+		};
+
+		const end = () => {
+			forgetPress();
+			if (!drag) return;
+			// 놓을 자리를 벗어난 채 손을 떼면 아무 일도 없다
+			if (over) drop(over);
+			else {
+				setDrag(null);
+				setOver(null);
+			}
+			// 손을 뗀 뒤 따라오는 탭이 원고를 열거나 폴더를 접지 않게 한다
+			dragged.current = true;
+			window.setTimeout(() => {
+				dragged.current = false;
+			}, 300);
+		};
+
+		window.addEventListener("touchmove", move, { passive: false });
+		window.addEventListener("touchend", end);
+		window.addEventListener("touchcancel", end);
+		return () => {
+			window.removeEventListener("touchmove", move);
+			window.removeEventListener("touchend", end);
+			window.removeEventListener("touchcancel", end);
+		};
+	}, [drag, over]);
+
+	// 세워 둔 타이머를 남기지 않는다
+	useEffect(
+		() => () => {
+			if (press.current) window.clearTimeout(press.current.timer);
+		},
+		[],
+	);
+
 	const dnd: Dnd = {
 		drag,
 		over,
@@ -177,6 +315,7 @@ export function ManuscriptTree({
 		},
 		onDragOver: setOver,
 		onDrop: drop,
+		onPress,
 	};
 
 	return (
@@ -187,9 +326,20 @@ export function ManuscriptTree({
 		 */
 		// biome-ignore lint/a11y/noStaticElementInteractions: 끌어 놓기는 마우스 전용이다. 키보드로는 ⋯ 메뉴의 이동을 쓴다
 		<div
-			className={`min-w-max flex-1 py-1 ${
+			className={`min-w-max flex-1 py-1 ${NO_CALLOUT} ${
 				drag && over === ROOT && canDrop(ROOT) ? "bg-accent/60" : ""
 			}`}
+			data-drop-path={ROOT}
+			/*
+			 * 끌기로 끝난 손짓에는 탭이 뒤따라온다. 그대로 두면 옮기자마자 그 원고가
+			 * 열리거나 폴더가 접힌다.
+			 */
+			onClickCapture={(e) => {
+				if (!dragged.current) return;
+				dragged.current = false;
+				e.preventDefault();
+				e.stopPropagation();
+			}}
 			onDragOver={(e) => {
 				// 여기서 막지 않으면 브라우저가 놓기를 거부한다
 				if (!canDrop(ROOT)) return;
@@ -267,7 +417,7 @@ function Level({
 					<div key={folder.id}>
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
-							className={`group flex items-center rounded ${dropClass(dnd, inside)} ${
+							className={`group flex items-center rounded ${dropClass(dnd, inside)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
 							{...dragProps(
@@ -354,7 +504,7 @@ function Level({
 					key={doc.id}
 					className={`group flex items-center rounded ${
 						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
-					} ${dropClass(dnd, path)} ${dnd.drag?.id === doc.id ? "opacity-40" : ""}`}
+					} ${dropClass(dnd, path)} ${dnd.drag?.id === doc.id ? "opacity-40" : ""} ${NO_CALLOUT}`}
 					{...dragProps(dnd, { kind: "doc", id: doc.id }, displayTitle(doc))}
 					{...dropProps(dnd, path)}
 				>
@@ -465,7 +615,7 @@ function RowMenu({
 					<MoreHorizontalIcon />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-40">
+			<DropdownMenuContent align="end" className="w-48">
 				{children}
 			</DropdownMenuContent>
 		</DropdownMenu>
