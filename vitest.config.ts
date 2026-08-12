@@ -10,8 +10,13 @@ import { defineConfig } from "vitest/config";
  */
 export default defineConfig({
 	resolve: {
+		/*
+		 * 별칭 두 벌은 tsconfig와 같다. `@`는 벤더링된 shadcn 코드가 쓰는 것이라,
+		 * 그 코드에 테스트를 붙이려면 여기에도 있어야 한다.
+		 */
 		alias: {
 			"#": fileURLToPath(new URL("./src", import.meta.url)),
+			"@": fileURLToPath(new URL("./src", import.meta.url)),
 		},
 	},
 	test: {
