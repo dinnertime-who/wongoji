@@ -18,6 +18,7 @@ import {
 	moveFolder,
 	purge,
 	purgeExpired,
+	remapIds,
 	repairPaths,
 	restore,
 	trashDoc,
@@ -418,5 +419,97 @@ describe("완전 삭제", () => {
 
 		expect(next.trash).toHaveLength(0);
 		expect(removedDocIds).toEqual([감나무.id]);
+	});
+});
+
+describe("계정으로 올릴 때 id 다시 매기기", () => {
+	const 순번 = () => {
+		let n = 0;
+		return () => `새${++n}`;
+	};
+
+	it("겹치지 않으면 그대로 둔다 — 대개는 아무 일도 없다", () => {
+		const { index } = createDoc(emptyIndex(), { title: "감나무" });
+		const out = remapIds(index, new Set(["남의것"]), 순번());
+
+		expect(out.renamed.size).toBe(0);
+		expect(out.index).toBe(index);
+	});
+
+	it("겹치는 것만 새 id를 받는다", () => {
+		const a = createDoc(emptyIndex(), { title: "가" }, () => "겹침");
+		const b = createDoc(a.index, { title: "나" }, () => "안겹침");
+
+		const out = remapIds(b.index, new Set(["겹침"]), 순번());
+
+		expect(out.renamed.get("겹침")).toBe("새1");
+		expect(out.renamed.has("안겹침")).toBe(false);
+		expect(out.index.docs.map((d) => d.id).sort()).toEqual(["새1", "안겹침"]);
+	});
+
+	/*
+	 * 이것이 이 함수의 존재 이유다. 폴더 id는 경로 문자열 안에 박혀 있어서,
+	 * 폴더만 새 id를 받고 경로를 그대로 두면 그 아래 원고가 사라진 폴더를
+	 * 가리킨 채로 계정에 올라간다 — 화면에서 영영 보이지 않는다.
+	 */
+	it("폴더 id가 바뀌면 그 아래 경로도 함께 바뀐다", () => {
+		const f = createFolder(emptyIndex(), "단편", ROOT, () => "겹침");
+		const d = createDoc(f.index, { path: fullPath(f.folder) }, () => "원고");
+
+		const out = remapIds(d.index, new Set(["겹침"]), 순번());
+
+		expect(out.index.folders[0].id).toBe("새1");
+		expect(out.index.docs[0].path).toBe("/새1/");
+	});
+
+	it("두 겹 폴더도 사슬째 따라간다", () => {
+		const 위 = createFolder(emptyIndex(), "위", ROOT, () => "겹침1");
+		const 아래 = createFolder(
+			위.index,
+			"아래",
+			fullPath(위.folder),
+			() => "겹침2",
+		);
+		const d = createDoc(
+			아래.index,
+			{ path: fullPath(아래.folder) },
+			() => "원고",
+		);
+
+		const out = remapIds(d.index, new Set(["겹침1", "겹침2"]), 순번());
+
+		expect(out.index.docs[0].path).toBe("/새1/새2/");
+	});
+
+	it("새로 뽑은 id가 또 겹치면 다시 뽑는다", () => {
+		const { index } = createDoc(emptyIndex(), {}, () => "겹침");
+		const out = remapIds(index, new Set(["겹침", "새1", "새2"]), 순번());
+
+		expect(out.renamed.get("겹침")).toBe("새3");
+	});
+
+	it("휴지통에 있는 것도 함께 매긴다 — 되살릴 것이다", () => {
+		const { index } = createDoc(
+			emptyIndex(),
+			{ title: "감나무" },
+			() => "겹침",
+		);
+		const trashed = trashDoc(index, "겹침");
+
+		const out = remapIds(trashed, new Set(["겹침"]), 순번());
+
+		expect(out.index.trash[0].id).toBe("새1");
+	});
+
+	it("한 번에 여러 벌이 겹쳐도 서로 부딪히지 않는다", () => {
+		const a = createDoc(emptyIndex(), {}, () => "가");
+		const b = createDoc(a.index, {}, () => "나");
+		const c = createDoc(b.index, {}, () => "다");
+
+		const out = remapIds(c.index, new Set(["가", "나", "다"]), 순번());
+
+		const ids = out.index.docs.map((d) => d.id);
+		expect(new Set(ids).size).toBe(3);
+		expect(ids.sort()).toEqual(["새1", "새2", "새3"]);
 	});
 });

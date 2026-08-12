@@ -1,5 +1,6 @@
 import { TRASH_DAYS } from "../config/limits";
 import {
+	ancestorIds,
 	canMoveFolder,
 	fullPath,
 	isUnder,
@@ -431,4 +432,71 @@ export function countDocsUnder(index: StoreIndex, folderId: string): number {
  */
 export function usedSheets(index: StoreIndex): number {
 	return index.docs.reduce((sum, doc) => sum + doc.sheets, 0);
+}
+
+// ─── 계정으로 올릴 때 ───
+
+/**
+ * 계정에 이미 쓰인 id를 피해 다시 매긴다.
+ *
+ * 로컬 id는 여덟 자 난수라 "한 브라우저 안에서만" 유일하다. 다른 기기에서 쓴
+ * 원고가 이미 계정에 있으면 부딪힐 수 있고, 그대로 올리면 남의 원고를 덮어쓴다.
+ *
+ * **경로 문자열도 함께 고쳐야 한다.** 폴더 id는 `path` 안에 박혀 있어서(mpath),
+ * 폴더만 새 id를 받고 경로를 그대로 두면 그 아래 원고들이 사라진 폴더를 가리킨다.
+ *
+ * 겹치지 않는 id는 그대로 둔다 — 대개는 하나도 안 겹쳐서 아무 일도 일어나지
+ * 않는다. 어느 것이 어떻게 바뀌었는지 함께 돌려준다. 본문을 새 id로 올려야 한다.
+ */
+export function remapIds(
+	index: StoreIndex,
+	taken: ReadonlySet<string>,
+	newId: NewId = makeId,
+): { index: StoreIndex; renamed: Map<string, string> } {
+	const renamed = new Map<string, string>();
+	const used = new Set(taken);
+
+	const claim = (id: string) => {
+		if (!used.has(id)) {
+			used.add(id);
+			return;
+		}
+		let next = newId();
+		while (used.has(next)) next = newId();
+		used.add(next);
+		renamed.set(id, next);
+	};
+
+	for (const f of index.folders) claim(f.id);
+	for (const d of index.docs) claim(d.id);
+	for (const t of index.trash) claim(t.id);
+
+	if (renamed.size === 0) return { index, renamed };
+
+	const settle = (path: Path): Path => {
+		const ids = ancestorIds(path).map((id) => renamed.get(id) ?? id);
+		return ids.length ? `/${ids.join("/")}/` : ROOT;
+	};
+
+	return {
+		index: {
+			version: 1,
+			folders: index.folders.map((f) => ({
+				...f,
+				id: renamed.get(f.id) ?? f.id,
+				path: settle(f.path),
+			})),
+			docs: index.docs.map((d) => ({
+				...d,
+				id: renamed.get(d.id) ?? d.id,
+				path: settle(d.path),
+			})),
+			trash: index.trash.map((t) => ({
+				...t,
+				id: renamed.get(t.id) ?? t.id,
+				path: settle(t.path),
+			})),
+		},
+		renamed,
+	};
 }

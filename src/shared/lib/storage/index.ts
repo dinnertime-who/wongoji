@@ -10,6 +10,7 @@ export {
 } from "./local";
 export {
 	currentScope,
+	keyIn,
 	restoreStorageScope,
 	type StorageScope,
 	scopedDbName,

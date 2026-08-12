@@ -157,6 +157,21 @@ export async function readDoc(id: string): Promise<DocContent | null> {
 	}
 }
 
+/**
+ * 본문이 써졌다고 알린다.
+ *
+ * 색인이 쓰는 방식과 같다. 동기화가 이것을 듣고 서버로 밀어 넣는데, 저장하는
+ * 쪽이 동기화를 알 필요는 없다 — 알게 하면 저장이 로그인 여부에 따라 달라진다.
+ */
+const written = new Set<(id: string) => void>();
+
+export function subscribeToDocWrites(
+	listener: (id: string) => void,
+): () => void {
+	written.add(listener);
+	return () => void written.delete(listener);
+}
+
 export async function writeDoc(
 	id: string,
 	content: DocContent,
@@ -164,6 +179,14 @@ export async function writeDoc(
 	try {
 		await migrated();
 		await set(id, content, store());
+
+		for (const listener of written) {
+			try {
+				listener(id);
+			} catch {
+				// 듣는 쪽 사정이다. 저장은 이미 끝났다
+			}
+		}
 		return { ok: true };
 	} catch (error) {
 		return failure(error);
@@ -201,6 +224,44 @@ export async function listDocIds(): Promise<string[]> {
 export async function clearDocs(): Promise<void> {
 	try {
 		await clear(store());
+	} catch {
+		// 지우지 못해도 할 수 있는 일이 없다
+	}
+}
+
+// ─── 지정한 칸 ───
+
+/**
+ * 지금 보고 있는 칸이 아닌 곳의 본문.
+ *
+ * 로그인 직후 비로그인 원고를 계정으로 올릴 때 쓴다. 옛 본문 옮기기를 거치지
+ * 않는다 — 부르는 쪽이 어느 칸인지 알고 부른다.
+ */
+const storeIn = (scope: StorageScope) =>
+	createStore(scopedDbName(scope), "docs");
+
+export async function readDocIn(
+	scope: StorageScope,
+	id: string,
+): Promise<DocContent | null> {
+	try {
+		return (await get<DocContent>(id, storeIn(scope))) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+export async function listDocIdsIn(scope: StorageScope): Promise<string[]> {
+	try {
+		return (await keys(storeIn(scope))).map(String);
+	} catch {
+		return [];
+	}
+}
+
+export async function clearDocsIn(scope: StorageScope): Promise<void> {
+	try {
+		await clear(storeIn(scope));
 	} catch {
 		// 지우지 못해도 할 수 있는 일이 없다
 	}

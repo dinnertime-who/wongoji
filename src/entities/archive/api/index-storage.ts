@@ -1,8 +1,10 @@
 import {
 	currentScope,
+	keyIn,
 	type SaveResult,
 	type StorageScope,
 	safeGetItem,
+	safeRemoveItem,
 	safeSetItem,
 	scopedKey,
 	subscribeToScope,
@@ -162,3 +164,19 @@ export function mutateIndex(change: (index: StoreIndex) => StoreIndex): {
 export const readLastOpened = (): string | null => safeGetItem(lastKey());
 export const writeLastOpened = (id: string): SaveResult =>
 	safeSetItem(lastKey(), id);
+
+/**
+ * 지정한 칸의 색인. 지금 보고 있는 칸이 아니어도 된다.
+ *
+ * 로그인 직후 비로그인 원고를 계정으로 올릴 때 쓴다. 그때 칸을 잠깐 옮겼다
+ * 돌아오면 화면이 두 번 깜빡이고 그 사이의 저장이 엉뚱한 칸으로 간다.
+ */
+export function readIndexIn(scope: StorageScope): StoreIndex {
+	return parseIndex(safeGetItem(keyIn(scope, "index"))) ?? emptyIndex();
+}
+
+/** 지정한 칸의 색인과 마지막으로 연 원고를 지운다 */
+export function clearIndexIn(scope: StorageScope): void {
+	safeRemoveItem(keyIn(scope, "index"));
+	safeRemoveItem(keyIn(scope, "last"));
+}

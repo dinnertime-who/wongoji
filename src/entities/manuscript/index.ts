@@ -1,10 +1,14 @@
 export {
 	clearDocs,
+	clearDocsIn,
 	type DocContent,
 	docQueryKey,
 	listDocIds,
+	listDocIdsIn,
 	readDoc,
+	readDocIn,
 	removeDoc,
+	subscribeToDocWrites,
 	writeDoc,
 } from "./api/doc-storage";
 export { TOPIK_RULES } from "./config/rules";

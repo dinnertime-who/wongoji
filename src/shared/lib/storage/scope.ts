@@ -66,6 +66,19 @@ export function scopedKey(suffix: string): string {
 		: `wongoji:v1:u:${current}:${suffix}`;
 }
 
+/**
+ * 지정한 칸의 키.
+ *
+ * 지금 칸이 아닌 곳을 읽어야 할 때가 있다 — 로그인 직후 비로그인 원고를
+ * 계정으로 올릴 때가 그렇다. 그때 `setStorageScope`로 잠깐 옮겼다 돌아오면
+ * 화면이 두 번 깜빡이고, 그 사이에 저장이 엉뚱한 칸으로 간다.
+ */
+export function keyIn(scope: StorageScope, suffix: string): string {
+	return scope === null
+		? `wongoji:v1:${suffix}`
+		: `wongoji:v1:u:${scope}:${suffix}`;
+}
+
 /** 이 칸의 본문이 사는 IndexedDB 이름 */
 export function scopedDbName(scope: StorageScope = currentScope()): string {
 	return scope === null ? "wongoji" : `wongoji:u:${scope}`;
