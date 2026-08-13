@@ -27,9 +27,19 @@ CWD=$(lsof -a -p "$PID" -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
 Feature-Sliced Design. 레이어와 슬라이스 규칙, 그리고 `biome.json` overrides의
 함정은 [README의 구조 절](README.md#구조)에 적혀 있다.
 
-**저장소는 칸으로 갈린다.** 비로그인은 `wongoji:v1:index`, 로그인하면
-`wongoji:v1:u:<id>:index`. 본문은 IndexedDB로 같은 규칙을 탄다. 키를 상수로 두면
-계정 원고가 비로그인 원고 위에 써지므로, `scopedKey()`에 물어보고 쓴다.
+**계정 원고의 정본은 서버다.** 브라우저는 `GET /api/archive`로 받아 그리고, 고칠
+때는 색인을 밀어 넣지 않고 **연산 하나**를 보낸다(`POST /api/archive/ops`). 그 길로만
+지운 것이 지웠다고 전해진다 — 색인 전체를 upsert하던 시절에는 완전히 삭제한 원고가
+새로고침하면 되살아났다.
+
+서버는 그 연산을 브라우저와 **같은 순수 함수**(`applyOp` → `operations.ts`)로 적용한다.
+색인 규칙을 두 벌 쓰지 않는다. 새 연산이 필요하면 `operations.ts`에 순수 함수를 두고
+`ops.ts`의 유니온에 한 줄 늘린다.
+
+**비로그인은 원고 한 편이다.** 폴더·차례·휴지통은 계정 기능이라 그쪽에는 색인이
+아예 없다(`features/solo-draft`). IndexedDB에 남은 것은 체험 원고 본문과, 계정 원고의
+**미전송 대기열**(`wongoji:outbox`)뿐이다 — 대기열은 정본이 아니고, 보내는 데 성공하면
+지운다.
 
 지켜야 할 관례는 한 줄이다 — **별칭(`#/`) import는 슬라이스를 건너고, 상대
 import(`./`)는 슬라이스 안에 머문다.**

@@ -1,8 +1,10 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { SaveStatusProvider, useSaveStatus } from "#/entities/archive";
-import { tidy } from "#/features/archive-bootstrap";
-import { useArchiveSync } from "#/features/archive-sync";
+import { useSaveStatus } from "#/entities/archive";
+import { drainOutbox, setDocOwner } from "#/entities/manuscript";
+import { useSession } from "#/features/auth";
+import { liftAccountBodies } from "#/features/import-legacy";
 import { requestPersistentStorage } from "#/shared/lib/storage";
 import { SaveErrorBanner } from "#/shared/ui/save-error-banner";
 import { AppShell } from "#/widgets/app-shell";
@@ -23,29 +25,67 @@ export const Route = createFileRoute("/_app")({ component: AppLayout });
  */
 function AppLayout() {
 	return (
-		<SaveStatusProvider>
-			{/* 계정 보관함과 주고받는다. 그리는 것은 없다 */}
-			<ArchiveSyncRunner />
-			<AppShell sidebar={<ManuscriptSidebar />}>
-				<Chrome />
-			</AppShell>
-		</SaveStatusProvider>
+		<AppShell sidebar={<ManuscriptSidebar />}>
+			<Chrome />
+		</AppShell>
 	);
 }
 
 function Chrome() {
+	const navigate = useNavigate();
+	const client = useQueryClient();
 	const { failure, backup } = useSaveStatus();
+	const { data: session, isPending } = useSession();
+	const userId = session?.user.id ?? null;
 
 	/*
-	 * 앱을 열 때 한 번. 어느 주소로 바로 들어와도 여기를 지난다.
+	 * 보관함은 계정 기능이다. 로그인하지 않았으면 볼 것이 없으므로 체험 원고로
+	 * 돌려보낸다 — 로그아웃했을 때도 여기를 지난다.
 	 *
-	 * 기한 지난 휴지통 비우기 · 끊어진 경로 고치기 · 고아 본문 지우기.
-	 * 전에는 두 쪽이 각자 이 effect를 들고 있었다.
+	 * 세션을 묻는 동안은 기다린다. 그 전에 내보내면 새로고침할 때마다 로그인한
+	 * 사람이 제 보관함에서 튕겨 나간다.
 	 */
 	useEffect(() => {
-		tidy();
+		if (isPending || userId) return;
+		navigate({ to: "/", replace: true });
+	}, [isPending, userId, navigate]);
 
-		// 용량이 부족할 때 브라우저가 원고를 먼저 지우지 않게 요청한다.
+	/*
+	 * 못 보낸 본문을 다시 보낸다.
+	 *
+	 * 전에는 이 자리에서 보관함을 다듬었다 — 기한 지난 휴지통 비우기, 끊어진 경로
+	 * 고치기, 고아 본문 지우기. 셋 다 색인이 브라우저에 있을 때 필요했던 일이고,
+	 * 지금은 서버가 제 것을 스스로 건사한다.
+	 *
+	 * 남은 것은 반대 방향 하나다. 저장이 실패한 채로 창을 닫았을 수 있으므로,
+	 * 열 때 한 번 훑고 연결이 돌아올 때 다시 훑는다.
+	 */
+	useEffect(() => {
+		setDocOwner(userId);
+		if (!userId) return;
+
+		void drainOutbox();
+		/*
+		 * 서버가 정본이 되기 전에 이 브라우저에만 남은 본문을 마저 올린다.
+		 * 색인은 서버에 있는데 본문이 404인 원고가 실제로 있었다 — 그 사람에게는
+		 * 원고가 통째로 사라진 것으로 보인다.
+		 */
+		void liftAccountBodies(userId).then((lifted) => {
+			/*
+			 * 올린 뒤에는 다시 읽게 한다. 캐시는 스스로 낡지 않으므로
+			 * (`staleTime: Infinity`), 방금 채운 본문이 있어도 화면은 먼저 읽어 둔
+			 * "없음"에 머문다.
+			 */
+			if (lifted) void client.invalidateQueries({ queryKey: ["doc"] });
+		});
+
+		const retry = () => void drainOutbox();
+		window.addEventListener("online", retry);
+		return () => window.removeEventListener("online", retry);
+	}, [userId, client]);
+
+	useEffect(() => {
+		// 용량이 부족할 때 브라우저가 미전송 본문을 먼저 지우지 않게 요청한다.
 		// 거절되어도 알리지 않는다 — 사용자가 할 수 있는 조치가 없다.
 		void requestPersistentStorage();
 	}, []);
@@ -58,15 +98,4 @@ function Chrome() {
 			<Outlet />
 		</>
 	);
-}
-
-/**
- * 계정 보관함과 주고받는다.
- *
- * 컴포넌트로 감싼 이유는 `SaveStatusProvider` **안**이어야 하기 때문이다 —
- * 저장 실패를 알릴 자리가 필요하다. 묻는 창은 그보다 먼저 떠야 해서 root에 있다.
- */
-function ArchiveSyncRunner() {
-	useArchiveSync();
-	return null;
 }

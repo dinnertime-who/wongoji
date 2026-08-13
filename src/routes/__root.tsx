@@ -1,6 +1,6 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { MergePrompt } from "#/features/archive-sync";
-import { useArchiveScope } from "#/features/auth";
+import { SaveStatusProvider } from "#/entities/archive";
+import { ImportPrompt } from "#/features/import-legacy";
 import { QueryProvider } from "#/shared/api/query";
 
 import appCss from "../styles.css?url";
@@ -41,14 +41,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<QueryProvider>
-					<ArchiveScope>
+					{/*
+					 * 저장 실패를 알리는 창구. **`_app`이 아니라 여기다** — 홈에서도
+					 * 보관함을 고친다(첫 원고를 만든다). 배너를 그리는 자리는 여전히
+					 * `_app` 안이고, 이것은 그 값을 나르는 통로일 뿐이다.
+					 */}
+					<SaveStatusProvider>
 						{/*
-						 * 옮길지 묻는 창. 답하기 전에는 보관함이 열리지 않으므로
-						 * 홈에서도 떠 있어야 한다 — `_app` 안에 두면 서로 기다린다.
+						 * 옛 원고를 옮길지 묻는 창. 어느 쪽에서 로그인하든 떠야 해서
+						 * root에 둔다. 전과 달리 이것을 답하기를 기다리는 화면은 없다 —
+						 * 보관함이 서버 하나가 되면서 붙들 것이 없어졌다.
 						 */}
-						<MergePrompt />
+						<ImportPrompt />
 						{children}
-					</ArchiveScope>
+					</SaveStatusProvider>
 				</QueryProvider>
 				{/*
 				 * TanStack Devtools는 띄우지 않는다. 떠 있는 뱃지가 화면 구석을 가린다.
@@ -58,14 +64,4 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</body>
 		</html>
 	);
-}
-
-/**
- * 보관함 칸을 세션에 맞춘다.
- *
- * QueryProvider 안이어야 한다 — 세션을 묻는 일도 질의다. 그리는 것은 없다.
- */
-function ArchiveScope({ children }: { children: React.ReactNode }) {
-	useArchiveScope();
-	return children;
 }

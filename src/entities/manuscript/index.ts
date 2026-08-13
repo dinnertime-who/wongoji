@@ -1,14 +1,9 @@
 export {
-	clearDocs,
-	clearDocsIn,
 	type DocContent,
 	docQueryKey,
-	listDocIds,
-	listDocIdsIn,
+	drainOutbox,
 	readDoc,
-	readDocIn,
-	removeDoc,
-	subscribeToDocWrites,
+	setDocOwner,
 	writeDoc,
 } from "./api/doc-storage";
 export { TOPIK_RULES } from "./config/rules";
@@ -40,5 +35,6 @@ export {
 	ROWS,
 	remainingChars,
 } from "./lib/typesetting";
+export type { Load, ManuscriptEditing } from "./model/editing";
 export { RulesDialog } from "./ui/RulesDialog";
 export { WongojiPager } from "./ui/WongojiPager";

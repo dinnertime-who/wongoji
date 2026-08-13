@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StoreIndex } from "#/entities/archive";
 import { createDoc, createFolder, emptyIndex, ROOT } from "#/entities/archive";
-import { pendingUpload } from "./merge";
+import { pendingUpload } from "./import-legacy";
 
 /**
  * 로그인했을 때 "옮길까요?"를 물을지 정하는 규칙.

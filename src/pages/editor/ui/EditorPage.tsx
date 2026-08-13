@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Breadcrumb,
 	displayTitle,
+	useArchive,
 	useSaveStatus,
-	useStoreIndex,
 } from "#/entities/archive";
 import {
 	goalProgress,
@@ -16,6 +16,7 @@ import { CopyManuscript } from "#/features/copy-manuscript";
 import { useManuscriptDoc, WongojiEditor } from "#/features/edit-manuscript";
 import { ExportDialog, exportBackup } from "#/features/export-manuscript";
 import { onDocReset } from "#/features/reset-manuscript";
+import { useSoloDraft } from "#/features/solo-draft";
 import {
 	type Pane,
 	PaneToggle,
@@ -30,14 +31,25 @@ import { PageHeader } from "#/widgets/page-header";
  * 원고를 쓰는 쪽.
  *
  * 넓은 화면에서는 원고와 원고지를 나란히, 좁은 화면에서는 한 쪽만 보여준다.
+ *
+ * **원고 하나를 쓰는 일은 로그인 여부와 상관이 없다.** 저장하는 곳만 다르다 —
+ * 계정 원고는 서버로, 체험 원고는 이 브라우저로. 그 차이를 훅 두 벌이 감추고
+ * 같은 모양(`ManuscriptEditing`)을 내놓으므로 이 쪽은 한 벌이면 된다.
  */
-export function EditorPage({ docId }: { docId: string }) {
-	const index = useStoreIndex();
+export function EditorPage({ docId }: { docId: string | null }) {
+	const { index } = useArchive();
 	const { registerBackup } = useSaveStatus();
-	const doc = useManuscriptDoc(docId);
+
+	/*
+	 * 둘 다 부른다. 훅은 조건부로 부를 수 없어서다. 쓰이지 않는 쪽은 스스로
+	 * 아무 일도 하지 않는다 — 계정 쪽은 빈 id를, 체험 쪽은 꺼짐을 받는다.
+	 */
+	const account = useManuscriptDoc(docId ?? "");
+	const solo = useSoloDraft(docId === null);
+	const doc = docId === null ? solo : account;
 
 	/** 목록에 적힌 지금 원고. 브레드크럼이 놓일 자리를 여기서 읽는다 */
-	const opened = index.docs.find((d) => d.id === docId);
+	const opened = docId ? index.docs.find((d) => d.id === docId) : undefined;
 
 	const [pane, setPane] = useState<Pane>("write");
 
@@ -88,6 +100,7 @@ export function EditorPage({ docId }: { docId: string }) {
 	return (
 		<>
 			<PageHeader
+				sidebar={docId !== null}
 				actions={
 					<>
 						<RulesDialog />
@@ -98,16 +111,26 @@ export function EditorPage({ docId }: { docId: string }) {
 					</>
 				}
 			>
-				{opened && (
+				{opened ? (
 					<Breadcrumb
 						path={opened.path}
 						leaf={displayTitle({ title: doc.title })}
 					/>
+				) : (
+					docId === null && (
+						/*
+						 * 체험 원고에는 자리가 없다. 대신 이것이 무엇인지 적는다 —
+						 * 여러 편을 쓰려면 로그인해야 한다는 것을 여기서 처음 안다.
+						 */
+						<span className="min-w-0 truncate text-muted-foreground text-xs">
+							로그인 없이 쓰는 원고 한 편 · 여러 편과 폴더는 로그인 후에
+						</span>
+					)
 				)}
 			</PageHeader>
 
-			{doc.load.state === "lost" ? (
-				<LostBody onStartBlank={doc.startBlank} />
+			{doc.load.state === "lost" || doc.load.state === "unreachable" ? (
+				<Trouble state={doc.load.state} onStartBlank={doc.startBlank} />
 			) : (
 				<>
 					{/* 제목과 분량은 원고·원고지 어느 쪽을 보고 있든 늘 보여야 한다 */}
@@ -166,20 +189,45 @@ export function EditorPage({ docId }: { docId: string }) {
 }
 
 /**
- * 색인에는 있는데 본문이 없을 때.
+ * 본문을 열지 못했을 때.
  *
- * 빈 에디터를 대신 띄우지 않는다. 그러면 첫 타이핑에 저장이 돌면서 되찾을 여지가
- * 완전히 사라진다. 백업 파일이 있으면 불러오는 편이 낫다.
+ * **두 경우를 반드시 가른다.** 서버에 본문이 없는 것과 서버에 닿지 못한 것은
+ * 화면에 같은 말을 써서는 안 된다 — 앞쪽에만 "빈 원고로 시작"이 있고, 그것을
+ * 연결이 끊겼을 뿐인 원고에 대고 누르면 멀쩡한 글을 빈 것으로 덮는다.
+ *
+ * 어느 쪽이든 빈 에디터를 대신 띄우지 않는다. 그러면 첫 타이핑에 저장이 돌면서
+ * 되찾을 여지가 완전히 사라진다.
  */
-function LostBody({ onStartBlank }: { onStartBlank: () => void }) {
+function Trouble({
+	state,
+	onStartBlank,
+}: {
+	state: "lost" | "unreachable";
+	onStartBlank: () => void;
+}) {
+	if (state === "unreachable") {
+		return (
+			<div className="flex flex-1 items-center justify-center px-6">
+				<div className="max-w-md space-y-3 text-center">
+					<h2 className="font-semibold text-base">
+						본문을 불러오지 못했습니다
+					</h2>
+					<p className="text-muted-foreground text-sm leading-relaxed">
+						계정 보관함에 닿지 못했습니다. 원고는 그대로 있습니다 — 연결을
+						확인하고 새로고침해 주세요.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-1 items-center justify-center px-6">
 			<div className="max-w-md space-y-3 text-center">
 				<h2 className="font-semibold text-base">본문을 찾을 수 없습니다</h2>
 				<p className="text-muted-foreground text-sm leading-relaxed">
-					목록에는 남아 있는데 저장된 본문이 없습니다. 브라우저가 저장 공간을
-					비웠거나 다른 탭에서 지웠을 수 있습니다. 백업 파일이 있다면 먼저
-					불러오세요.
+					목록에는 남아 있는데 저장된 본문이 없습니다. 다른 기기에서 지웠거나
+					올리지 못한 원고일 수 있습니다. 백업 파일이 있다면 먼저 불러오세요.
 				</p>
 				<Button variant="outline" size="sm" onClick={onStartBlank}>
 					빈 원고로 시작

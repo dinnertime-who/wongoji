@@ -1,16 +1,5 @@
-export {
-	clearIndexIn,
-	indexKey,
-	indexSnapshot,
-	indexUnreadable,
-	mutateIndex,
-	readIndex,
-	readIndexIn,
-	readLastOpened,
-	subscribeToIndex,
-	writeIndex,
-	writeLastOpened,
-} from "./api/index-storage";
+export { ARCHIVE_KEY, fetchArchive, sendOp } from "./api/archive-api";
+export { readLastOpened, writeLastOpened } from "./api/last-opened";
 export { TRASH_DAYS } from "./config/limits";
 export {
 	ancestorIds,
@@ -20,6 +9,11 @@ export {
 	ROOT,
 	settleUnder,
 } from "./lib/path";
+/*
+ * 옛 판의 색인을 올려 읽는다. **새로 쓰지 않는다** — 로그인하기 전에 이
+ * 브라우저에 쓴 원고를 계정으로 한 번 옮기는 데만 쓰고, 다 옮기면 사라진다.
+ */
+export { upgradeIndex } from "./model/migrate";
 export {
 	childrenOf,
 	countDocsUnder,
@@ -33,20 +27,20 @@ export {
 	type Placement,
 	placeEntry,
 	purge,
-	purgeExpired,
 	remapIds,
 	renameFolder,
-	repairPaths,
 	restore,
 	trashDoc,
 	trashFolder,
 	updateDoc,
 } from "./model/operations";
 export {
-	SaveStatusProvider,
-	useArchiveMutation,
-	useSaveStatus,
-} from "./model/save-status";
+	type ArchiveOp,
+	applyOp,
+	type DocPatch,
+	type OpEffect,
+} from "./model/ops";
+export { SaveStatusProvider, useSaveStatus } from "./model/save-status";
 export {
 	type DocEntry,
 	emptyIndex,
@@ -55,5 +49,5 @@ export {
 	type StoreIndex,
 	type TrashEntry,
 } from "./model/types";
-export { useStoreIndex } from "./model/use-store-index";
+export { useArchive, useArchiveMutation } from "./model/use-archive";
 export { Breadcrumb } from "./ui/Breadcrumb";

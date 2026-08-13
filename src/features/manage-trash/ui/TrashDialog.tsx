@@ -4,16 +4,12 @@ import {
 	countDocsUnder,
 	daysLeft,
 	displayTitle,
-	mutateIndex,
-	purge,
-	restore,
 	type StoreIndex,
 	TRASH_DAYS,
 	type TrashEntry,
-	useSaveStatus,
-	useStoreIndex,
+	useArchive,
+	useArchiveMutation,
 } from "#/entities/archive";
-import { removeDoc } from "#/entities/manuscript";
 
 import { Button } from "#/shared/ui/button";
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
@@ -33,6 +29,10 @@ import {
  *
  * 폴더를 되살리면 함께 버려진 것들도 함께 온다. 원래 자리가 사라졌으면 살아
  * 있는 가장 가까운 조상으로, 거기까지 없으면 맨 위로 간다.
+ *
+ * **본문을 여기서 지우지 않는다.** 지우는 연산 하나를 서버에 보내면 목록과
+ * 본문이 함께 간다. 전에는 이 화면이 색인을 고친 뒤 본문 키를 따로 지웠는데,
+ * 그 순서를 화면이 기억해야 한다는 것 자체가 빠뜨릴 자리였다.
  */
 export function TrashDialog({
 	open,
@@ -41,35 +41,17 @@ export function TrashDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
-	const index = useStoreIndex();
-	const { report: onReport } = useSaveStatus();
-	/** 완전 삭제 전에 확인받을 대상 */
-	const [confirming, setConfirming] = useState<TrashEntry | null>(null);
+	const { index } = useArchive();
+	const change = useArchiveMutation();
+	/** 완전 삭제 전에 확인받을 대상. `"all"`이면 전부 비우기 */
+	const [confirming, setConfirming] = useState<TrashEntry | "all" | null>(null);
 
 	// 최근에 버린 것이 위로
 	const entries = [...index.trash].sort((a, b) => b.deletedAt - a.deletedAt);
 
-	const undo = (id: string) => {
-		const { result } = mutateIndex((current) => restore(current, id));
-		onReport(result);
-	};
-
-	const erase = (entry: TrashEntry) => {
-		let bodies: string[] = [];
-		const { result } = mutateIndex((current) => {
-			const { index: next, removedDocIds } = purge(current, [entry.id]);
-			bodies = removedDocIds;
-			return next;
-		});
-
-		/*
-		 * 색인에서 뺀 본문 키도 함께 지운다 — 두면 자리만 먹는 고아가 된다.
-		 * 다만 색인이 실제로 써진 뒤다. 순서를 뒤집으면 쓰기가 실패했을 때
-		 * 휴지통에는 그대로 있는데 본문만 사라져 되살릴 수 없게 된다.
-		 */
-		if (result.ok) for (const id of bodies) removeDoc(id);
-
-		onReport(result);
+	const erase = () => {
+		if (confirming === "all") void change({ kind: "purgeAll" });
+		else if (confirming) void change({ kind: "purge", ids: [confirming.id] });
 		setConfirming(null);
 	};
 
@@ -89,17 +71,37 @@ export function TrashDialog({
 							비어 있습니다.
 						</p>
 					) : (
-						<ul className="max-h-80 divide-y divide-border overflow-auto rounded border border-border">
-							{entries.map((entry) => (
-								<Row
-									key={entry.id}
-									entry={entry}
-									index={index}
-									onUndo={() => undo(entry.id)}
-									onErase={() => setConfirming(entry)}
-								/>
-							))}
-						</ul>
+						<>
+							<ul className="max-h-80 divide-y divide-border overflow-auto rounded border border-border">
+								{entries.map((entry) => (
+									<Row
+										key={entry.id}
+										entry={entry}
+										index={index}
+										onUndo={() =>
+											void change({ kind: "restore", id: entry.id })
+										}
+										onErase={() => setConfirming(entry)}
+									/>
+								))}
+							</ul>
+
+							{/*
+							 * 하나씩 지우는 것과 나란히 두지 않고 목록 아래에 따로 둔다.
+							 * 되돌릴 수 없는 것 중에서도 제일 큰 것이라, 줄 사이에 섞여
+							 * 있으면 옆 줄의 단추를 누르려다 닿는다.
+							 */}
+							<div className="flex justify-end">
+								<Button
+									variant="ghost"
+									size="sm"
+									className="text-destructive hover:text-destructive"
+									onClick={() => setConfirming("all")}
+								>
+									전부 비우기
+								</Button>
+							</div>
+						</>
 					)}
 				</DialogContent>
 			</Dialog>
@@ -107,13 +109,36 @@ export function TrashDialog({
 			<ConfirmDialog
 				open={confirming !== null}
 				onOpenChange={(next) => !next && setConfirming(null)}
-				title="완전히 삭제할까요?"
-				description={`${confirming ? label(confirming, index) : ""}을(를) 지웁니다. 이 작업은 되돌릴 수 없습니다.`}
-				confirmLabel="지우기"
-				onConfirm={() => confirming && erase(confirming)}
+				title={
+					confirming === "all" ? "휴지통을 비울까요?" : "완전히 삭제할까요?"
+				}
+				description={erasing(confirming, index)}
+				confirmLabel={confirming === "all" ? "비우기" : "지우기"}
+				onConfirm={erase}
 			/>
 		</>
 	);
+}
+
+/**
+ * 무엇이 사라지는지 적는다.
+ *
+ * **원고가 몇 편인지 반드시 적는다.** 폴더 하나를 지우는 것처럼 보이는 일이
+ * 실제로는 그 안의 원고를 데려가고, 그것이 되돌릴 수 없는 유일한 자리다.
+ */
+function erasing(
+	confirming: TrashEntry | "all" | null,
+	index: StoreIndex,
+): string {
+	if (confirming === null) return "";
+
+	if (confirming === "all") {
+		const docs = index.trash.filter((t) => t.kind === "doc").length;
+		const 원고 = docs > 0 ? ` 원고 ${docs}편이 함께 사라집니다.` : "";
+		return `휴지통에 있는 ${index.trash.length}개를 모두 지웁니다.${원고} 이 작업은 되돌릴 수 없습니다.`;
+	}
+
+	return `${label(confirming, index)}을(를) 지웁니다. 이 작업은 되돌릴 수 없습니다.`;
 }
 
 function Row({

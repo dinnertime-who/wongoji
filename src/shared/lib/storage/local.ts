@@ -18,7 +18,16 @@ export type SaveFailure =
 	 * 덮어쓰기 때문에, 이 상태에서 우리가 하는 일은 "쓰지 않는 것"이다.
 	 * 부르는 쪽은 다른 실패와 똑같이 배너로 알리면 된다.
 	 */
-	| { kind: "corrupt"; message: string };
+	| { kind: "corrupt"; message: string }
+	/**
+	 * 서버에 닿지 못했다.
+	 *
+	 * 계정 보관함이 생기면서 늘었다. 다른 셋과 달리 **잃은 것은 아직 없다** —
+	 * 본문은 이 브라우저의 대기열에 남아 연결되면 다시 간다. 그래도 알리는
+	 * 이유는, 지금 쓰는 것이 아직 계정에 없다는 사실을 모른 채로 다른 기기를
+	 * 열면 거기서는 옛 원고를 보게 되기 때문이다.
+	 */
+	| { kind: "offline"; message: string };
 
 export type SaveResult = { ok: true } | ({ ok: false } & SaveFailure);
 

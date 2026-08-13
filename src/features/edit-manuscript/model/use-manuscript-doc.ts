@@ -3,11 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Content } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	mutateIndex,
-	readIndex,
-	updateDoc,
+	useArchive,
+	useArchiveMutation,
 	useSaveStatus,
-	useStoreIndex,
 	writeLastOpened,
 } from "#/entities/archive";
 import {
@@ -15,7 +13,9 @@ import {
 	blocksFromDoc,
 	blocksToDoc,
 	docQueryKey,
+	type Load,
 	layoutBlocks,
+	type ManuscriptEditing,
 	readDoc,
 	toEditorContent,
 	writeDoc,
@@ -23,13 +23,6 @@ import {
 
 /** 타이핑이 멎고 이만큼 뒤에 저장한다 */
 const DEBOUNCE = 300;
-
-/** 원고를 읽어 본 결과 */
-export type Load =
-	| { state: "loading" }
-	| { state: "ready"; content: Content }
-	/** 색인에는 있는데 본문 키가 없다 */
-	| { state: "lost" };
 
 interface Patch {
 	title?: string;
@@ -45,10 +38,11 @@ interface Patch {
  * 언제 읽고, 언제까지 미루고, 언제 반드시 밀어 넣는가. 그리는 일과 섞어 두면
  * 어느 쪽이 어느 쪽을 깨뜨렸는지 알 수 없다.
  */
-export function useManuscriptDoc(docId: string) {
+export function useManuscriptDoc(docId: string): ManuscriptEditing {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const index = useStoreIndex();
+	const { index, isPending: loadingIndex } = useArchive();
+	const change = useArchiveMutation();
 	const { report } = useSaveStatus();
 
 	const [load, setLoad] = useState<Load>({ state: "loading" });
@@ -82,8 +76,8 @@ export function useManuscriptDoc(docId: string) {
 	 * 제목·목표·분량이 색인에도 있어서 저장이 두 키를 건드린다. 목록을 그릴 때
 	 * 문서를 열지 않아도 되도록 치른 값이다. 같은 디바운스로 묶어 한 번에 쓴다.
 	 *
-	 * 본문은 색인에 넣지 않는다. 색인은 원고를 열고 옮길 때마다 통째로 읽고 쓰는
-	 * 것이라, 여기에 본문이 섞이면 원고 수만큼 커진다.
+	 * 본문은 색인에 넣지 않는다. 목록을 그릴 때 본문이 딸려 오면 원고 수만큼
+	 * 무거워진다.
 	 */
 	const save = useCallback(
 		(id: string, patch: Patch) => {
@@ -91,21 +85,21 @@ export function useManuscriptDoc(docId: string) {
 			const { content, blocks: counted, ...entry } = patch;
 
 			/*
-			 * 색인을 먼저 쓴다. 색인은 localStorage라 동기로 끝나므로, 탭이 닫히는
-			 * 중이어도 제목과 분량은 남는다. 본문은 IndexedDB라 기다려야 한다.
+			 * 둘 다 서버로 간다. 전에는 색인이 localStorage라 동기로 끝나서 탭이
+			 * 닫히는 중에도 제목만은 남았는데, 이제 그런 자리는 없다 — 대신 본문은
+			 * 보내기 전에 대기열에 한 벌 남으므로 잃지 않는다.
 			 */
 			const stats = counted ? layoutBlocks(counted).stats : undefined;
-			const indexed = mutateIndex((current) =>
-				updateDoc(current, id, {
+			const indexed = change({
+				kind: "updateDoc",
+				id,
+				patch: {
 					...entry,
 					...(stats && { chars: stats.chars, sheets: stats.sheets }),
-				}),
-			).result;
+				},
+			});
 
-			if (content === undefined) {
-				report(indexed);
-				return;
-			}
+			if (content === undefined) return;
 
 			/*
 			 * 캐시도 함께 고친다. 이 원고를 떠났다가 돌아오면 캐시에서 읽는데,
@@ -114,10 +108,17 @@ export function useManuscriptDoc(docId: string) {
 			queryClient.setQueryData(docQueryKey(id), content);
 
 			const written = writeDoc(id, content);
-			written.then((body) => report(indexed, body));
+			/*
+			 * 색인 쪽 실패는 `change`가 스스로 알린다. 본문 실패만 여기서 얹되
+			 * 둘을 기다렸다가 알린다 — 먼저 끝난 쪽이 나중 것을 지우면 배너가
+			 * 깜빡이다 사라진다.
+			 */
+			void Promise.all([indexed, written]).then(([, body]) => {
+				if (!body.ok) report(body);
+			});
 			return written;
 		},
-		[report, queryClient],
+		[change, report, queryClient],
 	);
 
 	/**
@@ -174,7 +175,11 @@ export function useManuscriptDoc(docId: string) {
 	 * 전에는 이것을 ref로 손수 가렸는데, 그 가림막이 effect의 cleanup과 물려서
 	 * 색인이 바뀔 때마다 진행 중인 읽기를 버리고 다시 읽지도 않는 상태가 됐다.
 	 */
-	const { data: stored, isPending: reading } = useQuery({
+	const {
+		data: stored,
+		isPending: reading,
+		isError: unreachable,
+	} = useQuery({
 		queryKey: docQueryKey(docId),
 		queryFn: () => readDoc(docId),
 		enabled: Boolean(docId),
@@ -189,9 +194,23 @@ export function useManuscriptDoc(docId: string) {
 	 * 색인도 의존값에 둔다. 보고 있던 원고가 다른 탭에서 사라지면 여기로 알려
 	 * 오는데, 전에는 주소만 보고 있어서 없어진 원고에 계속 쓰고 있었다.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: index는 다시 볼 때를 알리는 신호로만 둔다
+	// biome-ignore lint/correctness/useExhaustiveDependencies: flush는 이 원고를 이미 열었으면 돌지 않는다
 	useEffect(() => {
-		const entry = readIndex().docs.find((d) => d.id === docId);
+		/*
+		 * 목록을 아직 못 받았으면 아무 판단도 하지 않는다.
+		 *
+		 * **없는 것과 아직 모르는 것은 다르다.** 뭉뚱그리면 새로고침할 때마다
+		 * 멀쩡한 원고를 "없다"고 보고 홈으로 돌려보내고, 홈은 보관함이 비었다고
+		 * 보고 원고를 새로 만든다.
+		 */
+		if (loadingIndex) return;
+		/*
+		 * 열어 둔 원고가 없다. 체험 모드(로그인 없이 쓰는 한 편)에서도 이 훅이
+		 * 불리는데, 그때 여기서 "없는 원고"라고 판단하면 홈으로 돌려보낸다.
+		 */
+		if (!docId) return;
+
+		const entry = index.docs.find((d) => d.id === docId);
 		if (!entry) {
 			// 없는 원고를 가리키는 주소다. 밀린 저장을 버리고 열 수 있는 곳으로 보낸다
 			pending.current = null;
@@ -212,7 +231,7 @@ export function useManuscriptDoc(docId: string) {
 		setGoal(entry.goal);
 		// 새 본문이 올 때까지 앞 원고를 그대로 두지 않는다
 		if (shownRef.current !== docId) setLoad({ state: "loading" });
-	}, [docId, index, navigate]);
+	}, [docId, index, loadingIndex, navigate]);
 
 	/*
 	 * 본문이 도착하면 화면에 앉힌다.
@@ -225,6 +244,17 @@ export function useManuscriptDoc(docId: string) {
 		if (!docId || reading) return;
 		// 이 원고는 이미 앉혔다. 다시 하면 타이핑 도중에 에디터가 갈린다
 		if (shownRef.current === docId) return;
+
+		/*
+		 * 못 읽었다. **"없다"고 말하지 않는다** — 그 화면에는 "빈 원고로 시작"이
+		 * 있고, 연결이 끊겼을 뿐인데 그것을 누르면 멀쩡한 원고를 덮는다.
+		 */
+		if (unreachable) {
+			docRef.current = null;
+			setBlocks([]);
+			setLoad({ state: "unreachable" });
+			return;
+		}
 
 		if (stored == null) {
 			/*
@@ -261,23 +291,20 @@ export function useManuscriptDoc(docId: string) {
 		 * `updatedAt`은 건드리지 않는다. 읽기만 했는데 목록에서 맨 위로 올라오면
 		 * "최근 수정순"이 거짓말이 된다.
 		 */
-		const entry = readIndex().docs.find((d) => d.id === docId);
+		const entry = index.docs.find((d) => d.id === docId);
 		if (!entry) return;
 
 		const stats = layoutBlocks(opened).stats;
 		if (entry.chars !== stats.chars || entry.sheets !== stats.sheets) {
-			report(
-				mutateIndex((current) =>
-					updateDoc(
-						current,
-						docId,
-						{ chars: stats.chars, sheets: stats.sheets },
-						entry.updatedAt,
-					),
-				).result,
-			);
+			void change({
+				kind: "updateDoc",
+				id: docId,
+				patch: { chars: stats.chars, sheets: stats.sheets },
+				// 읽기만 했는데 목록에서 맨 위로 올라오면 "최근 수정순"이 거짓말이 된다
+				touch: false,
+			});
 		}
-	}, [docId, stored, reading]);
+	}, [docId, stored, reading, unreachable]);
 
 	/*
 	 * 화면을 떠날 때 마지막 몇 글자를 지킨다.

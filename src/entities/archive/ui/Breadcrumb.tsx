@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ancestorIds } from "../lib/path";
 import type { FolderEntry, Path } from "../model/types";
-import { useStoreIndex } from "../model/use-store-index";
+import { useArchive } from "../model/use-archive";
 
 /** 이보다 깊어지면 앞을 줄인다. 머리말은 한 줄로 남아야 한다 */
 const SHOWN = 2;
@@ -22,7 +22,7 @@ export function Breadcrumb({
 	/** 맨 끝에 적을 이름 */
 	leaf: string;
 }) {
-	const index = useStoreIndex();
+	const { index } = useArchive();
 	const byId = new Map(index.folders.map((f) => [f.id, f]));
 	const trail = ancestorIds(path)
 		.map((id) => byId.get(id))

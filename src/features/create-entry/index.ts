@@ -1,5 +1,1 @@
-export {
-	type Created,
-	createDocIn,
-	duplicateDocById,
-} from "./model/create-entry";
+export { type Created, useCreateEntry } from "./model/use-create-entry";

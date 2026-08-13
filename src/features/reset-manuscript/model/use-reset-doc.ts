@@ -1,4 +1,5 @@
-import { mutateIndex, updateDoc } from "#/entities/archive";
+import { useCallback } from "react";
+import { useArchiveMutation } from "#/entities/archive";
 import { emptyDoc, writeDoc } from "#/entities/manuscript";
 import type { SaveResult } from "#/shared/lib/storage";
 
@@ -24,21 +25,36 @@ export function onDocReset(listener: Listener): () => void {
 	return () => void listeners.delete(listener);
 }
 
-export async function resetDoc(docId: string): Promise<SaveResult> {
-	const body = await writeDoc(docId, emptyDoc());
-	if (!body.ok) return body;
+export function useResetDoc(): (docId: string) => Promise<SaveResult> {
+	const change = useArchiveMutation();
 
-	const { result } = mutateIndex((current) =>
-		updateDoc(current, docId, { title: "", goal: 0, chars: 0, sheets: 1 }),
+	return useCallback(
+		async (docId: string) => {
+			const body = await writeDoc(docId, emptyDoc());
+			if (!body.ok) return body;
+
+			const done = await change({
+				kind: "updateDoc",
+				id: docId,
+				patch: { title: "", goal: 0, chars: 0, sheets: 1 },
+			});
+			if (!done) {
+				return {
+					ok: false,
+					kind: "offline",
+					message: "원고를 비웠지만 목록에 반영하지 못했습니다.",
+				} as const;
+			}
+
+			for (const listener of listeners) {
+				try {
+					listener(docId);
+				} catch {
+					// 듣는 쪽 사정이다. 저장은 이미 끝났다
+				}
+			}
+			return { ok: true } as const;
+		},
+		[change],
 	);
-	if (!result.ok) return result;
-
-	for (const listener of listeners) {
-		try {
-			listener(docId);
-		} catch {
-			// 듣는 쪽 사정이다. 저장은 이미 끝났다
-		}
-	}
-	return result;
 }

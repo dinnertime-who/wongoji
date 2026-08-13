@@ -17,9 +17,7 @@ import {
 	nudgeEntry,
 	placeEntry,
 	purge,
-	purgeExpired,
 	remapIds,
-	repairPaths,
 	restore,
 	trashDoc,
 	trashFolder,
@@ -365,7 +363,8 @@ describe("휴지통", () => {
 		// 원고만 먼저 버리고, 그 폴더를 통째로 지운다
 		let next = trashDoc(index, 감나무.id, NOW);
 		next = trashFolder(next, 신춘문예.id, NOW);
-		next = purgeExpired(next, NOW + 31 * DAY).index; // 폴더가 영영 사라진다
+		// 폴더를 영영 지운다 — 아래 것들이 함께 간다
+		next = purge(next, [신춘문예.id]).index;
 
 		// 원고만 따로 되살린다 — 원래 자리는 없다
 		const revived = restore(
@@ -387,17 +386,11 @@ describe("휴지통", () => {
 		expect(revived.docs.find((d) => d.id === 감나무.id)?.path).toBe(ROOT);
 	});
 
-	it("30일이 지나면 비운다", () => {
-		const { index, 감나무 } = sample();
-		const trashed = trashDoc(index, 감나무.id, NOW);
-
-		expect(purgeExpired(trashed, NOW + 29 * DAY).index.trash).toHaveLength(1);
-
-		const gone = purgeExpired(trashed, NOW + 31 * DAY);
-		expect(gone.index.trash).toHaveLength(0);
-		// 본문 키를 지우라고 알려 준다
-		expect(gone.removedDocIds).toEqual([감나무.id]);
-	});
+	/*
+	 * 30일이 지난 것을 비우는 일은 여기 없다. 서버가 보관함을 돌려주기 전에
+	 * 한다(`sweepExpired`) — 브라우저가 비우면 그 사실이 서버로 갈 길이 없어서
+	 * 다음에 받아 올 때 그대로 되살아났다.
+	 */
 
 	it("남은 날을 센다", () => {
 		const entry = {
@@ -416,27 +409,6 @@ describe("휴지통", () => {
 	it("폴더에 든 원고 수를 센다", () => {
 		const { index, 신춘문예 } = sample();
 		expect(countDocsUnder(index, 신춘문예.id)).toBe(1);
-	});
-});
-
-describe("다듬기", () => {
-	it("사라진 폴더를 가리키면 살아 있는 조상까지 끌어올린다", () => {
-		const { index, y2026 } = sample();
-		// 중간 폴더만 몰래 걷어낸다 (색인이 깨진 상황)
-		const broken: StoreIndex = {
-			...index,
-			folders: index.folders.filter((f) => f.id !== y2026.id),
-		};
-		const fixed = repairPaths(broken);
-
-		// 감나무는 /f1/f2/ 에 있었다 → f2가 없으니 /f1/ 로
-		expect(fixed.docs.find((d) => d.title === "감나무")?.path).toBe("/f1/");
-	});
-
-	it("조상이 전부 사라졌으면 root로", () => {
-		const { index } = sample();
-		const fixed = repairPaths({ ...index, folders: [] });
-		for (const doc of fixed.docs) expect(doc.path).toBe(ROOT);
 	});
 });
 

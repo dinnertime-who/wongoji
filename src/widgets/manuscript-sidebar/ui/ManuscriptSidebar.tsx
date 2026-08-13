@@ -3,30 +3,20 @@ import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import {
 	ancestorIds,
-	createFolder,
 	type DocEntry,
 	displayTitle,
 	type FolderEntry,
 	fullPath,
-	nudgeEntry,
 	type Path,
-	placeEntry,
 	ROOT,
-	renameFolder,
-	trashDoc,
-	trashFolder,
+	useArchive,
 	useArchiveMutation,
 	useSaveStatus,
-	useStoreIndex,
 } from "#/entities/archive";
-import {
-	type Created,
-	createDocIn,
-	duplicateDocById,
-} from "#/features/create-entry";
+import { type Created, useCreateEntry } from "#/features/create-entry";
 import { TrashDialog } from "#/features/manage-trash";
 import { FolderPicker } from "#/features/move-entry";
-import { resetDoc } from "#/features/reset-manuscript";
+import { useResetDoc } from "#/features/reset-manuscript";
 import { Button } from "#/shared/ui/button";
 import { ConfirmDialog } from "#/shared/ui/confirm-dialog";
 import { NameDialog } from "#/shared/ui/name-dialog";
@@ -63,10 +53,12 @@ const CLOSED: Sheet = { kind: "none" };
  */
 export function ManuscriptSidebar() {
 	const navigate = useNavigate();
-	const index = useStoreIndex();
+	const { index } = useArchive();
 	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
 	const { report } = useSaveStatus();
 	const change = useArchiveMutation();
+	const { createDocIn, duplicateDocById, createFolderIn } = useCreateEntry();
+	const resetDoc = useResetDoc();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 
@@ -119,9 +111,8 @@ export function ManuscriptSidebar() {
 		 * 갈 수 없는 자리는 트리가 미리 걸러 놓으므로 여기서 다시 묻지 않는다.
 		 * `placeEntry`도 제 안에서 한 번 더 막는다.
 		 */
-		drop: (moving, to) => change((current) => placeEntry(current, moving, to)),
-		nudge: (moving, dir) =>
-			change((current) => nudgeEntry(current, moving, dir)),
+		drop: (moving, to) => void change({ kind: "placeEntry", moving, to }),
+		nudge: (moving, dir) => void change({ kind: "nudgeEntry", moving, dir }),
 
 		duplicateDoc: (doc) => open(duplicateDocById(doc.id)),
 
@@ -131,7 +122,7 @@ export function ManuscriptSidebar() {
 		 * 휴지통 안에서만 할 수 있고, 거기서는 묻는다.
 		 */
 		trashDoc: (doc) => {
-			change((current) => trashDoc(current, doc.id));
+			void change({ kind: "trashDoc", id: doc.id });
 			// 보고 있던 원고를 버렸으면 열어 둘 수 없다
 			if (doc.id === currentDocId) navigate({ to: "/", replace: true });
 		},
@@ -139,7 +130,7 @@ export function ManuscriptSidebar() {
 		resetDoc: (doc) => setSheet({ kind: "resetDoc", doc }),
 
 		trashFolder: (folder) => {
-			change((current) => trashFolder(current, folder.id));
+			void change({ kind: "trashFolder", id: folder.id });
 			const gone = ancestorIds(
 				index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT,
 			).includes(folder.id);
@@ -206,9 +197,7 @@ export function ManuscriptSidebar() {
 				title="새 폴더"
 				description="지금 보고 있는 원고와 같은 자리에 만듭니다."
 				initial="새 폴더"
-				onConfirm={(name) =>
-					change((current) => createFolder(current, name, here).index)
-				}
+				onConfirm={(name) => void createFolderIn(name, here)}
 			/>
 
 			<NameDialog
@@ -220,7 +209,7 @@ export function ManuscriptSidebar() {
 				onConfirm={(name) => {
 					if (sheet.kind !== "renameFolder") return;
 					const { id } = sheet.folder;
-					change((current) => renameFolder(current, id, name));
+					void change({ kind: "renameFolder", id, name });
 				}}
 			/>
 
@@ -254,9 +243,11 @@ export function ManuscriptSidebar() {
 								? ({ kind: "doc", id: sheet.doc.id } as const)
 								: null;
 					if (!moving) return;
-					change((current) =>
-						placeEntry(current, moving, { path, before: null }),
-					);
+					void change({
+						kind: "placeEntry",
+						moving,
+						to: { path, before: null },
+					});
 				}}
 			/>
 
@@ -276,7 +267,9 @@ export function ManuscriptSidebar() {
 				description="하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고 빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저 내보내세요."
 				confirmLabel="비우기"
 				onConfirm={() => {
-					if (sheet.kind === "resetDoc") resetDoc(sheet.doc.id).then(report);
+					if (sheet.kind === "resetDoc") {
+						void resetDoc(sheet.doc.id).then(report);
+					}
 				}}
 			/>
 		</>

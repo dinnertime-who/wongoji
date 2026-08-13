@@ -13,10 +13,18 @@ import { SidebarTrigger } from "#/shared/ui/sidebar";
  */
 export function PageHeader({
 	width = "wide",
+	sidebar = true,
 	children,
 	actions,
 }: {
 	width?: "wide" | "narrow";
+	/**
+	 * 보관함이 옆에 있는가.
+	 *
+	 * 비로그인 체험 원고에는 없다 — 접었다 펼 것이 없는데 단추를 두면 눌러도
+	 * 아무 일이 없고, 무엇보다 `SidebarTrigger`는 보관함 바깥에서 살 수 없다.
+	 */
+	sidebar?: boolean;
 	/** 지금 어디인지. 보통 브레드크럼이 온다 */
 	children: React.ReactNode;
 	/** 오른쪽에 붙는 것들. 로그인 단추 왼편에 온다 */
@@ -33,16 +41,15 @@ export function PageHeader({
 				 * 단추 하나로 족하다. 넓으면 옆의 보관함을 접었다 펴고, 좁으면
 				 * 서랍을 연다 — 어느 쪽인지는 Sidebar가 안에서 가른다.
 				 */}
-				<SidebarTrigger title="보관함" aria-label="보관함" />
+				{sidebar && <SidebarTrigger title="보관함" aria-label="보관함" />}
 
 				{children}
 
 				<div className="ml-auto flex items-center gap-3 text-xs tabular-nums">
 					{actions}
 					{/*
-					 * 로그인은 맨 오른쪽 끝. 아직 아무것도 막지 않으므로 이 단추는
-					 * 들어가는 문이 아니라 표시에 가깝다 — 원고는 로그인과 무관하게
-					 * 지금도 브라우저에 저장된다.
+					 * 로그인은 맨 오른쪽 끝. 이제는 표시가 아니라 문이다 — 여러 편을
+					 * 두고 폴더로 갈라 쓰는 일은 계정 쪽에 있다.
 					 */}
 					<AuthButton />
 				</div>

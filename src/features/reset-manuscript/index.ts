@@ -1,1 +1,1 @@
-export { onDocReset, resetDoc } from "./model/reset-doc";
+export { onDocReset, useResetDoc } from "./model/use-reset-doc";

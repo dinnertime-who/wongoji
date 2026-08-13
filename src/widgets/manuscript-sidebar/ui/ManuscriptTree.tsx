@@ -27,7 +27,7 @@ import {
 	placeEntry,
 	ROOT,
 	type StoreIndex,
-	useStoreIndex,
+	useArchive,
 } from "#/entities/archive";
 import {
 	DropLine,
@@ -102,7 +102,7 @@ export function ManuscriptTree({
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
 }) {
-	const index = useStoreIndex();
+	const { index } = useArchive();
 	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
 	// 지금 원고까지 가는 길은 펴 둔다
 	const current = index.docs.find((d) => d.id === currentDocId);

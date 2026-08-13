@@ -206,6 +206,10 @@ export function updateDoc(
 	patch: Partial<Omit<DocEntry, "id" | "createdAt">>,
 	now = Date.now(),
 ): StoreIndex {
+	// 없는 원고면 받은 것을 그대로 돌려준다. 새 객체를 주면 부르는 쪽이 그것을
+	// 저장하고, 저장은 화면을 다시 그리게 하고 서버로 밀어 넣기까지 예약한다
+	if (!index.docs.some((d) => d.id === id)) return index;
+
 	return {
 		...index,
 		docs: index.docs.map((d) =>
@@ -219,6 +223,12 @@ export function renameFolder(
 	id: string,
 	name: string,
 ): StoreIndex {
+	// 없는 폴더이거나 같은 이름이면 아무 일도 하지 않는다 — `placeEntry`가
+	// 제자리에 놓을 때와 같다. 여기서 새 객체를 주면 그 한 번에 저장과 다시
+	// 그리기와 서버로 밀어 넣기가 다 돈다
+	const folder = index.folders.find((f) => f.id === id);
+	if (!folder || folder.name === name) return index;
+
 	return {
 		...index,
 		folders: index.folders.map((f) => (f.id === id ? { ...f, name } : f)),
@@ -569,18 +579,11 @@ export function purge(
 	};
 }
 
-/** 기한이 지난 것을 비운다. 앱을 열 때 한 번 부른다 */
-export function purgeExpired(
-	index: StoreIndex,
-	now = Date.now(),
-	days = TRASH_DAYS,
-): { index: StoreIndex; removedDocIds: string[] } {
-	const cutoff = now - days * DAY;
-	const expired = index.trash
-		.filter((t) => t.deletedAt < cutoff)
-		.map((t) => t.id);
-	return purge(index, expired);
-}
+/*
+ * 기한이 지난 것을 비우는 일은 여기 없다. **서버가 한다**(`sweepExpired`) —
+ * 보관함을 읽기 전에 한 번. 전에는 앱을 열 때 브라우저가 비웠는데, 그 사실이
+ * 서버로 갈 길이 없어서 다음에 받아 올 때 그대로 되살아났다.
+ */
 
 /** 남은 날. 0이면 다음에 열 때 사라진다 */
 export const daysLeft = (
@@ -591,27 +594,11 @@ export const daysLeft = (
 
 // ─── 다듬기 ───
 
-/**
- * 끊어진 경로를 고친다.
- *
- * 폴더가 사라졌는데 그 아래를 가리키는 것이 남아 있으면 화면에서 영영 보이지
- * 않는다. 살아 있는 가장 가까운 조상까지 끌어올린다.
- *
- * 끌어올린 것의 `order`는 그대로 둔다 — 새 자리의 형제와 번호가 겹칠 수 있지만,
- * 정렬이 그 동률을 이름·시각으로 가르므로 목록이 흔들리지는 않는다. 그 자리를
- * 한 번 손대면 다시 빽빽해진다. 여기서 번호를 다시 매기면 앱을 열 때마다
- * 멀쩡한 자리들까지 훑게 되는데, 고쳐 줄 것이 거의 없는 일에 치를 값이 아니다.
+/*
+ * 끊어진 경로를 고치는 일도 여기 없다. 폴더를 지우면 그 아래가 함께 가고
+ * (`purge`), 되살릴 때는 `settleUnder`가 살아 있는 조상까지 끌어올린다 —
+ * 고치는 쪽이 서버 하나뿐이라 끊긴 채로 남을 자리가 없어졌다.
  */
-export function repairPaths(index: StoreIndex): StoreIndex {
-	const alive = new Set(index.folders.map((f) => f.id));
-	const settle = (path: Path) => settleUnder(path, alive);
-
-	return {
-		...index,
-		folders: index.folders.map((f) => ({ ...f, path: settle(f.path) })),
-		docs: index.docs.map((d) => ({ ...d, path: settle(d.path) })),
-	};
-}
 
 // ─── 읽기 ───
 

@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import {
 	Breadcrumb,
 	childrenOf,
-	createFolder,
 	type DocEntry,
 	displayTitle,
 	type FolderEntry,
@@ -13,13 +12,11 @@ import {
 	type Path,
 	type Placement,
 	placeEntry,
-	readIndex,
-	renameFolder,
+	useArchive,
 	useArchiveMutation,
 	useSaveStatus,
-	useStoreIndex,
 } from "#/entities/archive";
-import { createDocIn } from "#/features/create-entry";
+import { useCreateEntry } from "#/features/create-entry";
 import {
 	DropLine,
 	type DropRow,
@@ -41,9 +38,10 @@ import { PageHeader } from "#/widgets/page-header";
  */
 export function FolderPage({ folderId }: { folderId: string }) {
 	const navigate = useNavigate();
-	const index = useStoreIndex();
+	const { index, isPending } = useArchive();
 	const { report } = useSaveStatus();
 	const change = useArchiveMutation();
+	const { createDocIn, createFolderIn } = useCreateEntry();
 
 	const folder = index.folders.find((f) => f.id === folderId);
 
@@ -51,18 +49,17 @@ export function FolderPage({ folderId }: { folderId: string }) {
 	 * 없는 폴더를 가리키는 주소면 열 수 있는 곳으로 보낸다. 휴지통에 넣었거나
 	 * 다른 창에서 지운 것이다.
 	 *
-	 * 구독한 색인이 아니라 저장소를 그때그때 읽는다. 구독한 쪽은 마운트 뒤에야
-	 * 채워져서, 첫 그림에서는 무엇을 찾아도 없다고 나온다 — 그대로 믿으면 멀쩡한
-	 * 폴더를 열 때마다 되돌려 보낸다.
+	 * **목록을 아직 못 받았으면 판단하지 않는다.** 첫 그림에서는 무엇을 찾아도
+	 * 없다고 나오는데, 그대로 믿으면 멀쩡한 폴더를 열 때마다 되돌려 보낸다.
 	 *
 	 * index를 의존값에 두어 보고 있는 폴더가 사라지는 것도 잡는다.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: index는 다시 볼 때를 알리는 신호로만 둔다
 	useEffect(() => {
-		if (!readIndex().folders.some((f) => f.id === folderId)) {
+		if (isPending) return;
+		if (!index.folders.some((f) => f.id === folderId)) {
 			navigate({ to: "/", replace: true });
 		}
-	}, [folderId, index, navigate]);
+	}, [folderId, index, isPending, navigate]);
 
 	if (!folder) return null;
 
@@ -70,7 +67,7 @@ export function FolderPage({ folderId }: { folderId: string }) {
 	const { folders, docs } = childrenOf(index, inside);
 
 	const rename = (name: string) =>
-		change((current) => renameFolder(current, folder.id, name));
+		void change({ kind: "renameFolder", id: folder.id, name });
 
 	const addDoc = async () => {
 		const { docId, result } = await createDocIn(inside);
@@ -79,8 +76,7 @@ export function FolderPage({ folderId }: { folderId: string }) {
 		if (docId) navigate({ to: "/w/$docId", params: { docId } });
 	};
 
-	const addFolder = () =>
-		change((current) => createFolder(current, "새 폴더", inside).index);
+	const addFolder = () => void createFolderIn("새 폴더", inside);
 
 	return (
 		<>
@@ -129,7 +125,7 @@ function EntryList({
 	folders: FolderEntry[];
 	docs: DocEntry[];
 }) {
-	const index = useStoreIndex();
+	const { index } = useArchive();
 	const change = useArchiveMutation();
 
 	/*
@@ -145,7 +141,7 @@ function EntryList({
 	const dnd = useEntryDnd({
 		canDrop: (moving, to) => placeEntry(index, moving, aimed(to)) !== index,
 		onDrop: (moving, to) =>
-			change((current) => placeEntry(current, moving, aimed(to))),
+			void change({ kind: "placeEntry", moving, to: aimed(to) }),
 	});
 
 	const empty = folders.length === 0 && docs.length === 0;

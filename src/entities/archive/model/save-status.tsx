@@ -6,8 +6,6 @@ import {
 	useState,
 } from "react";
 import type { SaveFailure, SaveResult } from "#/shared/lib/storage";
-import { mutateIndex } from "../api/index-storage";
-import type { StoreIndex } from "./types";
 
 /**
  * 보관함 저장이 실패했는지.
@@ -72,22 +70,8 @@ export function useSaveStatus(): SaveStatus {
 	return status;
 }
 
-/**
- * 색인을 고치고 결과를 알린다. 성공했는지 돌려준다.
- *
- * 화면 곳곳이 같은 세 줄(고치고 · 결과를 받아 · 배너에 넣는다)을 각자 적고
- * 있었다. 네 벌이었다.
+/*
+ * 색인을 고치는 일은 여기 없다. `useArchiveMutation`은 `use-archive.ts`에 있다 —
+ * 고치는 것이 저장소 쓰기가 아니라 서버로 보내는 일이 되면서, 질의 캐시를 아는
+ * 쪽으로 옮겨 갔다. 여기 남은 것은 "실패를 화면에 알리는 창구" 하나다.
  */
-export function useArchiveMutation(): (
-	edit: (index: StoreIndex) => StoreIndex,
-) => boolean {
-	const { report } = useSaveStatus();
-	return useCallback(
-		(edit) => {
-			const { result } = mutateIndex(edit);
-			report(result);
-			return result.ok;
-		},
-		[report],
-	);
-}

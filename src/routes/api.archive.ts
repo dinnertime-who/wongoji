@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 // createFileRoute의 `server` 옵션은 react-start가 declare module로 얹는다
 import type {} from "@tanstack/react-start";
 import type { StoreIndex } from "#/entities/archive";
-import { pushArchive, readArchive, takenIds } from "#/server/archive";
+import {
+	pushArchive,
+	readArchive,
+	sweepExpired,
+	takenIds,
+} from "#/server/archive";
 import { db } from "#/server/db";
 import { currentUserId, unauthorized } from "#/server/session";
 
@@ -11,7 +16,11 @@ import { currentUserId, unauthorized } from "#/server/session";
  *
  * - `GET` — 색인 전체. 본문은 없다(원고 하나짜리 라우트가 따로 있다)
  * - `GET ?ids` — 이미 쓰인 id만. 로컬 원고를 올리기 전에 겹치는지 볼 때
- * - `POST` — 색인을 밀어 넣는다. 있으면 고치고 없으면 만든다. **지우지는 않는다**
+ * - `POST` — 색인을 통째로 밀어 넣는다. **한 번만 쓰는 길이다** — 로그인하기 전에
+ *   이 브라우저에 쓴 원고를 옮길 때. 있으면 고치고 없으면 만들며 지우지 않는다
+ *
+ * 평소의 고치기는 여기로 오지 않는다. `POST /api/archive/ops`가 그 자리다 —
+ * 지운 것을 지웠다고 알릴 수 있는 길이 그쪽뿐이다.
  */
 export const Route = createFileRoute("/api/archive")({
 	server: {
@@ -25,6 +34,8 @@ export const Route = createFileRoute("/api/archive")({
 					return Response.json({ ids: [...(await takenIds(db, userId))] });
 				}
 
+				// 기한이 지난 휴지통을 먼저 비운다. 브라우저가 하던 일을 가져왔다
+				await sweepExpired(db, userId);
 				return Response.json(await readArchive(db, userId));
 			},
 
