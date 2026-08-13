@@ -40,6 +40,15 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	/*
+	 * 원고지 격자색. 보관함에서 "지금 이것"을 가리키는 데 쓴다.
+	 *
+	 * 사이드바 바탕과 `--muted`는 밝기가 2%밖에 안 달라서, 그것으로 고른 줄을
+	 * 칠하면 눈에 들지 않았다. **밝기가 아니라 색조를 바꾼다** — 따뜻한 종이
+	 * 위의 옅은 초록이라 흐릿하게 칠해도 무엇이 골라졌는지 한눈에 보인다.
+	 */
+	--color-grid: var(--grid);
+	--color-grid-soft: var(--grid-soft);
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);

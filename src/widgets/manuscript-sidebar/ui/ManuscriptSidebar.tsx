@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
 	ancestorIds,
 	type DocEntry,
@@ -44,8 +44,9 @@ const CLOSED: Sheet = { kind: "none" };
 /**
  * 원고 보관함.
  *
- * 새 원고와 새 폴더는 **지금 보고 있는 원고가 든 폴더**에 만든다. 맨 위에 있으면
- * root에 만든다. 어디에 생겼는지 헤매지 않게 하려는 것이다.
+ * 새 원고와 새 폴더는 **지금 보고 있는 원고가 든 폴더**에 만든다. 어디에 생겼는지
+ * 헤매지 않게 하려는 것이다. 맨 위에 만들려면 트리의 **빈 곳을 누른다** — 끌어
+ * 놓기가 이미 "빈 곳 = 맨 위"로 읽히므로 누르는 쪽도 같게 두었다.
  *
  * 무엇이 열려 있는지 색인이 무엇인지 저장이 실패했는지를 전부 제가 읽는다.
  * 물려받으면 이 위의 모든 부품이 그것을 아는 척해야 하고, 틀(AppShell)이 쪽마다
@@ -63,15 +64,31 @@ export function ManuscriptSidebar() {
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 
 	/*
+	 * 맨 위에 만들기로 했는가.
+	 *
+	 * 폴더 안을 보고 있어도 맨 위에 만들고 싶을 때가 있는데, 전에는 그 길이
+	 * 없었다 — 맨 위 원고를 하나 열어 나오는 수밖에. 트리의 빈 곳을 누르면
+	 * 여기가 선다.
+	 *
+	 * **다른 것을 열면 도로 내려간다.** 눌러 둔 것을 계속 들고 있으면, 폴더를
+	 * 열고 새 원고를 눌렀는데 엉뚱하게 맨 위에 생긴다.
+	 */
+	const [atRoot, setAtRoot] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 이 둘은 읽으려고가 아니라 "다른 것을 열었다"는 신호로 둔다
+	useEffect(() => setAtRoot(false), [currentDocId, currentFolderId]);
+
+	/*
 	 * 새 원고와 새 폴더가 놓일 자리.
 	 *
 	 * 폴더를 열어 두었으면 그 안이다. 열어 놓고 새 원고를 누르는 사람은 거기에
 	 * 만들려는 것이지, 원고 쪽에서 마지막으로 보던 자리에 만들려는 것이 아니다.
 	 */
 	const openedFolder = index.folders.find((f) => f.id === currentFolderId);
-	const here = openedFolder
-		? fullPath(openedFolder)
-		: (index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT);
+	const here = atRoot
+		? ROOT
+		: openedFolder
+			? fullPath(openedFolder)
+			: (index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT);
 
 	/**
 	 * 원고를 고르면 서랍을 닫는다.
@@ -172,7 +189,12 @@ export function ManuscriptSidebar() {
 			>
 				{/* 트리가 짧아도 아래 빈 곳까지 늘어나야 한다. 거기가 root로 꺼내는 자리다 */}
 				<nav aria-label="원고 보관함" className="flex flex-1 flex-col">
-					<ManuscriptTree actions={actions} onNavigate={closeDrawer} />
+					<ManuscriptTree
+						actions={actions}
+						onNavigate={closeDrawer}
+						atRoot={atRoot}
+						onPickRoot={() => setAtRoot(true)}
+					/>
 				</nav>
 			</SidebarContent>
 

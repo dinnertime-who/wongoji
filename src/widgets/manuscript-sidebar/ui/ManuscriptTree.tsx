@@ -81,6 +81,16 @@ function dropClass(dnd: EntryDnd, id: string): string {
 	return dnd.zoneOn(id) === "into" ? "bg-accent ring-1 ring-ring" : "";
 }
 
+/**
+ * 지금 열어 둔 줄.
+ *
+ * 밝기만 달리하던 것을 색조까지 바꿨다 — 사이드바 바탕(`#f0eee7`)과
+ * `--muted`(`#ebe8e0`)는 2%밖에 차이가 나지 않아서, 칠해 두어도 어느 줄이
+ * 열려 있는지 보이지 않았다. 왼쪽에 격자색 띠를 세워 한 번 더 못 박는다.
+ */
+const SELECTED =
+	"bg-grid/15 font-medium before:absolute before:inset-y-1 before:left-0 before:w-[3px] before:rounded-full before:bg-grid";
+
 /** 끼울 자리면 선을, 아니면 아무것도 */
 function dropLine(dnd: EntryDnd, id: string, depth: number) {
 	const zone = dnd.zoneOn(id);
@@ -97,10 +107,16 @@ function dropLine(dnd: EntryDnd, id: string, depth: number) {
 export function ManuscriptTree({
 	actions,
 	onNavigate,
+	atRoot,
+	onPickRoot,
 }: {
 	actions: TreeActions;
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
+	/** 새로 만들 자리가 맨 위인가 */
+	atRoot: boolean;
+	/** 빈 곳을 눌렀다 — 맨 위에 만들겠다는 뜻이다 */
+	onPickRoot: () => void;
 }) {
 	const { index } = useArchive();
 	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
@@ -191,6 +207,42 @@ export function ManuscriptTree({
 				onNavigate={onNavigate}
 				dnd={dnd}
 			/>
+
+			{/*
+			 * 빈 곳 = 맨 위.
+			 *
+			 * 끌어 놓기가 이미 그렇게 읽힌다 — 여기에 떨어뜨리면 폴더 밖으로
+			 * 나온다. 누르는 쪽도 같은 뜻이 되게 맞춘다. 전에는 폴더를 열어 둔
+			 * 채로 맨 위에 만들 길이 없어서, 맨 위 원고를 하나 열어 나오는
+			 * 수밖에 없었다.
+			 *
+			 * `div`에 onClick을 얹지 않고 진짜 단추를 둔다 — 키보드로도 닿아야
+			 * 하고, 눌린 것이 줄인지 빈 곳인지 target을 견주어 가려낼 필요도 없다.
+			 *
+			 * 글씨는 흐리게나마 늘 보인다. 손이 올라갔을 때만 나타나게 해 두면
+			 * **거기를 누를 수 있다는 것을 알 길이 없다.**
+			 */}
+			<button
+				type="button"
+				onClick={onPickRoot}
+				/*
+				 * 누를 곳은 빈 곳 전부, 칠하는 것은 줄 하나.
+				 *
+				 * 단추가 제 안의 글씨를 세로 가운데로 밀어 넣으므로 `items-start`로
+				 * 위에 붙인다 — 그러지 않으면 텅 빈 사이드바 한복판에 글씨가 뜬다.
+				 */
+				className="group mt-auto flex min-h-10 flex-1 items-start text-left"
+			>
+				<span
+					className={`relative w-full rounded px-2 py-1.5 text-xs ${
+						atRoot
+							? SELECTED
+							: "text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-muted-foreground"
+					}`}
+				>
+					맨 위에 만듭니다
+				</span>
+			</button>
 		</div>
 	);
 }
@@ -243,7 +295,7 @@ function Level({
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
 							className={`group relative flex items-center rounded ${
-								folder.id === currentFolderId ? "bg-muted font-medium" : ""
+								folder.id === currentFolderId ? SELECTED : ""
 							} ${dropClass(dnd, folder.id)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
@@ -349,7 +401,7 @@ function Level({
 				<div
 					key={doc.id}
 					className={`group relative flex items-center rounded ${
-						doc.id === currentDocId ? "bg-muted font-medium" : "hover:bg-muted"
+						doc.id === currentDocId ? SELECTED : "hover:bg-muted"
 					} ${dropClass(dnd, doc.id)} ${dnd.isDragging(doc.id) ? "opacity-40" : ""} ${NO_CALLOUT}`}
 					{...dnd.dragProps({ kind: "doc", id: doc.id }, displayTitle(doc))}
 					{...dnd.dropProps({ kind: "doc", id: doc.id, path })}
