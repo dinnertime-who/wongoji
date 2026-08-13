@@ -46,8 +46,8 @@ export async function importLegacyIntoAccount(): Promise<void> {
 	}
 
 	/*
-	 * 겹치는 id를 먼저 피한다. 옛 id는 여덟 자 난수라 "한 브라우저 안에서만"
-	 * 유일하다 — 다른 기기에서 쓴 원고와 부딪히면 그대로 덮어쓴다. 폴더 id는
+	 * 겹치는 id를 먼저 피한다. **옛 id는 여덟 자 난수**라 "한 브라우저 안에서만"
+	 * 유일했다 — 다른 기기에서 쓴 원고와 부딪히면 그대로 덮어쓴다. 폴더 id는
 	 * 경로 문자열에 박혀 있어 경로도 함께 고쳐진다.
 	 */
 	const taken = await fetchTakenIds();
