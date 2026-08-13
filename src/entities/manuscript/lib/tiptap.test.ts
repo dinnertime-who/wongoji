@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	BLANK_ROW_TYPE,
+	blockIndexAt,
 	blocksFromDoc,
 	blocksToDoc,
 	emptyDoc,
@@ -79,5 +80,41 @@ describe("보관함에서 읽은 본문", () => {
 
 	it("빈 원고는 매번 새 객체다 — 부르는 쪽이 고쳐 써도 번지지 않는다", () => {
 		expect(emptyDoc()).not.toBe(emptyDoc());
+	});
+});
+
+describe("커서가 있는 노드 → 조판 블록", () => {
+	/** 빈 문단이 섞인 에디터 문서. 조판 블록은 셋이다 */
+	const doc = {
+		type: "doc",
+		content: [
+			{ type: "paragraph", content: [{ type: "text", text: "첫째" }] },
+			{ type: "paragraph" },
+			{ type: "paragraph", content: [{ type: "text", text: "둘째" }] },
+			{ type: "paragraph", content: [{ type: "text", text: "   " }] },
+			{ type: "paragraph", content: [{ type: "text", text: "셋째" }] },
+		],
+	};
+
+	it("빈 문단을 건너뛰고 센다", () => {
+		expect(blockIndexAt(doc, 0)).toBe(0);
+		// 1번은 빈 문단이다. 그 앞까지 블록이 하나뿐이다
+		expect(blockIndexAt(doc, 1)).toBe(1);
+		expect(blockIndexAt(doc, 2)).toBe(1);
+		// 3번은 공백만 있는 문단이라 역시 버려진다
+		expect(blockIndexAt(doc, 4)).toBe(2);
+	});
+
+	it("버려지는 노드에 커서가 있으면 다음 블록을 가리킨다", () => {
+		// 빈 문단(1번)에 커서가 있으면 이어 쓸 자리인 "둘째"를 본다
+		expect(blockIndexAt(doc, 1)).toBe(
+			blocksFromDoc(doc).findIndex(
+				(b) => b.type === "paragraph" && b.text === "둘째",
+			),
+		);
+	});
+
+	it("노드 번호가 끝을 넘어도 터지지 않는다", () => {
+		expect(blockIndexAt(doc, 99)).toBe(3);
 	});
 });

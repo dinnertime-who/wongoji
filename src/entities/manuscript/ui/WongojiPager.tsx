@@ -1,6 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "#/shared/ui/button";
 import { Input } from "#/shared/ui/input";
 import type { Page } from "../lib/typesetting";
@@ -102,7 +102,20 @@ const ESTIMATED_SHEET_HEIGHT = 560;
  * 무거워지는데, 단편소설 한 편이 80장을 넘으면 16,000칸이 되어 화면이 멈춘다.
  * 창 렌더링으로 DOM에 남는 칸을 몇 장치로 붙들어 둔다.
  */
-export function WongojiPager({ pages }: { pages: Page[] }) {
+export function WongojiPager({
+	pages,
+	focusPage,
+}: {
+	pages: Page[];
+	/**
+	 * 여기로 한 번 옮긴다. 커서가 멎은 장이다.
+	 *
+	 * **따라다니지 않는다.** 값이 바뀔 때 한 번만 움직이므로, 사람이 손으로
+	 * 스크롤해 다른 장을 보고 있어도 빼앗지 않는다 — 원고지는 읽는 창이 아니라
+	 * 곁눈질하는 창이라 시선을 끌고 다니면 방해가 된다.
+	 */
+	focusPage?: number;
+}) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 
 	const virtualizer = useVirtualizer({
@@ -134,10 +147,27 @@ export function WongojiPager({ pages }: { pages: Page[] }) {
 		if (next !== current) setCurrent(next);
 	};
 
-	const jumpTo = (index: number) => {
-		setCurrent(index);
-		virtualizer.scrollToIndex(index, { align: "start" });
-	};
+	const jumpTo = useCallback(
+		(index: number) => {
+			setCurrent(index);
+			virtualizer.scrollToIndex(index, { align: "start" });
+		},
+		[virtualizer],
+	);
+
+	/*
+	 * 가리킨 장이 바뀌면 그때 한 번 옮긴다.
+	 *
+	 * 붙들어 두고 견주는 이유는 **같은 장을 다시 가리켜도 움직이지 않게** 하려는
+	 * 것이다. 한 장 안에서 타이핑하는 내내 스크롤이 되돌아오면 손으로 옮겨 둔
+	 * 자리를 계속 빼앗긴다.
+	 */
+	const jumped = useRef<number | undefined>(undefined);
+	useEffect(() => {
+		if (focusPage === undefined || focusPage === jumped.current) return;
+		jumped.current = focusPage;
+		jumpTo(focusPage);
+	}, [focusPage, jumpTo]);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">

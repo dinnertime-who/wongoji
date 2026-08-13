@@ -11,6 +11,7 @@ import {
 	useSaveStatus,
 } from "#/entities/archive";
 import {
+	blockIndexAt,
 	goalProgress,
 	layoutBlocks,
 	type Manuscript,
@@ -33,6 +34,9 @@ import {
 import { Button } from "#/shared/ui/button";
 import { ManuscriptBar } from "#/widgets/manuscript-bar";
 import { PageHeader } from "#/widgets/page-header";
+
+/** 커서가 이만큼 멎으면 미리보기를 그 장으로 옮긴다 */
+const CARET_PAUSE = 600;
 
 /**
  * 원고를 쓰는 쪽.
@@ -78,10 +82,35 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	 * 제목은 조판에 넣지 않는다. 원고를 가리키는 이름일 뿐이라 원고지 칸을
 	 * 차지해서는 안 되고, 분량에도 세지 않는다.
 	 */
-	const { pages, stats } = useMemo(
+	const { pages, stats, blockPages } = useMemo(
 		() => layoutBlocks(doc.blocks),
 		[doc.blocks],
 	);
+
+	/*
+	 * 커서가 멎으면 미리보기를 그 장으로 한 번 옮긴다.
+	 *
+	 * **따라다니지 않는다.** 원고지는 결과물이 아니라 "규칙대로 쓰이고 있다"를
+	 * 확인하는 창이라(docs/contest-features.md), 커서마다 끌려다니면 도움이
+	 * 아니라 시선을 뺏는 일이 된다. 다만 70매짜리 원고에서 43매째를 고치는데
+	 * 미리보기가 1장에 멈춰 있으면 그 창은 장식이 되므로, 손이 멎은 그때 한 번만
+	 * 맞춘다.
+	 *
+	 * 타이핑 중에는 타이머가 계속 새로 걸린다 — 그것이 곧 "멎었을 때"다.
+	 */
+	const [caretNode, setCaretNode] = useState(-1);
+	const [focusPage, setFocusPage] = useState<number | undefined>(undefined);
+	const content = doc.content;
+
+	useEffect(() => {
+		if (caretNode < 0 || !content || blockPages.length === 0) return;
+
+		const timer = window.setTimeout(() => {
+			const block = blockIndexAt(content, caretNode);
+			setFocusPage(blockPages[Math.min(block, blockPages.length - 1)]);
+		}, CARET_PAUSE);
+		return () => window.clearTimeout(timer);
+	}, [caretNode, content, blockPages]);
 
 	const manuscript: Manuscript = { title: doc.title, blocks: doc.blocks };
 
@@ -218,6 +247,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 									key={doc.editorKey}
 									initialContent={doc.content ?? doc.load.content}
 									onChange={doc.changeBody}
+									onCaret={setCaretNode}
 									overlay={
 										<span className="flex items-center gap-0.5 rounded bg-background/85 py-0.5 pr-0.5 pl-1.5 text-[0.7rem] text-muted-foreground tabular-nums">
 											{/* 목표가 없으면 글자 수까지 적는다 — 원고 위라 자리가 있다 */}
@@ -234,7 +264,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 								pane === "preview" ? "" : "hidden lg:flex"
 							}`}
 						>
-							<WongojiPager pages={pages} />
+							<WongojiPager pages={pages} focusPage={focusPage} />
 						</div>
 					</main>
 

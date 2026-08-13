@@ -42,6 +42,40 @@ export function blocksToDoc(blocks: Block[]): Content {
 }
 
 /**
+ * 에디터의 몇 번째 노드가 조판의 몇 번째 블록인가.
+ *
+ * **둘이 1:1이 아니다.** `blocksFromDoc`이 빈 문단을 버리기 때문이다 — 커서가
+ * 있는 노드 번호를 그대로 블록 번호로 쓰면 뒤로 갈수록 어긋난다.
+ *
+ * 버려지는 노드(빈 문단)에 커서가 있으면 바로 다음 블록을 가리킨다. 그 자리에서
+ * 사람이 보고 싶은 것은 이어 쓸 자리다.
+ */
+export function blockIndexAt(content: Content, nodeIndex: number): number {
+	const nodes =
+		content && typeof content === "object" && "content" in content
+			? ((content.content ?? []) as Array<Record<string, unknown>>)
+			: [];
+
+	let blocks = 0;
+	for (let i = 0; i < nodes.length && i < nodeIndex; i += 1) {
+		if (isBlock(nodes[i])) blocks += 1;
+	}
+	return blocks;
+}
+
+/** 조판에 실리는 노드인가. 빈 문단은 원고지에 자리를 차지하지 않는다 */
+function isBlock(node: Record<string, unknown>): boolean {
+	if (node.type === BLANK_ROW_TYPE) return true;
+	const inline = (node.content ?? []) as Array<{ text?: string }>;
+	return (
+		inline
+			.map((n) => n.text ?? "")
+			.join("")
+			.trim().length > 0
+	);
+}
+
+/**
  * 에디터 문서 → 조판 블록.
  *
  * 빈 문단은 버린다. 원고지에서 문단은 들여쓰기로 표시하지 빈 줄로 표시하지

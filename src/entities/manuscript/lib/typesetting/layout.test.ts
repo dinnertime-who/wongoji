@@ -238,3 +238,32 @@ describe("대화문", () => {
 		expect(stats.lines).toBe(10);
 	});
 });
+
+describe("블록이 시작하는 장", () => {
+	/*
+	 * 커서가 멎었을 때 미리보기를 그 장으로 옮기는 데 쓴다. 칸까지 짚지 않고
+	 * 장 하나만 알면 되는 것이 이 대응의 요점이다.
+	 */
+	it("문단마다 어느 장에서 시작하는지 알려 준다", () => {
+		// 20자 문단은 들여쓰기 한 칸이 붙어 21칸 → 두 줄. 한 장이 10줄이므로
+		// 다섯 문단마다 장이 넘어간다
+		const { blockPages, stats } = layout(
+			Array.from({ length: 20 }, () => "가".repeat(20)).join("\n"),
+		);
+
+		expect(stats.sheets).toBe(4);
+		expect(blockPages).toHaveLength(20);
+		expect(blockPages[0]).toBe(0);
+		expect(blockPages[4]).toBe(0);
+		expect(blockPages[5]).toBe(1);
+		expect(blockPages[19]).toBe(3);
+	});
+
+	it("없는 장을 가리키지 않는다", () => {
+		const { blockPages, pages } = layout("가".repeat(30));
+		for (const page of blockPages) {
+			expect(page).toBeLessThan(pages.length);
+			expect(page).toBeGreaterThanOrEqual(0);
+		}
+	});
+});

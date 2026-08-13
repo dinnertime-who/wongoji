@@ -17,6 +17,7 @@ export {
 } from "./lib/serialize";
 export {
 	BLANK_ROW_TYPE,
+	blockIndexAt,
 	blocksFromDoc,
 	blocksToDoc,
 	emptyDoc,

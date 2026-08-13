@@ -78,6 +78,14 @@ export interface LayoutStats {
 export interface LayoutResult {
 	pages: Page[];
 	stats: LayoutStats;
+	/**
+	 * 블록이 어느 장에서 시작하는가. 입력 블록과 같은 차례로 늘어선다.
+	 *
+	 * **칸까지 짚지 않는다.** 커서가 있는 문단이 몇 장째인지만 알면 미리보기를
+	 * 그 장으로 옮길 수 있고, 칸 단위 대응은 `Cell`마다 출처를 달아야 해서
+	 * 엔진과 렌더러가 함께 무거워진다. 지금 필요한 것은 장 하나다.
+	 */
+	blockPages: number[];
 }
 
 /**

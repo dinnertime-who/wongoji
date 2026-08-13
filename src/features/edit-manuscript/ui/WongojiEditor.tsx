@@ -86,11 +86,20 @@ function announce(
 export function WongojiEditor({
 	initialContent,
 	onChange,
+	onCaret,
 	overlay,
 }: {
 	initialContent: Content;
 	/** 내용이 바뀌었다. 조판할 블록과 저장할 문서를 함께 넘긴다 */
 	onChange: (blocks: Block[], doc: Content) => void;
+	/**
+	 * 커서가 몇 번째 top-level 노드에 있는가.
+	 *
+	 * 블록 번호가 아니라 **노드 번호**다 — 빈 문단은 조판에 실리지 않아 둘이
+	 * 어긋나는데, 그 셈은 조판 쪽 규칙(`blockIndexAt`)이 알고 있다. 여기서는
+	 * 에디터가 아는 것만 그대로 넘긴다.
+	 */
+	onCaret?: (nodeIndex: number) => void;
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
 }) {
@@ -104,6 +113,8 @@ export function WongojiEditor({
 	 */
 	const notify = useRef(onChange);
 	notify.current = onChange;
+	const caret = useRef(onCaret);
+	caret.current = onCaret;
 
 	const editor = useEditor({
 		extensions: [
@@ -130,6 +141,9 @@ export function WongojiEditor({
 			},
 		},
 		onUpdate: ({ editor }) => announce(editor, notify.current),
+		// 글자를 치지 않고 커서만 옮겨도 알린다 — 자리를 옮긴 것도 "지금 여기"다
+		onSelectionUpdate: ({ editor }) =>
+			caret.current?.(editor.state.selection.$head.index(0)),
 	});
 
 	// 최초 마운트 시에도 한 번 조판한다 (onUpdate는 편집이 있어야 발생한다)

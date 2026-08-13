@@ -175,12 +175,17 @@ export function layoutBlocks(
 		}
 	};
 
+	const blockPages: number[] = [];
+
 	for (const block of blocks) {
 		// 쓰던 줄을 닫는다. flush()와 달리 다음 줄을 미리 만들지 않는다 —
 		// 이어질 블록이 들여쓰기를 새로 정하기 때문이다.
 		if (hasContent(cur)) lines.push(cur);
 		cur = [];
 		lineIndent = 0;
+
+		// 이 블록이 놓일 첫 줄이 곧 다음 줄이다. 그 줄이 든 장을 적어 둔다
+		blockPages.push(Math.floor(lines.length / ROWS));
 
 		if (block.type === "blankRow") {
 			// 장의 맨 위에 오는 빈 행은 버린다. 새 장이 빈 줄로 시작하면 낭비다.
@@ -206,6 +211,11 @@ export function layoutBlocks(
 
 	return {
 		pages,
+		/*
+		 * 끝에 매달린 빈 줄을 걷어내면서 장 수가 줄었을 수 있다. 없는 장을
+		 * 가리키면 미리보기가 엉뚱한 데로 뛰므로 마지막 장으로 붙인다.
+		 */
+		blockPages: blockPages.map((p) => Math.min(p, pages.length - 1)),
 		stats: {
 			chars: written.length,
 			filledCells,
