@@ -239,7 +239,6 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 	 * 위 effect와 나눈 이유는 시점이 다르기 때문이다. 제목과 목표는 색인에 있어
 	 * 곧바로 알 수 있고, 본문은 기다려야 한다.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: 한 원고를 한 번만 앉힌다
 	useEffect(() => {
 		if (!docId || reading) return;
 		// 이 원고는 이미 앉혔다. 다시 하면 타이핑 도중에 에디터가 갈린다
@@ -280,31 +279,42 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		setBlocks(opened);
 		setLoad({ state: "ready", content });
 		setEditorKey((k) => k + 1);
+	}, [docId, stored, reading, unreachable]);
 
-		/*
-		 * 목록에 적힌 분량이 실제와 다르면 지금 고쳐 둔다.
-		 *
-		 * 휴지통에서 되살린 원고가 그렇다. 분량은 본문을 읽어야 나오는 값이라
-		 * 꺼낼 때는 셀 수 없어 0자 1매로 적어 두는데, 아무도 다시 세지 않아
-		 * 영영 그대로 남았다 — 보관함 용량 표시도 함께 어긋났다.
-		 *
-		 * `updatedAt`은 건드리지 않는다. 읽기만 했는데 목록에서 맨 위로 올라오면
-		 * "최근 수정순"이 거짓말이 된다.
-		 */
+	/*
+	 * 목록에 적힌 분량이 실제와 다르면 고쳐 둔다.
+	 *
+	 * 휴지통에서 되살린 원고가 그렇고, 세는 법이 바뀌기 전에 적힌 값이 그렇다.
+	 * 분량은 본문을 읽어야 나오는 값이라 목록만 보고는 알 수 없고, 아무도 다시
+	 * 세지 않으면 영영 어긋난 채로 남는다.
+	 *
+	 * **본문과 목록이 둘 다 도착한 뒤에 본다.** 앉히는 effect 안에 있던 것을
+	 * 떼어 냈다 — 거기서는 본문이 목록보다 먼저 오는 새로고침에서 "목록에 없는
+	 * 원고"로 보고 그냥 지나쳤고, 목록이 도착해도 다시 볼 길이 없었다.
+	 *
+	 * 원고마다 한 번만 본다. 타이핑 중에도 도는 조건이라, 표시해 두지 않으면
+	 * 글자 하나마다 서버로 간다 — 300ms 디바운스가 있는 이유가 없어진다.
+	 */
+	const countedRef = useRef("");
+	useEffect(() => {
+		if (loadingIndex || load.state !== "ready") return;
+		if (countedRef.current === docId) return;
+
 		const entry = index.docs.find((d) => d.id === docId);
 		if (!entry) return;
+		countedRef.current = docId;
 
-		const stats = layoutBlocks(opened).stats;
-		if (entry.chars !== stats.chars || entry.sheets !== stats.sheets) {
-			void change({
-				kind: "updateDoc",
-				id: docId,
-				patch: { chars: stats.chars, sheets: stats.sheets },
-				// 읽기만 했는데 목록에서 맨 위로 올라오면 "최근 수정순"이 거짓말이 된다
-				touch: false,
-			});
-		}
-	}, [docId, stored, reading, unreachable]);
+		const stats = layoutBlocks(blocks).stats;
+		if (entry.chars === stats.chars && entry.sheets === stats.sheets) return;
+
+		void change({
+			kind: "updateDoc",
+			id: docId,
+			patch: { chars: stats.chars, sheets: stats.sheets },
+			// 읽기만 했는데 목록에서 맨 위로 올라오면 "최근 수정순"이 거짓말이 된다
+			touch: false,
+		});
+	}, [docId, index, loadingIndex, load.state, blocks, change]);
 
 	/*
 	 * 화면을 떠날 때 마지막 몇 글자를 지킨다.

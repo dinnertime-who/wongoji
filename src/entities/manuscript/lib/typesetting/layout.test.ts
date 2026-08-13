@@ -121,21 +121,42 @@ describe("문단·페이지", () => {
 	it("빈 문서도 빈 원고지 한 장은 나온다", () => {
 		const { pages, stats } = layout("");
 		expect(pages).toHaveLength(1);
+		expect(stats.sheets).toBe(1);
 		expect(stats.filledCells).toBe(0);
 		expect(pages[0].lines).toHaveLength(10);
 	});
 
-	it("매수는 공백 포함 200자 기준으로 올림한다", () => {
-		expect(layout("가".repeat(200)).stats.sheets).toBe(1);
-		expect(layout("가".repeat(201)).stats.sheets).toBe(2);
+	/*
+	 * 매수는 **조판해 보고 센다.** 글자 수를 200으로 나누지 않는다.
+	 *
+	 * 응모자가 보는 숫자는 한글(HWP)이 주는 것이고, 한글은 "원고지에 옮겨 쓰는
+	 * 것을 가정하여" 센다. 나누기로 세면 적게 나오는 쪽으로 어긋나서, 요강에
+	 * 맞춰 썼다고 믿은 원고가 실제로는 분량을 넘긴다.
+	 */
+	it("매수는 조판된 장 수다 — 200으로 나눈 값이 아니다", () => {
+		// 한 문단 200자는 들여쓰기 한 칸이 붙어 201칸을 먹는다 → 11줄 → 2장
+		const one = layout("가".repeat(200)).stats;
+		expect(one.chars).toBe(200);
+		expect(one.lines).toBe(11);
+		expect(one.sheets).toBe(2);
+	});
+
+	it("글자 수가 같아도 문단이 잦으면 매수가 는다", () => {
+		// 문단마다 첫 칸을 비우고 마지막 줄의 남는 칸이 버려진다. 대화가 많은
+		// 소설일수록 이 낭비가 커진다 — 실측으로 최대 71%까지 벌어졌다
+		const 통짜 = layout("가".repeat(400)).stats;
+		const 잘게 = layout(
+			Array.from({ length: 20 }, () => "가".repeat(20)).join("\n"),
+		).stats;
+
+		expect(잘게.chars).toBe(통짜.chars);
+		expect(잘게.sheets).toBeGreaterThan(통짜.sheets);
 	});
 
 	it("문단 구분은 글자로 세지 않는다", () => {
-		// 200자를 100자씩 두 문단으로 나눠도 한 매다. 문단 사이를 글자로 세면
-		// 201자가 되어 두 매로 넘어간다 — 사람이 친 글자가 아니다
+		// 문단 사이를 글자로 세면 201자가 된다 — 사람이 친 글자가 아니다
 		const 두문단 = `${"가".repeat(100)}\n${"나".repeat(100)}`;
 		expect(layout(두문단).stats.chars).toBe(200);
-		expect(layout(두문단).stats.sheets).toBe(1);
 	});
 });
 
