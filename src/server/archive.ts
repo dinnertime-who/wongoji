@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { drizzle } from "drizzle-orm/d1";
 import type {
@@ -16,11 +16,17 @@ import type {
  * shared에서 가져와라 — 그러라고 operations.ts를 저장소로부터 떼어 놓았다."
  */
 import { TRASH_DAYS } from "#/entities/archive/config/limits";
+import {
+	type DocStatus,
+	isDocStatus,
+	isPromotion,
+} from "#/entities/archive/config/status";
 import { makeId } from "#/entities/archive/model/operations";
 import { type ArchiveOp, applyOp } from "#/entities/archive/model/ops";
 import {
 	archiveDoc,
 	archiveDocContent,
+	archiveDocVersion,
 	archiveFolder,
 	archiveTombstone,
 } from "./schema/archive";
@@ -49,6 +55,9 @@ const asDoc = (row: typeof archiveDoc.$inferSelect): DocEntry => ({
 	goal: row.goal,
 	chars: row.chars,
 	sheets: row.sheets,
+	// 컬럼은 그냥 문자열이라, 아는 셋 중 하나일 때만 상태로 친다
+	status: isDocStatus(row.status) ? row.status : null,
+	statusAt: row.statusAt?.getTime() ?? null,
 	createdAt: row.createdAt.getTime(),
 	updatedAt: row.updatedAt.getTime(),
 });
@@ -219,7 +228,192 @@ export async function applyArchiveOp(
 	 * id와 부딪히는데, 그것을 피하려고 id를 다시 매기는 일이 지금 로그인할 때
 	 * 한 번 도는 코드로 남아 있다. 만드는 자리를 한 곳으로 모으면 그 일이 없다.
 	 */
+	/*
+	 * 사람이 상태를 **올렸으면** 그때의 원고를 박제한다.
+	 *
+	 * 내리는 전이(자동 강등이 대부분이다)에는 만들지 않는다 — 오타 한 번마다
+	 * 사본이 쌓이면 감당이 안 되고, 그때 남길 본문은 이미 직전 버전으로 있다.
+	 * 이 규칙 하나가 버전 수에 자연스러운 상한을 만든다.
+	 */
+	for (const after of effect.index.docs) {
+		const was = before.docs.find((d) => d.id === after.id);
+		if (!isPromotion(was?.status ?? undefined, after.status ?? undefined)) {
+			continue;
+		}
+		await saveVersion(db, userId, after, "status", now);
+	}
+
 	return { index: effect.index, createdDocId: effect.createdDocId };
+}
+
+/**
+ * 지금 원고를 이력에 남긴다.
+ *
+ * 본문이 없으면 남기지 않는다 — 되돌릴 것이 없는 버전은 목록만 어지럽힌다.
+ */
+async function saveVersion(
+	db: Db,
+	userId: string,
+	doc: DocEntry,
+	kind: "status" | "backup",
+	now: number,
+): Promise<void> {
+	const content = await readDocContent(db, userId, doc.id);
+	if (content === null) return;
+
+	await db.insert(archiveDocVersion).values({
+		userId,
+		id: makeId(),
+		docId: doc.id,
+		kind,
+		status: doc.status ?? null,
+		title: doc.title,
+		content: JSON.stringify(content),
+		excerpt: excerptOf(content),
+		chars: doc.chars,
+		sheets: doc.sheets,
+		createdAt: new Date(now),
+	});
+}
+
+/** 이력 목록에 보여줄 첫머리 길이 */
+const EXCERPT = 80;
+
+/**
+ * 본문에서 첫머리를 뽑는다.
+ *
+ * 조판 엔진을 부르지 않는다. 발췌 한 줄 때문에 토크나이저까지 서버 번들에
+ * 실을 이유가 없어서, Tiptap 문서를 훑으며 글자만 줍는다.
+ */
+function excerptOf(content: unknown): string {
+	const parts: string[] = [];
+
+	const walk = (node: unknown): void => {
+		if (parts.join(" ").length >= EXCERPT) return;
+		if (Array.isArray(node)) {
+			for (const child of node) walk(child);
+			return;
+		}
+		if (!node || typeof node !== "object") return;
+
+		const n = node as Record<string, unknown>;
+		if (typeof n.text === "string") parts.push(n.text);
+		if (n.content) walk(n.content);
+	};
+
+	walk(content);
+	return parts.join(" ").replace(/\s+/g, " ").trim().slice(0, EXCERPT);
+}
+
+/** 한 원고의 이력. 본문은 빼고 준다 — 목록이 원고 수만큼 무거워진다 */
+export async function listVersions(db: Db, userId: string, docId: string) {
+	return db
+		.select({
+			id: archiveDocVersion.id,
+			kind: archiveDocVersion.kind,
+			status: archiveDocVersion.status,
+			title: archiveDocVersion.title,
+			excerpt: archiveDocVersion.excerpt,
+			chars: archiveDocVersion.chars,
+			sheets: archiveDocVersion.sheets,
+			createdAt: archiveDocVersion.createdAt,
+		})
+		.from(archiveDocVersion)
+		.where(
+			and(
+				eq(archiveDocVersion.userId, userId),
+				eq(archiveDocVersion.docId, docId),
+			),
+		)
+		.orderBy(desc(archiveDocVersion.createdAt));
+}
+
+/**
+ * 그때로 되돌린다.
+ *
+ * **되돌리기 전에 지금 것을 먼저 남긴다.** 되돌리기 자체를 되돌릴 수 있어야
+ * 한다 — 이 앱에서 첫째는 잃지 않는 것이다.
+ *
+ * 자리(`path`·`order`)는 건드리지 않는다. 버전이 담지 않는 값이고, 되돌렸다고
+ * 폴더가 옮겨지면 놀란다.
+ */
+export async function restoreVersion(
+	db: Db,
+	userId: string,
+	docId: string,
+	versionId: string,
+	now = Date.now(),
+): Promise<StoreIndex | null> {
+	const [version] = await db
+		.select()
+		.from(archiveDocVersion)
+		.where(
+			and(
+				eq(archiveDocVersion.userId, userId),
+				eq(archiveDocVersion.id, versionId),
+			),
+		);
+	// 남의 원고의 버전을 가리키는 요청은 없는 것으로 본다
+	if (!version || version.docId !== docId) return null;
+
+	const before = await readArchive(db, userId);
+	const doc = before.docs.find((d) => d.id === docId);
+	if (!doc) return null;
+
+	await saveVersion(db, userId, doc, "backup", now);
+
+	let content: unknown;
+	try {
+		content = JSON.parse(version.content);
+	} catch {
+		return null;
+	}
+
+	const at = new Date(now);
+	await writeDocContent(db, userId, docId, content, now);
+	await db
+		.update(archiveDoc)
+		.set({
+			title: version.title,
+			chars: version.chars,
+			sheets: version.sheets,
+			status: version.status,
+			statusAt: at,
+			updatedAt: at,
+		})
+		.where(and(eq(archiveDoc.userId, userId), eq(archiveDoc.id, docId)));
+
+	return readArchive(db, userId);
+}
+
+/**
+ * 완성본을 고쳤으면 퇴고로 내린다.
+ *
+ * **본문이 실제로 써지는 이 자리에서 한다.** 색인 연산은 본문을 모르므로
+ * "본문이 바뀌었다"를 아는 곳이 여기뿐이고, 저장하는 길이 늘어도 규칙이 한 곳에
+ * 남는다. 제목이나 목표를 고친 것으로 완성이 풀리면 짜증난다.
+ *
+ * 내린 상태를 돌려준다. 화면이 그것을 받아 알린다.
+ */
+export async function demoteOnEdit(
+	db: Db,
+	userId: string,
+	docId: string,
+	now = Date.now(),
+): Promise<DocStatus | null> {
+	const [row] = await db
+		.select({ status: archiveDoc.status })
+		.from(archiveDoc)
+		.where(and(eq(archiveDoc.userId, userId), eq(archiveDoc.id, docId)));
+
+	if (row?.status !== "done") return null;
+
+	await db
+		.update(archiveDoc)
+		.set({ status: "revising", statusAt: new Date(now) })
+		.where(and(eq(archiveDoc.userId, userId), eq(archiveDoc.id, docId)));
+
+	return "revising";
 }
 
 /** id를 만드는 연산들. 이때만 자취까지 물어본다 */
@@ -332,6 +526,8 @@ async function persist(
 			goal: d.goal,
 			chars: d.chars,
 			sheets: d.sheets,
+			status: d.status ?? null,
+			statusAt: d.statusAt ? new Date(d.statusAt) : null,
 			createdAt: new Date(d.createdAt),
 			updatedAt: new Date(d.updatedAt),
 		};
@@ -352,6 +548,8 @@ async function persist(
 						goal: values.goal,
 						chars: values.chars,
 						sheets: values.sheets,
+						status: values.status,
+						statusAt: values.statusAt,
 						updatedAt: values.updatedAt,
 						deletedAt: null,
 					},
@@ -623,20 +821,37 @@ export async function readDocContent(
 	}
 }
 
+/**
+ * 본문을 쓴다. **달라진 것이 없으면 쓰지 않는다.**
+ *
+ * 에디터는 원고를 앉힐 때마다 한 번 알리고, 그것이 저장 큐를 탄다. 같은 내용을
+ * 다시 쓰는 것 자체는 해롭지 않았는데, **그 쓰기가 완성을 퇴고로 내리게 되면서**
+ * 원고를 열기만 해도 라벨이 풀리는 일이 생겼다.
+ *
+ * 견주는 값이 늘었다고 비싸지지 않는다 — 어차피 300ms에 한 번이고, 같으면
+ * 쓰기 한 번을 아낀다.
+ */
 export async function writeDocContent(
 	db: Db,
 	userId: string,
 	docId: string,
 	content: unknown,
 	now = Date.now(),
-): Promise<void> {
-	const values = {
-		userId,
-		docId,
-		content: JSON.stringify(content),
-		updatedAt: new Date(now),
-	};
+): Promise<{ changed: boolean }> {
+	const next = JSON.stringify(content);
 
+	const [row] = await db
+		.select({ content: archiveDocContent.content })
+		.from(archiveDocContent)
+		.where(
+			and(
+				eq(archiveDocContent.userId, userId),
+				eq(archiveDocContent.docId, docId),
+			),
+		);
+	if (row?.content === next) return { changed: false };
+
+	const values = { userId, docId, content: next, updatedAt: new Date(now) };
 	await db
 		.insert(archiveDocContent)
 		.values(values)
@@ -644,6 +859,8 @@ export async function writeDocContent(
 			target: [archiveDocContent.userId, archiveDocContent.docId],
 			set: { content: values.content, updatedAt: values.updatedAt },
 		});
+
+	return { changed: true };
 }
 
 /**
@@ -679,6 +896,14 @@ export async function purgeEntries(
 				and(
 					eq(archiveDocContent.userId, userId),
 					inArray(archiveDocContent.docId, ids),
+				),
+			),
+		db
+			.delete(archiveDocVersion)
+			.where(
+				and(
+					eq(archiveDocVersion.userId, userId),
+					inArray(archiveDocVersion.docId, ids),
 				),
 			),
 		db

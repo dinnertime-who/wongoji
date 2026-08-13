@@ -17,6 +17,7 @@ import { Route as AppWDocIdRouteImport } from './routes/_app.w.$docId'
 import { Route as ApiArchiveOpsRouteImport } from './routes/api.archive.ops'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as ApiArchiveDocDocIdRouteImport } from './routes/api.archive.doc.$docId'
+import { Route as ApiArchiveDocDocIdVersionsRouteImport } from './routes/api.archive.doc.$docId.versions'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,6 +58,12 @@ const ApiArchiveDocDocIdRoute = ApiArchiveDocDocIdRouteImport.update({
   path: '/doc/$docId',
   getParentRoute: () => ApiArchiveRoute,
 } as any)
+const ApiArchiveDocDocIdVersionsRoute =
+  ApiArchiveDocDocIdVersionsRouteImport.update({
+    id: '/versions',
+    path: '/versions',
+    getParentRoute: () => ApiArchiveDocDocIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,7 +72,8 @@ export interface FileRoutesByFullPath {
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRoute
+  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
+  '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -74,7 +82,8 @@ export interface FileRoutesByTo {
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRoute
+  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
+  '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,7 +94,8 @@ export interface FileRoutesById {
   '/_app/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRoute
+  '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
+  '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/api/archive/ops'
     | '/api/auth/$'
     | '/api/archive/doc/$docId'
+    | '/api/archive/doc/$docId/versions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/api/archive/ops'
     | '/api/auth/$'
     | '/api/archive/doc/$docId'
+    | '/api/archive/doc/$docId/versions'
   id:
     | '__root__'
     | '/'
@@ -116,6 +128,7 @@ export interface FileRouteTypes {
     | '/api/archive/ops'
     | '/api/auth/$'
     | '/api/archive/doc/$docId'
+    | '/api/archive/doc/$docId/versions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -183,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiArchiveDocDocIdRouteImport
       parentRoute: typeof ApiArchiveRoute
     }
+    '/api/archive/doc/$docId/versions': {
+      id: '/api/archive/doc/$docId/versions'
+      path: '/versions'
+      fullPath: '/api/archive/doc/$docId/versions'
+      preLoaderRoute: typeof ApiArchiveDocDocIdVersionsRouteImport
+      parentRoute: typeof ApiArchiveDocDocIdRoute
+    }
   }
 }
 
@@ -198,14 +218,25 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface ApiArchiveDocDocIdRouteChildren {
+  ApiArchiveDocDocIdVersionsRoute: typeof ApiArchiveDocDocIdVersionsRoute
+}
+
+const ApiArchiveDocDocIdRouteChildren: ApiArchiveDocDocIdRouteChildren = {
+  ApiArchiveDocDocIdVersionsRoute: ApiArchiveDocDocIdVersionsRoute,
+}
+
+const ApiArchiveDocDocIdRouteWithChildren =
+  ApiArchiveDocDocIdRoute._addFileChildren(ApiArchiveDocDocIdRouteChildren)
+
 interface ApiArchiveRouteChildren {
   ApiArchiveOpsRoute: typeof ApiArchiveOpsRoute
-  ApiArchiveDocDocIdRoute: typeof ApiArchiveDocDocIdRoute
+  ApiArchiveDocDocIdRoute: typeof ApiArchiveDocDocIdRouteWithChildren
 }
 
 const ApiArchiveRouteChildren: ApiArchiveRouteChildren = {
   ApiArchiveOpsRoute: ApiArchiveOpsRoute,
-  ApiArchiveDocDocIdRoute: ApiArchiveDocDocIdRoute,
+  ApiArchiveDocDocIdRoute: ApiArchiveDocDocIdRouteWithChildren,
 }
 
 const ApiArchiveRouteWithChildren = ApiArchiveRoute._addFileChildren(

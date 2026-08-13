@@ -69,6 +69,15 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 	const pending = useRef<{ docId: string; patch: Patch } | null>(null);
 	/** 화면에 이미 앉힌 원고. 같은 것을 다시 앉히면 타이핑 도중에 에디터가 갈린다 */
 	const shownRef = useRef("");
+	/**
+	 * 방금 앉혔는가.
+	 *
+	 * 에디터는 마운트될 때 조판하라고 한 번 알려 오는데(`WongojiEditor`), 그것은
+	 * 사람이 친 것이 아니라 **방금 우리가 넣어 준 그 내용**이다. 그대로 저장 큐를
+	 * 태우면 원고를 열기만 해도 본문이 서버로 한 번 써지고, 그 쓰기가 완성을
+	 * 퇴고로 내린다.
+	 */
+	const seatedRef = useRef(false);
 
 	/**
 	 * 본문과 색인을 함께 저장한다. 어느 원고에 쓸지는 인자로 받는다.
@@ -271,6 +280,7 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		}
 
 		shownRef.current = docId;
+		seatedRef.current = true;
 
 		const content = toEditorContent(stored);
 		docRef.current = content;
@@ -337,6 +347,21 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		};
 	}, [flush]);
 
+	/**
+	 * 이 원고를 처음부터 다시 읽어 앉힌다.
+	 *
+	 * 밀린 저장을 **버린다.** 되돌린 뒤에 옛 글자가 밀려 들어가면 방금 되돌린
+	 * 것을 도로 덮는다.
+	 */
+	const reload = useCallback(() => {
+		pending.current = null;
+		window.clearTimeout(saveTimer.current);
+		// 둘 다 비워야 제목·목표와 본문이 함께 다시 앉는다
+		openedRef.current = "";
+		shownRef.current = "";
+		void queryClient.invalidateQueries({ queryKey: docQueryKey(docId) });
+	}, [docId, queryClient]);
+
 	/** 화면을 갈아 끼운다. 저장은 부르는 쪽이 따로 시킨다 */
 	const showContent = useCallback((content: Content, next: Block[]) => {
 		docRef.current = content;
@@ -381,6 +406,7 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		goal,
 		editorKey,
 		clearToBlank,
+		reload,
 		/** 에디터가 다시 마운트될 때 되살릴 내용 */
 		content: docRef.current,
 
@@ -395,6 +421,12 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		changeBody: (next: Block[], content: Content) => {
 			setBlocks(next);
 			docRef.current = content;
+
+			// 앉힌 직후의 첫 알림은 우리가 넣어 준 그 내용이다. 저장할 것이 없다
+			if (seatedRef.current) {
+				seatedRef.current = false;
+				return;
+			}
 			queue({ content, blocks: next });
 		},
 

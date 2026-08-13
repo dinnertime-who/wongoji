@@ -2,6 +2,13 @@ export { ARCHIVE_KEY, fetchArchive, sendOp } from "./api/archive-api";
 export { readLastOpened, writeLastOpened } from "./api/last-opened";
 export { TRASH_DAYS } from "./config/limits";
 export {
+	DOC_STATUSES,
+	type DocStatus,
+	isDocStatus,
+	isPromotion,
+	STATUS_LABEL,
+} from "./config/status";
+export {
 	ancestorIds,
 	canMoveFolder,
 	fullPath,

@@ -1,7 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 // createFileRoute의 `server` 옵션은 react-start가 declare module로 얹는다
 import type {} from "@tanstack/react-start";
-import { readDocContent, writeDocContent } from "#/server/archive";
+import {
+	demoteOnEdit,
+	readDocContent,
+	writeDocContent,
+} from "#/server/archive";
 import { db } from "#/server/db";
 import { currentUserId, unauthorized } from "#/server/session";
 
@@ -40,8 +44,25 @@ export const Route = createFileRoute("/api/archive/doc/$docId")({
 					return Response.json({ error: "본문이 없습니다" }, { status: 400 });
 				}
 
-				await writeDocContent(db, userId, params.docId, content);
-				return Response.json({ ok: true });
+				const { changed } = await writeDocContent(
+					db,
+					userId,
+					params.docId,
+					content,
+				);
+
+				/*
+				 * 완성본을 **고쳤으면** 퇴고로 내린다. **본문이 실제로 써지는 이
+				 * 자리에서 한다** — 색인 연산은 본문을 모르므로 "본문이 바뀌었다"를
+				 * 아는 곳이 여기뿐이고, 저장하는 길이 늘어도 규칙이 한 곳에 남는다.
+				 *
+				 * 달라진 것이 없으면 내리지 않는다. 원고를 열기만 해도 같은 본문이
+				 * 한 번 써지는데, 그것으로 완성이 풀리면 라벨이 쓸모없어진다.
+				 */
+				const demoted = changed
+					? await demoteOnEdit(db, userId, params.docId)
+					: null;
+				return Response.json({ ok: true, demoted });
 			},
 		},
 	},

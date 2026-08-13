@@ -1,3 +1,5 @@
+import type { DocStatus } from "../config/status";
+
 /**
  * 원고 보관함의 자료구조.
  *
@@ -41,6 +43,15 @@ export interface DocEntry {
 	goal: number;
 	/** 목록에서 보여줄 값 — 문서를 열지 않고도 알 수 있게 색인에 함께 둔다 */
 	chars: number;
+	/**
+	 * 진행 상태. 없으면 라벨을 안 단 것이다 — **그것이 기본이다.**
+	 *
+	 * 있을 수도 없을 수도 있고(옛 원고), 사람이 지워서 null일 수도 있다. 둘 다
+	 * "없음"으로 읽으면 된다.
+	 */
+	status?: DocStatus | null;
+	/** 지금 상태가 된 시각. 전 이력은 서버의 `archive_doc_version`이 들고 있다 */
+	statusAt?: number | null;
 	/**
 	 * 매수. **조판해 보고 나온 장수다**(`LayoutStats.sheets` 참고).
 	 *

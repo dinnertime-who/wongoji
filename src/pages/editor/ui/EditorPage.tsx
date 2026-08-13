@@ -1,18 +1,25 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
+	ARCHIVE_KEY,
 	Breadcrumb,
+	type DocStatus,
 	displayTitle,
 	useArchive,
+	useArchiveMutation,
 	useSaveStatus,
 } from "#/entities/archive";
 import {
 	goalProgress,
 	layoutBlocks,
 	type Manuscript,
+	onDocDemoted,
 	RulesDialog,
 	WongojiPager,
 } from "#/entities/manuscript";
 import { CopyManuscript } from "#/features/copy-manuscript";
+import { HistoryDialog, onDocRestored } from "#/features/doc-history";
 import { useManuscriptDoc, WongojiEditor } from "#/features/edit-manuscript";
 import { ExportDialog, exportBackup } from "#/features/export-manuscript";
 import { onDocReset } from "#/features/reset-manuscript";
@@ -39,6 +46,9 @@ import { PageHeader } from "#/widgets/page-header";
 export function EditorPage({ docId }: { docId: string | null }) {
 	const { index } = useArchive();
 	const { registerBackup } = useSaveStatus();
+	const change = useArchiveMutation();
+	const client = useQueryClient();
+	const [history, setHistory] = useState(false);
 
 	/*
 	 * 둘 다 부른다. 훅은 조건부로 부를 수 없어서다. 쓰이지 않는 쪽은 스스로
@@ -90,6 +100,41 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	 */
 	useEffect(() => onDocReset(doc.clearToBlank), [doc.clearToBlank]);
 
+	/*
+	 * 이력에서 되돌리면 서버의 본문이 갈린다. 에디터는 이미 앉힌 원고를 다시
+	 * 앉히지 않으므로, 알려 주지 않으면 화면에 옛 글이 그대로 남는다.
+	 */
+	const reload = doc.reload;
+	useEffect(
+		() => onDocRestored((id) => id === docId && reload()),
+		[docId, reload],
+	);
+
+	/*
+	 * 완성본을 고치면 서버가 퇴고로 내린다. 조용히 하되 알린다 — 뱃지가 바뀌는
+	 * 것만으로는 놓칠 수 있고, 되돌릴 길을 함께 주면 "내가 원한 게 아닌데"가
+	 * 한 번에 풀린다.
+	 */
+	useEffect(
+		() =>
+			onDocDemoted((id) => {
+				if (id !== docId) return;
+				void client.invalidateQueries({ queryKey: ARCHIVE_KEY });
+				toast("완성본을 고쳐 퇴고로 되돌렸습니다", {
+					action: {
+						label: "완성 유지",
+						onClick: () =>
+							void change({
+								kind: "updateDoc",
+								id,
+								patch: { status: "done" },
+							}),
+					},
+				});
+			}),
+		[docId, client, change],
+	);
+
 	const latest = useRef(manuscript);
 	latest.current = manuscript;
 	useEffect(() => {
@@ -140,6 +185,21 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						goal={doc.goal}
 						onGoalChange={doc.changeGoal}
 						stats={stats}
+						/*
+						 * 상태와 이력은 보관함에 든 원고의 것이다. 체험 원고는 한 편뿐이라
+						 * 진행을 표시할 것도, 되돌릴 이력도 없다.
+						 */
+						status={opened?.status}
+						onStatusChange={
+							opened &&
+							((next: DocStatus | null) =>
+								void change({
+									kind: "updateDoc",
+									id: opened.id,
+									patch: { status: next },
+								}))
+						}
+						onOpenHistory={opened && (() => setHistory(true))}
 					/>
 
 					{/*
@@ -183,6 +243,14 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						<PaneToggle pane={pane} onChoose={choosePane} />
 					</div>
 				</>
+			)}
+
+			{opened && (
+				<HistoryDialog
+					docId={opened.id}
+					open={history}
+					onOpenChange={setHistory}
+				/>
 			)}
 		</>
 	);

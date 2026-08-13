@@ -2,6 +2,7 @@ import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { SaveStatusProvider } from "#/entities/archive";
 import { ImportPrompt } from "#/features/import-legacy";
 import { QueryProvider } from "#/shared/api/query";
+import { Toaster } from "#/shared/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -54,6 +55,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						 */}
 						<ImportPrompt />
 						{children}
+						{/*
+						 * 스쳐 가는 알림. **원고를 잃을 수 있는 실패는 여기로 오지
+						 * 않는다** — 그런 것은 사라지지 않는 배너가 받는다.
+						 */}
+						<Toaster position="bottom-center" />
 					</SaveStatusProvider>
 				</QueryProvider>
 				{/*

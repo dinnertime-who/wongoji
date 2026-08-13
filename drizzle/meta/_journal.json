@@ -22,6 +22,13 @@
       "when": 1786552436834,
       "tag": "0002_empty_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786608908147,
+      "tag": "0003_luxuriant_mimic",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,19 @@
+import { ChevronDownIcon } from "lucide-react";
+import { DOC_STATUSES, type DocStatus, STATUS_LABEL } from "#/entities/archive";
 import {
 	goalProgress,
 	goalRatio,
 	type LayoutStats,
 	remainingLines,
 } from "#/entities/manuscript";
+import { Button } from "#/shared/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "#/shared/ui/dropdown-menu";
 import { Input } from "#/shared/ui/input";
 import { Label } from "#/shared/ui/label";
 import { PageTitle } from "#/shared/ui/page-title";
@@ -24,6 +34,9 @@ export function ManuscriptBar({
 	goal,
 	onGoalChange,
 	stats,
+	status,
+	onStatusChange,
+	onOpenHistory,
 }: {
 	title: string;
 	onTitleChange: (value: string) => void;
@@ -31,6 +44,10 @@ export function ManuscriptBar({
 	goal: number;
 	onGoalChange: (value: number) => void;
 	stats: LayoutStats;
+	/** 진행 상태. 없으면 라벨을 안 단 것이다 — 그것이 기본이다 */
+	status?: DocStatus | null;
+	onStatusChange?: (next: DocStatus | null) => void;
+	onOpenHistory?: () => void;
 }) {
 	/*
 	 * 남은 분량도 조판 기준으로 센다. 글자로 세면 `68 / 70매` 옆에 "1,200자
@@ -51,6 +68,49 @@ export function ManuscriptBar({
 						label="제목"
 					/>
 				</div>
+
+				{/*
+				 * 상태와 이력. 라벨을 안 단 원고에는 "상태"라고만 적힌다 — 뱃지가
+				 * 저절로 돋지 않는다.
+				 */}
+				{onStatusChange && (
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-10 shrink-0 text-xs"
+							>
+								{status ? STATUS_LABEL[status] : "상태"}
+								<ChevronDownIcon data-icon="inline-end" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							{DOC_STATUSES.map((next) => (
+								<DropdownMenuItem
+									key={next}
+									onSelect={() => onStatusChange(next)}
+									disabled={next === status}
+								>
+									{STATUS_LABEL[next]}
+								</DropdownMenuItem>
+							))}
+							{status && (
+								<DropdownMenuItem onSelect={() => onStatusChange(null)}>
+									라벨 떼기
+								</DropdownMenuItem>
+							)}
+							{onOpenHistory && (
+								<>
+									<DropdownMenuSeparator />
+									<DropdownMenuItem onSelect={onOpenHistory}>
+										이력
+									</DropdownMenuItem>
+								</>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				)}
 				<div className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--paper)] px-2.5 text-xs">
 					<Label htmlFor="goal" className="text-muted-foreground">
 						목표

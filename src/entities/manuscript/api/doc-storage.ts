@@ -30,6 +30,21 @@ export const docQueryKey = (id: string) => ["doc", id] as const;
 
 export { setDocOwner };
 
+/**
+ * 서버가 원고 상태를 내렸다고 알린다.
+ *
+ * 완성본을 고치면 서버가 본문을 쓰면서 퇴고로 내린다. 그 사실을 아는 곳이
+ * 여기(본문을 보낸 자리)뿐인데, 알려야 할 곳은 화면이다. 저장하는 쪽이 화면을
+ * 아는 대신 이렇게 알린다 — `onDocReset`이 쓰는 것과 같은 짜임이다.
+ */
+type Demoted = (docId: string, status: string) => void;
+const demotions = new Set<Demoted>();
+
+export function onDocDemoted(listener: Demoted): () => void {
+	demotions.add(listener);
+	return () => void demotions.delete(listener);
+}
+
 const url = (id: string) => `/api/archive/doc/${encodeURIComponent(id)}`;
 
 /**
@@ -76,6 +91,19 @@ export async function writeDoc(
 		if (!response.ok) throw new Error(String(response.status));
 
 		await release(id);
+
+		// 완성본을 고쳤으면 서버가 퇴고로 내리고 그 사실을 실어 보낸다
+		const { demoted } = (await response.json()) as { demoted?: string | null };
+		if (demoted) {
+			for (const listener of demotions) {
+				try {
+					listener(id, demoted);
+				} catch {
+					// 듣는 쪽 사정이다. 저장은 이미 끝났다
+				}
+			}
+		}
+
 		return { ok: true };
 	} catch {
 		return {

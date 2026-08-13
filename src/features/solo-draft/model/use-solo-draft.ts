@@ -158,7 +158,8 @@ export function useSoloDraft(enabled: boolean): ManuscriptEditing {
 			queue({ content: doc });
 		},
 
-		/* 체험 원고에는 비우는 기능이 없다. 지울 목록이 없으니 비울 것도 없다 */
+		/* 체험 원고에는 비우는 기능도 이력도 없다. 목록이 없으니 딸려 오는 것도 없다 */
 		clearToBlank: () => {},
+		reload: () => {},
 	};
 }

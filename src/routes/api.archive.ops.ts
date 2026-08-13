@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 // createFileRoute의 `server` 옵션은 react-start가 declare module로 얹는다
 import type {} from "@tanstack/react-start";
-import type { ArchiveOp, DocPatch } from "#/entities/archive";
+import { type ArchiveOp, type DocPatch, isDocStatus } from "#/entities/archive";
 import { applyArchiveOp } from "#/server/archive";
 import { db } from "#/server/db";
 import { currentUserId, unauthorized } from "#/server/session";
@@ -130,6 +130,14 @@ function readPatch(v: unknown): DocPatch | null {
 	if (raw.title !== undefined) {
 		if (!isText(raw.title)) return null;
 		patch.title = raw.title;
+	}
+	/*
+	 * 상태는 정해 둔 셋 중 하나이거나 `null`(라벨 떼기)뿐이다. 아무 문자열이나
+	 * 들어오면 화면이 모르는 뱃지가 목록에 뜬다.
+	 */
+	if (raw.status !== undefined) {
+		if (raw.status !== null && !isDocStatus(raw.status)) return null;
+		patch.status = raw.status;
 	}
 	for (const key of ["goal", "chars", "sheets"] as const) {
 		if (raw[key] === undefined) continue;

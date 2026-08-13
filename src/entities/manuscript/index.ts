@@ -2,6 +2,7 @@ export {
 	type DocContent,
 	docQueryKey,
 	drainOutbox,
+	onDocDemoted,
 	readDoc,
 	setDocOwner,
 	writeDoc,

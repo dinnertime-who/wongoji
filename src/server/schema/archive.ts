@@ -44,7 +44,7 @@ const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
  * 막힌다 — 질의에 `user_id`를 빠뜨리는 실수가 곧 남의 원고를 여는 실수가 되지
  * 않는다.
  *
- * 로그인 없던 시절의 여덟 자짜리 id도 이 표에 올라온다. 옮길 때 겹치는 것만
+ * 로그인 없던 시절의 여덟 자짜리 id도 이 테이블에 올라온다. 옮길 때 겹치는 것만
  * 다시 매긴다.
  */
 const owner = () =>
@@ -104,6 +104,16 @@ export const archiveDoc = sqliteTable(
 		chars: integer("chars").default(0).notNull(),
 		sheets: integer("sheets").default(0).notNull(),
 
+		/**
+		 * 진행 상태 — `draft` | `revising` | `done`. 없으면 라벨을 안 단 것이다.
+		 *
+		 * 기본값을 두지 않는다. 있던 원고 전부에 뜻 없는 뱃지가 돋게 하지 않으려는
+		 * 것이고, "아직 안 정했다"와 "초고다"는 다른 말이다.
+		 */
+		status: text("status"),
+		/** 지금 상태가 된 시각. 전 이력은 `archive_doc_version`이 들고 있다 */
+		statusAt: integer("status_at", { mode: "timestamp_ms" }),
+
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.default(now)
 			.notNull(),
@@ -123,7 +133,7 @@ export const archiveDoc = sqliteTable(
 /**
  * 본문. Tiptap 문서를 그대로 담는다.
  *
- * 표를 나눈 이유는 로컬에서 키를 나눈 이유와 같다. 목록은 원고 수만큼 행을
+ * 테이블을 나눈 이유는 로컬에서 키를 나눈 이유와 같다. 목록은 원고 수만큼 행을
  * 읽는데 거기에 본문이 섞이면 목록 한 번에 원고 전체가 딸려 온다.
  *
  * `updatedAt`이 원고 행에도 있고 여기에도 있다. 제목만 고쳤는지 본문을 고쳤는지
@@ -140,6 +150,63 @@ export const archiveDocContent = sqliteTable(
 			.notNull(),
 	},
 	(t) => [primaryKey({ columns: [t.userId, t.docId] })],
+);
+
+/**
+ * 상태가 바뀌던 순간의 원고.
+ *
+ * **되돌리기 위해 있다.** 완성이라 표시해 둔 원고를 계속 고치다 망쳤을 때
+ * 그때로 돌아갈 수 있어야 한다 — `archive_doc_content`에는 지금 본문 한 벌만
+ * 있으므로, 남겨 두지 않으면 되돌릴 대상이 존재하지 않는다.
+ *
+ * **사람이 상태를 올릴 때만 쌓인다.** 자동 강등(완성 → 퇴고)에는 만들지
+ * 않는다 — 오타 한 번마다 사본이 생기면 감당이 안 되고, 그때 남길 본문은 이미
+ * 직전 버전으로 있다. 이 규칙 하나가 버전 수에 상한을 만든다.
+ *
+ * 자리(`path`·`order`)는 담지 않는다. 그건 보관함의 일이지 원고의 일이 아니라,
+ * 되돌렸다고 폴더가 옮겨지면 놀란다.
+ */
+export const archiveDocVersion = sqliteTable(
+	"archive_doc_version",
+	{
+		userId: owner(),
+		id: text("id").notNull(),
+		docId: text("doc_id").notNull(),
+		/**
+		 * 왜 남았나.
+		 *
+		 * - `status` — 사람이 상태를 올렸다
+		 * - `backup` — 되돌리기 직전이라 지금 것을 챙겨 두었다
+		 *
+		 * 둘을 가르지 않으면 뒤엣것이 상태 전이인 척하게 된다. 되돌리기 직전
+		 * 원고는 어느 상태로 올라간 것이 아니다.
+		 */
+		kind: text("kind").notNull(),
+		/** 올라간 상태. `backup`이면 그때 달려 있던 상태(없을 수 있다) */
+		status: text("status"),
+
+		title: text("title").notNull(),
+		content: text("content").notNull(),
+		/**
+		 * 첫머리 한 조각.
+		 *
+		 * 이력 목록을 그릴 때 본문을 읽지 않으려고 따로 둔다 — `archive_doc`과
+		 * `archive_doc_content`를 나눈 것과 같은 이유다. 날짜만 있으면 어느
+		 * 것인지 모른 채 되돌리게 된다.
+		 */
+		excerpt: text("excerpt").notNull(),
+		chars: integer("chars").default(0).notNull(),
+		sheets: integer("sheets").default(0).notNull(),
+
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(now)
+			.notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.id] }),
+		// 한 원고의 이력을 최근 순으로 읽는다
+		index("archive_doc_version_doc_idx").on(t.userId, t.docId, t.createdAt),
+	],
 );
 
 /**

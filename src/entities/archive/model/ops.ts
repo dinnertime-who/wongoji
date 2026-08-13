@@ -1,3 +1,4 @@
+import type { DocStatus } from "../config/status";
 import {
 	createDoc,
 	createFolder,
@@ -52,7 +53,10 @@ export type ArchiveOp =
  */
 export type DocPatch = Partial<
 	Pick<DocEntry, "title" | "goal" | "chars" | "sheets">
->;
+> & {
+	/** 진행 상태. `null`을 보내면 라벨을 뗀다 */
+	status?: DocStatus | null;
+};
 
 /**
  * 연산이 남긴 것.
@@ -133,8 +137,18 @@ export function applyOp(
 			 */
 			const entry = index.docs.find((d) => d.id === op.id);
 			const at = op.touch === false && entry ? entry.updatedAt : now;
+
+			/*
+			 * 상태가 바뀌면 그때를 함께 적는다. **`statusAt`은 보낸 값을 쓰지
+			 * 않는다** — 언제 그 상태가 되었는지는 고치는 쪽이 정할 값이 아니다.
+			 */
+			const patch =
+				op.patch.status !== undefined && op.patch.status !== entry?.status
+					? { ...op.patch, statusAt: now }
+					: op.patch;
+
 			return {
-				index: updateDoc(index, op.id, op.patch, at),
+				index: updateDoc(index, op.id, patch, at),
 				removedDocIds: [],
 			};
 		}
