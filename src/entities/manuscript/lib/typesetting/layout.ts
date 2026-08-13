@@ -11,7 +11,6 @@ import { DEFAULT_PROFILE, type Profile } from "./profile";
 import { tokenizeParagraph } from "./tokenize";
 import {
 	type Block,
-	CELLS_PER_SHEET,
 	type Cell,
 	COLS,
 	type LayoutResult,
@@ -211,8 +210,8 @@ export function layoutBlocks(
 			chars: written.length,
 			filledCells,
 			lines: lines.length,
-			pages: pages.length,
-			sheets: Math.max(1, Math.ceil(written.length / CELLS_PER_SHEET)),
+			// 조판해 보고 센다. 글자 수를 200으로 나누지 않는다 — `LayoutStats` 참고
+			sheets: pages.length,
 		},
 	};
 }

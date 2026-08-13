@@ -41,6 +41,12 @@ export interface DocEntry {
 	goal: number;
 	/** 목록에서 보여줄 값 — 문서를 열지 않고도 알 수 있게 색인에 함께 둔다 */
 	chars: number;
+	/**
+	 * 매수. **조판해 보고 나온 장수다**(`LayoutStats.sheets` 참고).
+	 *
+	 * 본문을 읽어야 나오는 값이라 여기 적어 둔다. 원고를 열 때 다시 세어 어긋나
+	 * 있으면 고친다 — 셈법을 바꾸기 전에 적힌 값도 그때 바로잡힌다.
+	 */
 	sheets: number;
 	createdAt: number;
 	updatedAt: number;

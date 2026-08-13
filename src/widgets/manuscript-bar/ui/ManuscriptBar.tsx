@@ -2,7 +2,7 @@ import {
 	goalProgress,
 	goalRatio,
 	type LayoutStats,
-	remainingChars,
+	remainingLines,
 } from "#/entities/manuscript";
 import { Input } from "#/shared/ui/input";
 import { Label } from "#/shared/ui/label";
@@ -32,8 +32,12 @@ export function ManuscriptBar({
 	onGoalChange: (value: number) => void;
 	stats: LayoutStats;
 }) {
-	const remaining = goal > 0 ? remainingChars(stats.chars, goal) : 0;
-	const ratio = goalRatio(stats.chars, goal);
+	/*
+	 * 남은 분량도 조판 기준으로 센다. 글자로 세면 `68 / 70매` 옆에 "1,200자
+	 * 남음"이 뜨는 일이 생긴다 — 두 숫자가 서로 다른 자를 쓰기 때문이다.
+	 */
+	const remaining = goal > 0 ? remainingLines(stats.lines, goal) : 0;
+	const ratio = goalRatio(stats.lines, goal);
 	const over = remaining < 0;
 
 	return (
@@ -73,12 +77,13 @@ export function ManuscriptBar({
 				{goal > 0 && (
 					<span className="text-muted-foreground">
 						{over
-							? `${(-remaining).toLocaleString()}자 초과`
-							: `${remaining.toLocaleString()}자 남음`}
+							? `${(-remaining).toLocaleString()}줄 초과`
+							: `${remaining.toLocaleString()}줄 남음`}
 					</span>
 				)}
+				{/* 매수가 곧 장수가 되었으므로 여기서는 글자 수만 곁들인다 */}
 				<span className="text-muted-foreground">
-					{stats.chars.toLocaleString()}자 · {stats.pages}장
+					{stats.chars.toLocaleString()}자
 				</span>
 			</div>
 

@@ -1,9 +1,9 @@
 export { layoutBlocks, parseBlocks } from "./layout";
 export {
-	goalChars,
+	goalLines,
 	goalProgress,
 	goalRatio,
-	remainingChars,
+	remainingLines,
 } from "./progress";
 export {
 	type Block,

@@ -26,6 +26,7 @@ export {
 	CELLS_PER_SHEET,
 	type Cell,
 	COLS,
+	goalLines,
 	goalProgress,
 	goalRatio,
 	type LayoutStats,
@@ -33,7 +34,7 @@ export {
 	type Page,
 	parseBlocks,
 	ROWS,
-	remainingChars,
+	remainingLines,
 } from "./lib/typesetting";
 export type { Load, ManuscriptEditing } from "./model/editing";
 export { RulesDialog } from "./ui/RulesDialog";
