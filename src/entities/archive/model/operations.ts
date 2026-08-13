@@ -45,10 +45,18 @@ const DAY = 24 * 60 * 60 * 1000;
  *
  * 만드는 쪽을 갈아끼울 수 있게 인자로 받는다 — 시험은 예측 가능한 id를 쓰고,
  * 서버는 이미 쓰인 id를 피하는 것을 한 겹 더 씌운다.
+ *
+ * **`init()`을 모듈 최상단에서 부르지 않는다.** 그것이 기기 지문을 만들며 난수를
+ * 뽑는데, Cloudflare Workers는 전역 스코프에서 난수 생성을 금지한다 — 워커가
+ * 아예 뜨지 못하고 모든 요청이 500이 된다. 개발 서버는 모듈을 요청 안에서
+ * 평가해서 걸리지 않고, **빌드해서 띄워야 드러난다.**
+ *
+ * 처음 부를 때 만들어 붙들어 둔다. 그때는 이미 요청 안이다.
  */
-const create = init({ length: 16 });
+let create: (() => string) | null = null;
 
 export function makeId(): string {
+	create ??= init({ length: 16 });
 	return create();
 }
 
