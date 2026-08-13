@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "gate": "pnpm typecheck && pnpm test && pnpm check && ./scripts/check-barrels.sh && pnpm build",
+    "gate": "pnpm typecheck && pnpm test && pnpm check && ./scripts/check-barrels.sh && pnpm build && ./scripts/check-boot.sh",
     "test:watch": "vitest",
     "format": "biome format",
     "lint": "biome lint",
