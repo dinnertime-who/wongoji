@@ -219,8 +219,11 @@ export function ManuscriptTree({
 			 * `div`에 onClick을 얹지 않고 진짜 단추를 둔다 — 키보드로도 닿아야
 			 * 하고, 눌린 것이 줄인지 빈 곳인지 target을 견주어 가려낼 필요도 없다.
 			 *
-			 * 글씨는 흐리게나마 늘 보인다. 손이 올라갔을 때만 나타나게 해 두면
-			 * **거기를 누를 수 있다는 것을 알 길이 없다.**
+			 * 글씨는 손이 올라갔을 때와 눌러 둔 동안에만 보인다. 늘 띄워 두면
+			 * 조용해야 할 자리에 안내문이 상시로 박히는데, 정작 쓰이는 것은 폴더
+			 * 안을 보다가 맨 위에 만들고 싶은 드문 순간뿐이다. 발견은 hover가
+			 * 맡는다 — 빈 곳에 손을 얹는 것은 자연스럽고, 끌어 놓기도 이미 그
+			 * 자리를 같은 뜻으로 쓴다.
 			 */}
 			<button
 				type="button"
@@ -237,7 +240,7 @@ export function ManuscriptTree({
 					className={`relative w-full rounded px-2 py-1.5 text-xs ${
 						atRoot
 							? SELECTED
-							: "text-muted-foreground/60 group-hover:bg-muted/60 group-hover:text-muted-foreground"
+							: "text-transparent group-hover:bg-muted/60 group-hover:text-muted-foreground"
 					}`}
 				>
 					맨 위에 만듭니다
