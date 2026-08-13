@@ -219,33 +219,23 @@ export function ManuscriptTree({
 			 * `div`에 onClick을 얹지 않고 진짜 단추를 둔다 — 키보드로도 닿아야
 			 * 하고, 눌린 것이 줄인지 빈 곳인지 target을 견주어 가려낼 필요도 없다.
 			 *
-			 * 글씨는 손이 올라갔을 때와 눌러 둔 동안에만 보인다. 늘 띄워 두면
-			 * 조용해야 할 자리에 안내문이 상시로 박히는데, 정작 쓰이는 것은 폴더
-			 * 안을 보다가 맨 위에 만들고 싶은 드문 순간뿐이다. 발견은 hover가
-			 * 맡는다 — 빈 곳에 손을 얹는 것은 자연스럽고, 끌어 놓기도 이미 그
-			 * 자리를 같은 뜻으로 쓴다.
+			 * **글씨를 두지 않는다.** 안내문을 적어 두었더니 조용해야 할 자리에
+			 * 문장이 박혀 못생겼다. 고른 자리는 줄에서 이미 색으로 말하고 있으니,
+			 * 여기도 같은 색을 바탕에 깔면 그것으로 족하다 — 읽을 것이 하나 줄고
+			 * 규칙은 하나로 남는다.
+			 *
+			 * 이름은 화면에 안 보여도 있어야 한다. 눈으로 색을 볼 수 없는 사람에게는
+			 * 그것이 이 단추의 전부다.
 			 */}
 			<button
 				type="button"
 				onClick={onPickRoot}
-				/*
-				 * 누를 곳은 빈 곳 전부, 칠하는 것은 줄 하나.
-				 *
-				 * 단추가 제 안의 글씨를 세로 가운데로 밀어 넣으므로 `items-start`로
-				 * 위에 붙인다 — 그러지 않으면 텅 빈 사이드바 한복판에 글씨가 뜬다.
-				 */
-				className="group mt-auto flex min-h-10 flex-1 items-start text-left"
-			>
-				<span
-					className={`relative w-full rounded px-2 py-1.5 text-xs ${
-						atRoot
-							? SELECTED
-							: "text-transparent group-hover:bg-muted/60 group-hover:text-muted-foreground"
-					}`}
-				>
-					맨 위에 만듭니다
-				</span>
-			</button>
+				aria-label="맨 위에 만들기"
+				aria-pressed={atRoot}
+				className={`mt-auto min-h-10 flex-1 rounded ${
+					atRoot ? "bg-grid/15" : "hover:bg-muted/60"
+				}`}
+			/>
 		</div>
 	);
 }
