@@ -47,6 +47,7 @@ import {
 	DropdownMenuTrigger,
 } from "#/shared/ui/dropdown-menu";
 import { useOpenedEntry } from "../model/use-opened-entry";
+import type { Selection } from "../model/use-selection";
 
 /** 트리에서 걸 수 있는 일들. 실제 처리는 사이드바가 한다 */
 export interface TreeActions {
@@ -107,18 +108,20 @@ function dropLine(dnd: EntryDnd, id: string, depth: number) {
 export function ManuscriptTree({
 	actions,
 	onNavigate,
-	atRoot,
-	onPickRoot,
+	selection,
 }: {
 	actions: TreeActions;
 	/** 원고를 골랐을 때. 좁은 화면에서 서랍을 닫는 데 쓴다 */
 	onNavigate?: () => void;
-	/** 새로 만들 자리가 맨 위인가 */
-	atRoot: boolean;
-	/** 빈 곳을 눌렀다 — 맨 위에 만들겠다는 뜻이다 */
-	onPickRoot: () => void;
+	/** 무엇을 골라 두었는가. 강조도 새로 만들 자리도 이것 하나에서 나온다 */
+	selection: Selection;
 }) {
 	const { index } = useArchive();
+	/*
+	 * 강조는 `selection`이 정하지만, **어디를 펴 둘지는 주소가 정한다.** 골라 둔
+	 * 것을 지웠다고 열어 둔 원고까지 가는 길이 접히면, 보고 있는 글이 트리에서
+	 * 사라진다.
+	 */
 	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
 	// 지금 원고까지 가는 길은 펴 둔다
 	const current = index.docs.find((d) => d.id === currentDocId);
@@ -194,8 +197,7 @@ export function ManuscriptTree({
 				depth={0}
 				open={open}
 				onToggle={toggle}
-				currentDocId={currentDocId}
-				currentFolderId={currentFolderId}
+				selection={selection}
 				actions={{
 					...actions,
 					addDoc: (path) => {
@@ -212,28 +214,26 @@ export function ManuscriptTree({
 			 * 빈 곳 = 맨 위.
 			 *
 			 * 끌어 놓기가 이미 그렇게 읽힌다 — 여기에 떨어뜨리면 폴더 밖으로
-			 * 나온다. 누르는 쪽도 같은 뜻이 되게 맞춘다. 전에는 폴더를 열어 둔
-			 * 채로 맨 위에 만들 길이 없어서, 맨 위 원고를 하나 열어 나오는
-			 * 수밖에 없었다.
+			 * 나온다. 누르는 쪽도 같은 뜻이 되게 맞춘다.
+			 *
+			 * **누르면 골라 둔 줄의 강조가 꺼진다.** 값이 하나뿐이라 그렇게 될 수밖에
+			 * 없고, 그래서 여기 깔리는 색이 "선택이 이리로 왔다"로 읽힌다. 줄과 빈
+			 * 곳이 같은 색으로 함께 켜지던 시절에는 그 색이 거짓말이었다.
 			 *
 			 * `div`에 onClick을 얹지 않고 진짜 단추를 둔다 — 키보드로도 닿아야
 			 * 하고, 눌린 것이 줄인지 빈 곳인지 target을 견주어 가려낼 필요도 없다.
 			 *
-			 * **글씨를 두지 않는다.** 안내문을 적어 두었더니 조용해야 할 자리에
-			 * 문장이 박혀 못생겼다. 고른 자리는 줄에서 이미 색으로 말하고 있으니,
-			 * 여기도 같은 색을 바탕에 깔면 그것으로 족하다 — 읽을 것이 하나 줄고
-			 * 규칙은 하나로 남는다.
-			 *
-			 * 이름은 화면에 안 보여도 있어야 한다. 눈으로 색을 볼 수 없는 사람에게는
-			 * 그것이 이 단추의 전부다.
+			 * 글씨는 두지 않는다. 조용해야 할 자리라 안내문이 박히면 못생기고,
+			 * 이름은 화면에 안 보여도 있어야 한다 — 눈으로 색을 볼 수 없는
+			 * 사람에게는 그것이 이 단추의 전부다.
 			 */}
 			<button
 				type="button"
-				onClick={onPickRoot}
-				aria-label="맨 위에 만들기"
-				aria-pressed={atRoot}
+				onClick={selection.clear}
+				aria-label="맨 위 고르기"
+				aria-pressed={selection.picked.kind === "root"}
 				className={`mt-auto min-h-10 flex-1 rounded ${
-					atRoot ? "bg-grid/15" : "hover:bg-muted/60"
+					selection.picked.kind === "root" ? "bg-grid/15" : "hover:bg-muted/60"
 				}`}
 			/>
 		</div>
@@ -246,8 +246,7 @@ function Level({
 	depth,
 	open,
 	onToggle,
-	currentDocId,
-	currentFolderId,
+	selection,
 	actions,
 	onNavigate,
 	dnd,
@@ -257,8 +256,7 @@ function Level({
 	depth: number;
 	open: Set<string>;
 	onToggle: (id: string) => void;
-	currentDocId: string;
-	currentFolderId?: string;
+	selection: Selection;
 	actions: TreeActions;
 	onNavigate?: () => void;
 	dnd: EntryDnd;
@@ -288,7 +286,7 @@ function Level({
 						{/* 폴더는 제 안쪽을 받는다. 끌고 있는 그 폴더 자신은 흐리게 둔다 */}
 						<div
 							className={`group relative flex items-center rounded ${
-								folder.id === currentFolderId ? SELECTED : ""
+								selection.has("folder", folder.id) ? SELECTED : ""
 							} ${dropClass(dnd, folder.id)} ${NO_CALLOUT} ${
 								dragging ? "opacity-40" : ""
 							}`}
@@ -318,7 +316,10 @@ function Level({
 							<Link
 								to="/f/$folderId"
 								params={{ folderId: folder.id }}
-								onClick={onNavigate}
+								onClick={() => {
+									selection.pick("folder", folder.id);
+									onNavigate?.();
+								}}
 								className="flex flex-1 items-center gap-1 rounded py-1 pr-2 text-left text-sm hover:bg-muted"
 							>
 								<FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
@@ -374,8 +375,7 @@ function Level({
 								depth={depth + 1}
 								open={open}
 								onToggle={onToggle}
-								currentDocId={currentDocId}
-								currentFolderId={currentFolderId}
+								selection={selection}
 								actions={actions}
 								onNavigate={onNavigate}
 								dnd={dnd}
@@ -394,7 +394,7 @@ function Level({
 				<div
 					key={doc.id}
 					className={`group relative flex items-center rounded ${
-						doc.id === currentDocId ? SELECTED : "hover:bg-muted"
+						selection.has("doc", doc.id) ? SELECTED : "hover:bg-muted"
 					} ${dropClass(dnd, doc.id)} ${dnd.isDragging(doc.id) ? "opacity-40" : ""} ${NO_CALLOUT}`}
 					{...dnd.dragProps({ kind: "doc", id: doc.id }, displayTitle(doc))}
 					{...dnd.dropProps({ kind: "doc", id: doc.id, path })}
@@ -403,7 +403,10 @@ function Level({
 					<Link
 						to="/w/$docId"
 						params={{ docId: doc.id }}
-						onClick={onNavigate}
+						onClick={() => {
+							selection.pick("doc", doc.id);
+							onNavigate?.();
+						}}
 						style={{ paddingLeft: `${depth * 0.75 + 1.6}rem` }}
 						className="flex flex-1 items-center gap-1 py-1 pr-2 text-sm"
 					>

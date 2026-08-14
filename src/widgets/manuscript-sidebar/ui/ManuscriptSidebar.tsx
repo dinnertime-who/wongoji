@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 	ancestorIds,
 	type DocEntry,
@@ -9,6 +9,7 @@ import {
 	fullPath,
 	type Path,
 	ROOT,
+	type StoreIndex,
 	useArchive,
 	useArchiveMutation,
 	useSaveStatus,
@@ -27,7 +28,26 @@ import {
 	useSidebar,
 } from "#/shared/ui/sidebar";
 import { useOpenedEntry } from "../model/use-opened-entry";
+import { type Picked, useSelection } from "../model/use-selection";
 import { ManuscriptTree, type TreeActions } from "./ManuscriptTree";
+
+/**
+ * 고른 것이 놓인 자리. 새 원고와 새 폴더가 여기 생긴다.
+ *
+ * 폴더는 그 **안**이고 원고는 그 **옆**이다. 폴더를 열어 놓고 새 원고를 누르는
+ * 사람은 거기에 만들려는 것이고, 원고를 보다 누르는 사람은 그 원고와 나란히
+ * 두려는 것이다.
+ *
+ * 고른 것이 사라졌으면 맨 위로 돌린다 — 다른 기기에서 버린 폴더가 그렇다.
+ */
+function pathOf(index: StoreIndex, picked: Picked): Path {
+	if (picked.kind === "root") return ROOT;
+	if (picked.kind === "folder") {
+		const folder = index.folders.find((f) => f.id === picked.id);
+		return folder ? fullPath(folder) : ROOT;
+	}
+	return index.docs.find((d) => d.id === picked.id)?.path ?? ROOT;
+}
 
 /** 어떤 창을 열어 두었는가. 한 번에 하나만 뜬다 */
 type Sheet =
@@ -55,7 +75,8 @@ const CLOSED: Sheet = { kind: "none" };
 export function ManuscriptSidebar() {
 	const navigate = useNavigate();
 	const { index } = useArchive();
-	const { docId: currentDocId, folderId: currentFolderId } = useOpenedEntry();
+	// 버린 것이 지금 보고 있는 것인지 가리는 데 쓴다. 강조는 `selection`이 정한다
+	const { docId: currentDocId } = useOpenedEntry();
 	const { report } = useSaveStatus();
 	const change = useArchiveMutation();
 	const { createDocIn, duplicateDocById, createFolderIn } = useCreateEntry();
@@ -64,31 +85,13 @@ export function ManuscriptSidebar() {
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 
 	/*
-	 * 맨 위에 만들기로 했는가.
+	 * 무엇을 골라 두었는가. 주소에서 시작해 제 상태로 든다(`useSelection`).
 	 *
-	 * 폴더 안을 보고 있어도 맨 위에 만들고 싶을 때가 있는데, 전에는 그 길이
-	 * 없었다 — 맨 위 원고를 하나 열어 나오는 수밖에. 트리의 빈 곳을 누르면
-	 * 여기가 선다.
-	 *
-	 * **다른 것을 열면 도로 내려간다.** 눌러 둔 것을 계속 들고 있으면, 폴더를
-	 * 열고 새 원고를 눌렀는데 엉뚱하게 맨 위에 생긴다.
+	 * 새 원고와 새 폴더는 여기 생긴다. 폴더를 골랐으면 그 안이고, 원고를
+	 * 골랐으면 그 원고 옆이며, 아무것도 안 골랐으면 맨 위다.
 	 */
-	const [atRoot, setAtRoot] = useState(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: 이 둘은 읽으려고가 아니라 "다른 것을 열었다"는 신호로 둔다
-	useEffect(() => setAtRoot(false), [currentDocId, currentFolderId]);
-
-	/*
-	 * 새 원고와 새 폴더가 놓일 자리.
-	 *
-	 * 폴더를 열어 두었으면 그 안이다. 열어 놓고 새 원고를 누르는 사람은 거기에
-	 * 만들려는 것이지, 원고 쪽에서 마지막으로 보던 자리에 만들려는 것이 아니다.
-	 */
-	const openedFolder = index.folders.find((f) => f.id === currentFolderId);
-	const here = atRoot
-		? ROOT
-		: openedFolder
-			? fullPath(openedFolder)
-			: (index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT);
+	const selection = useSelection();
+	const here = pathOf(index, selection.picked);
 
 	/**
 	 * 원고를 고르면 서랍을 닫는다.
@@ -192,8 +195,7 @@ export function ManuscriptSidebar() {
 					<ManuscriptTree
 						actions={actions}
 						onNavigate={closeDrawer}
-						atRoot={atRoot}
-						onPickRoot={() => setAtRoot(true)}
+						selection={selection}
 					/>
 				</nav>
 			</SidebarContent>
