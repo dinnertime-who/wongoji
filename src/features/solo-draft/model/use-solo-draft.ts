@@ -6,8 +6,10 @@ import {
 	blocksFromDoc,
 	blocksToDoc,
 	emptyDoc,
+	enqueue,
 	type Load,
 	type ManuscriptEditing,
+	type Queued,
 	toEditorContent,
 } from "#/entities/manuscript";
 import {
@@ -46,7 +48,11 @@ export function useSoloDraft(enabled: boolean): ManuscriptEditing {
 
 	const docRef = useRef<Content | null>(null);
 	const saveTimer = useRef<number | undefined>(undefined);
-	const pending = useRef<Patch | null>(null);
+	/*
+	 * 밀린 저장. 계정 원고와 **같은 규칙**을 쓴다(`enqueue`) — 늦게 온 값이 이긴다.
+	 * 이쪽은 원고가 한 편뿐이라 임자를 가릴 일이 없어 빈 id를 쓴다.
+	 */
+	const pending = useRef<Queued<Patch> | null>(null);
 	const opened = useRef(false);
 
 	/*
@@ -87,12 +93,12 @@ export function useSoloDraft(enabled: boolean): ManuscriptEditing {
 		pending.current = null;
 		window.clearTimeout(saveTimer.current);
 		saveTimer.current = undefined;
-		if (job) save(job);
+		if (job) save(job.patch);
 	}, [save]);
 
 	const queue = useCallback(
 		(patch: Patch) => {
-			pending.current = { ...pending.current, ...patch };
+			pending.current = enqueue(pending.current, "", patch);
 			window.clearTimeout(saveTimer.current);
 			saveTimer.current = window.setTimeout(flush, DEBOUNCE);
 		},

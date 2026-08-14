@@ -49,6 +49,7 @@ export {
 	type DocPatch,
 	type OpEffect,
 } from "./model/ops";
+export { parseOp } from "./model/parse-op";
 export { SaveStatusProvider, useSaveStatus } from "./model/save-status";
 export {
 	type DocEntry,

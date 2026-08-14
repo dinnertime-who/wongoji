@@ -125,10 +125,10 @@ docx는 [`docx`](https://github.com/dolanmiu/docx)(MIT)로 만들고, 내보낼 
 ```bash
 pnpm install
 pnpm dev          # http://localhost:3000 (--host, 같은 망에서 접속 가능)
-pnpm test         # 조판 엔진 · 보관함 · 변환기 · 내보내기
+pnpm test         # 두 벌 — node에서 도는 것과 workerd에서 도는 것 (아래)
 pnpm check        # Biome (포맷 · 린트 · 레이어 규칙)
 pnpm build
-pnpm gate         # 위 넷 + 배럴 검사. 커밋 전에 이것만 돌리면 된다
+pnpm gate         # 위 넷 + 배럴 검사 + 빌드본 부팅. 커밋 전에 이것만 돌리면 된다
 ```
 
 로그인까지 돌려 보려면 두 가지가 더 필요하다. 원고를 쓰고 조판하는 데는 없어도
@@ -170,6 +170,56 @@ await fetch("/api/auth/sign-in/email", {
 `import.meta.env.DEV`는 vite가 빌드할 때 `false`로 바꿔 박으므로 배포본에서는 이
 길이 죽은 코드가 되어 사라진다 — `dist`에서 `emailAndPassword: void 0`으로 남는
 것을 확인할 수 있다. 환경변수로 걸면 그렇게 되지 않으므로 바꾸지 않는다.
+
+## 테스트
+
+**테스트는 소스 옆에 둔다**(`operations.ts` 옆에 `operations.test.ts`). `__tests__`
+폴더를 두지 않는 이유는 FSD가 이미 슬라이스로 잘라 놓아 한 폴더에 파일이 쌓이지
+않기 때문이고, 레이어를 옮기는 일이 잦아서 병렬 트리는 곧 어긋나기 때문이다. 짝이
+없는 파일이 `ls` 한 번에 보이는 것도 값이다.
+
+가르는 축은 폴더가 아니라 **무엇이 있어야 도는가**다. `vitest.config.ts`가 두 벌로
+나눈다.
+
+| | 어디 | 무엇으로 |
+|---|---|---|
+| `unit` | 나머지 전부 | node. 환경도 설정도 없다 |
+| `d1` | `src/server/**` · `src/routes/**` | workerd + 진짜 D1 (`vitest-pool-workers`) |
+
+```bash
+pnpm test                      # 둘 다
+pnpm vitest run --project unit # 조판·색인 연산·직렬화… 0.5초
+pnpm vitest run --project d1   # 보관함 테이블과 API 라우트
+```
+
+### D1 쪽은 흉내 내지 않는다
+
+`d1` 프로젝트는 workerd 안에서 **`drizzle/`의 마이그레이션을 그대로 올린** D1을
+쓴다. 손으로 옮겨 적은 스키마도, SQLite로 대신한 것도 아니다. 값을 치른 만큼
+돌려받는다 — 처음 돌렸을 때 외래 키 제약(`archive_doc.userId` → `user.id`)이 바로
+걸렸고, 그것은 흉내로는 나오지 않았을 실패다. `db.batch()`의 원자성도 마찬가지다.
+
+로그인도 흉내 내지 않는다. `src/server/testing/harness.ts`의 `계정()`이 better-auth를
+실제로 지나 세션 쿠키를 만든다(개발 계정을 여는 그 길이다). 세션 줄을 손으로 넣으면
+쿠키 서명과 만료 규칙을 우리가 다시 구현하게 되는데, 그 규칙이 맞는지 보려고
+라우트를 두드리는 것이라 앞뒤가 바뀐다.
+
+라우트 테스트는 `src/routes/` 안, 라우트 파일 옆에 둔다. **라우트 생성기는
+`*.test.ts`를 라우트로 치지 않는다** — 확인했다.
+
+### 무엇을 어디서 보는가
+
+| 자리 | 무엇 |
+|---|---|
+| `entities/*/model/*.test.ts` | 색인 연산 · 열기 순서 · 저장 큐 — 전부 순수 함수 |
+| `entities/*/lib/*.test.ts` | 조판 엔진 · 경로 계산 · 직렬화 |
+| `*/api/*.test.ts` | 저장소와 네트워크 경계 (fetch·IndexedDB는 갈아 끼운다) |
+| `server/archive.test.ts` | 순수 함수와 테이블 사이의 번역 |
+| `routes/api.*.test.ts` | 세션·모양 검사·D1이 **이어져 있는가** |
+
+**훅과 화면은 테스트가 없다.** jsdom을 들이는 대신 브라우저로 본다. 대신 위험이
+몰려 있던 곳은 순수 함수로 떼어 두었다 — 원고를 여는 순서가 `opening.ts`에,
+저장 큐를 합치는 규칙이 `save-queue.ts`에 있다.
 
 ## 배포 — Cloudflare Workers
 
@@ -272,21 +322,26 @@ src/
     reorder-entry/     끌어 놓기. 트리와 폴더 쪽이 나눠 쓴다
     solo-draft/        로그인 없이 쓰는 원고 한 편
     import-legacy/     로그인 없던 시절의 원고를 계정으로 한 번 옮기기
+    edit-manuscript/
+      model/opening.ts   원고를 여는 순서. 순수 함수 (아래 절 참고)
     auth/              로그인 단추 · 세션
-    create-entry · move-entry · copy-manuscript · edit-manuscript ·
+    create-entry · move-entry · copy-manuscript ·
     reset-manuscript · manage-trash · export-manuscript · toggle-pane
   entities/
     archive/           보관함. 색인 하나가 폴더·원고·휴지통을 함께 들고 있다
       api/               서버와 주고받기 · 마지막으로 연 원고
       lib/path.ts        materialized path 계산
       model/             자료구조 · 순수 연산 · 연산 종류 · 질의 훅 · 저장 실패 상태
+      model/parse-op.ts  브라우저가 보낸 것이 연산인지 본다. 서버의 유일한 관문
     manuscript/        원고
       api/               본문 (서버) · 미전송 대기열 (IndexedDB)
       lib/typesetting/   조판 엔진 (프레임워크 비의존)
       lib/tiptap.ts      에디터 문서 ↔ 조판 블록
       lib/serialize.ts   평문 · 백업 JSON 읽고 쓰기
+      model/save-queue.ts  밀린 저장을 합치는 규칙. 두 피처가 나눠 쓴다
   shared/            도메인을 모르는 것들 — shadcn 원본, cn, localStorage 겉포장
   server/            FSD 밖. better-auth · D1 · 스키마 (아래 절 참고)
+    testing/           테스트가 쓰는 밑판 — D1 손잡이 · 진짜 세션 · 요청 짓기
 docs/                규칙 명세서, 공모전 조사, 설계 기록
 ```
 
@@ -296,6 +351,22 @@ docs/                규칙 명세서, 공모전 조사, 설계 기록
 
 **두 entity가 함께 필요하면 feature로 올린다.** `tidy`가 그 예다 — 색인이 무엇을
 아는지와 본문 키가 무엇이 있는지를 맞대어 보는 일이라 어느 한쪽에 둘 수 없다.
+
+### 위험한 규칙은 순수 함수로 뗀다
+
+잃을 것이 큰 규칙은 React도 저장소도 D1도 모르는 함수로 내려 둔다. 그러면 손으로
+재현하기 어려운 순서를 테스트에서 그냥 적어 볼 수 있고, 서버와 브라우저가 한 벌을
+나눠 쓸 수 있다. 지금 그렇게 서 있는 것이 넷이다.
+
+| 파일 | 뗀 이유 |
+|---|---|
+| `archive/model/operations.ts` | 색인 규칙. **서버와 브라우저가 같은 것을 돌린다** — 낙관적 갱신이 서버와 어긋날 수 없다 |
+| `archive/model/parse-op.ts` | 믿을 수 없는 JSON과 그 순수 함수 사이의 관문. 라우트에 두면 D1을 물고 있어 두드릴 수 없다 |
+| `edit-manuscript/model/opening.ts` | 원고를 여는 순서. 전에는 ref 넷이 국면을 나눠 들어서, 어긋나 난 버그를 재현하려면 브라우저에서 원고를 빠르게 오가는 수밖에 없었다 |
+| `manuscript/model/save-queue.ts` | 밀린 저장을 합치는 규칙. 어긋나면 **앞 원고의 글자가 지금 원고에 쏟아진다** |
+
+훅이 하는 일은 그 함수가 시키는 것을 실제로 하는 것뿐이다 — 언제 읽고 언제
+저장할지는 알되, 지금 어느 국면인지는 판단하지 않는다.
 
 ### 레이어 규칙은 도구가 지킨다
 
@@ -311,6 +382,10 @@ docs/                규칙 명세서, 공모전 조사, 설계 기록
 **함정** — `overrides`는 규칙 옵션을 합치지 않고 **갈아 끼운다.** 한 파일이 두
 override에 걸리면 뒤엣것만 산다. 그래서 `entities/archive/lib/**`용 블록이 위의
 entities 규칙을 통째로 다시 적고 있다. 여기에 규칙을 더할 때는 두 곳 다 고쳐야 한다.
+
+그 블록은 "색인을 다루는 순수 함수는 저장소를 몰라야 한다"를 지키는 자리이기도
+하다. `includes`에 **파일 이름을 하나씩 적으므로**, 위 표에 새 순수 함수를 더할
+때는 거기에도 한 줄 넣어야 한다. 빠뜨리면 규칙 없이 사는 파일이 된다.
 
 ### 폴더와 원고의 차례
 
@@ -374,6 +449,12 @@ react-start가 `declare module`로 얹는다. `src/` 어디에서도 react-start
 **함정** — `overrides`가 규칙을 갈아 끼우는 탓에(위 참고) `#/server` 금지는 프론트
 다섯 레이어의 블록마다 **따로 적혀 있다.** `entities/archive` 전용 블록도 그중
 하나다. 한 곳만 고치면 나머지에 구멍이 남는다.
+
+**함정** — `pnpm generate-routes`(`tsr generate`)를 손으로 부르면 `routeTree.gen.ts`
+끝의 react-start `Register` 선언 블록이 **잘려 나간다.** 그 블록은 vite 플러그인이
+얹는 것이라 CLI만으로는 다시 생기지 않는다. 라우트를 더해도 `pnpm dev`나 `pnpm build`가
+알아서 다시 뽑으므로, 그 명령을 따로 부를 일은 없다. 부른 뒤 diff에 삭제가 보이면
+`git checkout src/routeTree.gen.ts`로 되돌린다.
 
 ### 조판 엔진
 

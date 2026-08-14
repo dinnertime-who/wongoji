@@ -39,5 +39,6 @@ export {
 	remainingLines,
 } from "./lib/typesetting";
 export type { Load, ManuscriptEditing } from "./model/editing";
+export { enqueue, type Queued } from "./model/save-queue";
 export { RulesDialog } from "./ui/RulesDialog";
 export { WongojiPager } from "./ui/WongojiPager";

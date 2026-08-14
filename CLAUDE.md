@@ -19,8 +19,31 @@ CWD=$(lsof -a -p "$PID" -d cwd -Fn 2>/dev/null | grep '^n' | cut -c2-)
 
 ## 검사 관문
 
-커밋 전에 `pnpm gate` 하나만 돌리면 된다 — typecheck · test · biome · 배럴 검사 · build.
-넷을 손으로 나눠 돌리다 보면 biome을 빠뜨리게 된다.
+커밋 전에 `pnpm gate` 하나만 돌리면 된다 — typecheck · test · biome · 배럴 검사 ·
+build · 빌드본 부팅. 손으로 나눠 돌리다 보면 biome을 빠뜨리게 된다.
+
+## 테스트
+
+**소스 옆에 둔다.** `operations.ts` 옆에 `operations.test.ts`. `__tests__` 폴더는
+만들지 않는다 — 이유는 [README의 테스트 절](README.md#테스트)에 있다.
+
+`pnpm test`가 두 벌을 돌린다. 가르는 축은 폴더가 아니라 **무엇이 있어야 도는가**다.
+
+- `unit` — node에서 그냥 돈다. 나머지 전부
+- `d1` — workerd + 진짜 D1. `src/server/**`와 `src/routes/**`
+
+D1 쪽은 `drizzle/`의 마이그레이션을 그대로 올리고, 로그인도 better-auth를 실제로
+지난다(`src/server/testing/harness.ts`). **스키마도 세션도 손으로 흉내 내지
+않는다** — 흉내를 두면 그 흉내가 검사된다.
+
+새 테스트를 쓸 때 고르는 순서는 하나다.
+
+1. 규칙이면 **순수 함수로 떼어** entities에 두고 `unit`에서 본다
+2. 테이블이나 세션이 있어야 하면 `d1`에서 본다
+3. DOM이 있어야 하면 **쓰지 않는다.** jsdom을 들이지 않기로 했다 — 브라우저로 본다
+
+3번에 걸리는 것이 많아 보이면 대개 1번을 안 한 것이다. 원고를 여는 순서
+(`opening.ts`)와 저장 큐(`save-queue.ts`)가 그렇게 나왔다.
 
 ## 구조
 
@@ -33,8 +56,15 @@ Feature-Sliced Design. 레이어와 슬라이스 규칙, 그리고 `biome.json` 
 새로고침하면 되살아났다.
 
 서버는 그 연산을 브라우저와 **같은 순수 함수**(`applyOp` → `operations.ts`)로 적용한다.
-색인 규칙을 두 벌 쓰지 않는다. 새 연산이 필요하면 `operations.ts`에 순수 함수를 두고
-`ops.ts`의 유니온에 한 줄 늘린다.
+색인 규칙을 두 벌 쓰지 않는다. 새 연산이 필요하면 이 셋을 함께 고친다.
+
+1. `operations.ts`에 순수 함수를 두고
+2. `ops.ts`의 유니온에 한 줄 늘리고
+3. `parse-op.ts`에 그 모양을 보는 가지를 더한다 — **서버로 오는 유일한 관문이라
+   여기 없으면 그 연산은 400으로 막힌다**
+
+`parse-op.ts`는 `biome.json`의 순수성 override에 파일 이름으로 적혀 있다. 새 순수
+함수를 그 옆에 두면 거기에도 한 줄 넣어야 규칙 없이 사는 파일이 되지 않는다.
 
 **비로그인은 원고 한 편이다.** 폴더·차례·휴지통은 계정 기능이라 그쪽에는 색인이
 아예 없다(`features/solo-draft`). IndexedDB에 남은 것은 체험 원고 본문과, 계정 원고의
