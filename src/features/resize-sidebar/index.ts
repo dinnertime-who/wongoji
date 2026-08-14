@@ -1,2 +1,2 @@
-export { readWidth, SIDEBAR_DEFAULT, writeWidth } from "./model/width";
+export { clampWidth, SIDEBAR_DEFAULT } from "./model/width";
 export { SidebarResizer } from "./ui/SidebarResizer";

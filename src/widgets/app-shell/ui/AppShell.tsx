@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import {
-	readWidth,
+	clampWidth,
 	SIDEBAR_DEFAULT,
 	SidebarResizer,
-	writeWidth,
 } from "#/features/resize-sidebar";
-import { safeGetItem, savePreference } from "#/shared/lib/storage";
+import { type Panel, writePanel } from "#/shared/lib/panel";
+import { safeGetItem, safeRemoveItem } from "#/shared/lib/storage";
 import { Sidebar, SidebarProvider } from "#/shared/ui/sidebar";
-
-/** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
-const SIDEBAR_KEY = "wongoji:sidebar";
 
 /** 이 너비 아래에서는 보관함을 접은 채로 시작한다 */
 const ROOMY = 1280;
+
+/** 쿠키로 옮기기 전에 쓰던 자리. 처음 한 번만 들여다보고 비운다 */
+const OLD_OPEN = "wongoji:sidebar";
+const OLD_WIDTH = "wongoji:sidebarWidth";
 
 /**
  * 끄는 동안 폭 애니메이션을 끈다.
@@ -34,43 +35,73 @@ const SMOOTH_OFF =
  *
  * 폭을 정하는 손잡이도 여기서 그린다 — 보관함이 아니라 **틀의 일**이라, 옆에 붙는
  * 것이 무엇으로 바뀌어도 폭은 같은 자리에서 정해진다.
+ *
+ * ---
+ *
+ * **접힘과 폭은 서버가 읽어서 넘겨준다**(`panel`). 전에는 localStorage에 있어서
+ * 서버가 볼 수 없었고, 그래서 첫 HTML은 늘 접힌 채로 나갔다가 하이드레이션이
+ * 끝나야 제 폭으로 벌어졌다 — 열 때마다 한 번씩 덜컥거렸다. 쿠키로 옮기면서
+ * 서버가 그리는 것과 브라우저가 그리는 첫 그림이 같아졌다.
  */
 export function AppShell({
+	panel,
 	sidebar,
 	children,
 }: {
+	/** 서버가 쿠키에서 읽어 온 것. 적힌 적 없으면 둘 다 null이다 */
+	panel: Panel;
 	sidebar: React.ReactNode;
 	children: React.ReactNode;
 }) {
-	const [open, setOpen] = useState(false);
-	const [width, setWidth] = useState(SIDEBAR_DEFAULT);
+	const [open, setOpen] = useState(panel.open ?? false);
+	const [width, setWidth] = useState(panel.width ?? SIDEBAR_DEFAULT);
 	const [dragging, setDragging] = useState(false);
 
 	/*
-	 * localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
+	 * 처음 오는 사람만 여기를 지난다.
 	 *
-	 * 접힘과 폭을 **한 effect에서 함께 읽는다.** 나눠 두면 첫 그림이 두 번
-	 * 덜컥거린다 — 기본 폭으로 펴졌다가 다시 제 폭으로 벌어진다.
+	 * 쿠키가 없으면 서버는 접힌 채로 그릴 수밖에 없다 — 화면이 넓은지 좁은지는
+	 * 브라우저만 안다. 그래서 **한 번만** 여기서 정하고 쿠키에 적어 둔다. 다음
+	 * 방문부터는 서버가 처음부터 제대로 그린다.
+	 *
+	 * localStorage에 두던 시절의 값이 남아 있으면 그것을 먼저 따른다. 접어 두고
+	 * 쓰던 사람의 화면이 어느 날 갑자기 펴져 있으면 그것도 고장으로 보인다.
 	 */
 	useEffect(() => {
-		const saved = safeGetItem(SIDEBAR_KEY);
-		// 처음 오는 사람에게는 화면이 넉넉할 때만 펴 준다
-		setOpen(saved === null ? window.innerWidth >= ROOMY : saved === "1");
-		setWidth(readWidth() ?? SIDEBAR_DEFAULT);
-	}, []);
+		if (panel.open !== null && panel.width !== null) return;
+
+		const wasOpen = safeGetItem(OLD_OPEN);
+		const wasWide = Number(safeGetItem(OLD_WIDTH));
+		const next = {
+			open:
+				panel.open ??
+				(wasOpen === null ? window.innerWidth >= ROOMY : wasOpen === "1"),
+			width:
+				panel.width ??
+				(Number.isFinite(wasWide) && wasWide > 0
+					? clampWidth(wasWide)
+					: SIDEBAR_DEFAULT),
+		};
+
+		setOpen(next.open);
+		setWidth(next.width);
+		writePanel(next);
+		// 옮겨 담았으니 옛 자리는 비운다. 두 곳에 같은 값이 남아 있으면 언젠가 갈린다
+		safeRemoveItem(OLD_OPEN);
+		safeRemoveItem(OLD_WIDTH);
+	}, [panel.open, panel.width]);
 
 	/*
-	 * 접힘 상태는 이 앱의 다른 화면 설정과 같이 localStorage에 둔다. 정본은 쿠키에
-	 * 적지만, 그러면 다른 화면 설정과 저장하는 곳이 갈린다.
-	 *
 	 * 실패해도 알리지 않는다. 접힘 상태를 못 적은 것은 다음에 열 때 기본값으로
 	 * 시작한다는 뜻일 뿐인데, 원고 저장 실패와 같은 배너로 알리면 "원고를 잃을 수
 	 * 있다"고 잘못 읽힌다.
 	 */
 	const change = (next: boolean) => {
 		setOpen(next);
-		savePreference(SIDEBAR_KEY, next ? "1" : "0");
+		writePanel({ open: next, width });
 	};
+
+	const settle = (px: number) => writePanel({ open, width: px });
 
 	return (
 		/*
@@ -107,7 +138,7 @@ export function AppShell({
 					<SidebarResizer
 						width={width}
 						onWidth={setWidth}
-						onSettle={writeWidth}
+						onSettle={settle}
 						onDragging={setDragging}
 					/>
 				)}

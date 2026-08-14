@@ -1,2 +1,8 @@
-export { signInWithGoogle, signOut, useSession } from "./model/use-session";
+export {
+	type SessionUser,
+	signInWithGoogle,
+	signOut,
+	useSessionUser,
+	useUserId,
+} from "./model/use-session";
 export { AuthButton } from "./ui/AuthButton";

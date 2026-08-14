@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { authClient } from "#/shared/api/auth-client";
+import { useUserId } from "#/shared/api/session";
 import type { SaveResult } from "#/shared/lib/storage";
 import {
 	ARCHIVE_KEY,
@@ -37,8 +37,7 @@ const UNREACHABLE: SaveResult = {
  * 돌려보내고, 홈은 "보관함이 비었다"고 보고 원고를 새로 만든다.
  */
 export function useArchive(): { index: StoreIndex; isPending: boolean } {
-	const { data: session, isPending: asking } = authClient.useSession();
-	const userId = session?.user.id ?? null;
+	const userId = useUserId();
 
 	const { data, isPending } = useQuery({
 		queryKey: ARCHIVE_KEY,
@@ -50,13 +49,14 @@ export function useArchive(): { index: StoreIndex; isPending: boolean } {
 	return {
 		index: data ?? EMPTY,
 		/*
-		 * 세션을 묻는 동안도 "아직 모른다"다. 그 사이에 비로그인으로 단정하면
-		 * 로그인한 사람이 빈 보관함을 잠깐 보고, 그 틈에 원고가 만들어진다.
+		 * 누구인지는 서버가 첫 HTML에 실어 보내므로 여기서 기다리지 않는다. 전에는
+		 * "세션을 묻는 동안"이라는 국면이 하나 더 있었고, 그동안 이 값이 참이라
+		 * 보관함을 그리는 쪽이 통째로 멈춰 있었다.
 		 *
 		 * 질의를 끄면 react-query는 `isPending`을 계속 참으로 둔다. 그래서 켜져
-		 * 있을 때만 그 값을 본다.
+		 * 있을 때만 그 값을 본다 — 비로그인은 "다 알고 있다"가 맞다.
 		 */
-		isPending: asking || (Boolean(userId) && isPending),
+		isPending: Boolean(userId) && isPending,
 	};
 }
 

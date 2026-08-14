@@ -1,14 +1,14 @@
-import { safeGetItem, savePreference } from "#/shared/lib/storage";
-
-/** 화면 설정이라 원고와 무관하다. 보관함으로 옮기지 않는다 */
-const WIDTH_KEY = "wongoji:sidebarWidth";
-
 /**
  * 보관함 폭. 단위는 px다.
  *
  * shadcn 정본은 `16rem`을 모듈 상수로 박아 두고 CSS 변수 `--sidebar-width`로 꽂는다.
  * 그 변수만 덮으면 폭이 바뀌므로 `shared/ui/sidebar.tsx`는 손대지 않는다.
+ *
+ * **여기에 저장은 없다.** 접힘과 폭은 쿠키 하나에 함께 적히고(`shared/lib/panel`),
+ * 그 쿠키를 쥐고 있는 것은 틀(`widgets/app-shell`)이다 — 서버가 첫 HTML을 그릴 때
+ * 둘을 함께 읽어야 하기 때문이다. 이 파일에 남은 것은 **폭에 대한 규칙**뿐이다.
  */
+
 export const SIDEBAR_DEFAULT = 256;
 
 /**
@@ -24,23 +24,3 @@ export const SIDEBAR_MAX = 480;
 /** 범위 밖은 접는다. 소수점은 버린다 — CSS로 나갈 값이라 정수면 족하다 */
 export const clampWidth = (px: number): number =>
 	Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(px)));
-
-/**
- * 적힌 값을 폭으로 읽는다. 읽을 수 없으면 null이다.
- *
- * 사람이 손으로 고칠 수 있는 자리라 숫자인지부터 본다. 범위를 벗어난 값은
- * 버리지 않고 접는다 — 저장한 뒤에 상·하한을 바꿨을 수 있고, 그때 폭을
- * 기본값으로 되돌리는 것보다 가까운 쪽에 세우는 편이 덜 놀랍다.
- */
-export function parseWidth(raw: string | null): number | null {
-	if (raw === null || raw.trim() === "") return null;
-	const px = Number(raw);
-	return Number.isFinite(px) ? clampWidth(px) : null;
-}
-
-export const readWidth = (): number | null =>
-	parseWidth(safeGetItem(WIDTH_KEY));
-
-/** 실패해도 알리지 않는다 — 다음에 열 때 기본값으로 시작한다는 뜻일 뿐이다 */
-export const writeWidth = (px: number): void =>
-	savePreference(WIDTH_KEY, String(clampWidth(px)));

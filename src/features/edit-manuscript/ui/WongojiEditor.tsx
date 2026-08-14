@@ -83,12 +83,7 @@ function announce(
 	notify(blocksFromDoc(doc), doc);
 }
 
-export function WongojiEditor({
-	initialContent,
-	onChange,
-	onCaret,
-	overlay,
-}: {
+export interface WongojiEditorProps {
 	initialContent: Content;
 	/** 내용이 바뀌었다. 조판할 블록과 저장할 문서를 함께 넘긴다 */
 	onChange: (blocks: Block[], doc: Content) => void;
@@ -102,7 +97,14 @@ export function WongojiEditor({
 	onCaret?: (nodeIndex: number) => void;
 	/** 본문 오른쪽 아래에 겹쳐 띄울 것 (글자 수 등) */
 	overlay?: React.ReactNode;
-}) {
+}
+
+export function WongojiEditor({
+	initialContent,
+	onChange,
+	onCaret,
+	overlay,
+}: WongojiEditorProps) {
 	/*
 	 * 알림 창구를 ref로 붙든다.
 	 *

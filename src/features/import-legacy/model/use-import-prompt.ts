@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ARCHIVE_KEY } from "#/entities/archive";
-import { authClient } from "#/shared/api/auth-client";
+import { useUserId } from "#/shared/api/session";
 import { importLegacyIntoAccount, pendingUpload } from "./import-legacy";
 
 /**
@@ -13,8 +13,7 @@ import { importLegacyIntoAccount, pendingUpload } from "./import-legacy";
  * 화면은 제 갈 길을 간다 — 붙들 것이 없다.
  */
 export function useImportPrompt() {
-	const { data: session, isPending } = authClient.useSession();
-	const userId = session?.user.id ?? null;
+	const userId = useUserId();
 	const client = useQueryClient();
 
 	const [ask, setAsk] = useState<{ docs: number; folders: number } | null>(
@@ -23,11 +22,11 @@ export function useImportPrompt() {
 	const [working, setWorking] = useState(false);
 
 	useEffect(() => {
-		if (isPending || !userId) return;
+		if (!userId) return;
 
 		const waiting = pendingUpload();
 		if (waiting.docs || waiting.folders) setAsk(waiting);
-	}, [userId, isPending]);
+	}, [userId]);
 
 	return {
 		ask,
