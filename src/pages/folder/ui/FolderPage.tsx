@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import {
 	Breadcrumb,
 	childrenOf,
-	DEFAULT_STATUS,
 	type DocEntry,
 	displayTitle,
 	type FolderEntry,
@@ -13,7 +12,7 @@ import {
 	type Path,
 	type Placement,
 	placeEntry,
-	STATUS_LABEL,
+	StatusIcon,
 	statusOf,
 	useArchive,
 	useArchiveMutation,
@@ -215,7 +214,7 @@ function EntryRow({
 
 	return (
 		<div
-			className={`relative flex items-center rounded-md ${
+			className={`relative flex min-w-0 items-center rounded-md ${
 				zone === "into" ? "bg-accent ring-1 ring-ring" : ""
 			} ${dnd.isDragging(entry.id) ? "opacity-40" : ""}`}
 			{...dnd.dragProps(entry.moving, entry.label)}
@@ -228,7 +227,7 @@ function EntryRow({
 				<Link
 					to="/f/$folderId"
 					params={{ folderId: folder.id }}
-					className="flex flex-1 items-center gap-2 rounded-md px-2 py-2 text-base hover:bg-muted"
+					className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-base hover:bg-muted"
 				>
 					<FolderIcon className="size-4 shrink-0 text-muted-foreground" />
 					<span className="truncate">{folder.name}</span>
@@ -238,29 +237,25 @@ function EntryRow({
 					<Link
 						to="/w/$docId"
 						params={{ docId: doc.id }}
-						className="flex flex-1 items-center gap-2 rounded-md px-2 py-2 text-base hover:bg-muted"
+						className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-base hover:bg-muted"
 					>
 						<FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
 						<span className="truncate">{displayTitle(doc)}</span>
 						{/*
-						 * **초고에는 뱃지를 붙이지 않는다.** 기본이 초고라 붙이면 목록
-						 * 전체가 같은 뱃지로 덮이고, 그러면 정작 눈에 띄어야 할 퇴고와
-						 * 완성이 그 사이에 묻힌다. 아무것도 없는 것이 곧 초고다.
+						 * **초고에도 그린다.** 두 글자짜리 뱃지였을 때는 목록 전체가 같은
+						 * 뱃지로 덮여 퇴고와 완성이 그 사이에 묻혔으므로 초고를 비워
+						 * 두었다. 아이콘은 한 계열의 세 단계라 셋이 나란히 있어도 덮이지
+						 * 않고, 오히려 어디까지 왔는지가 열 전체로 읽힌다.
 						 *
 						 * 색을 쓰지 않는 것은 격자색이 이미 "지금 보고 있는 것"에
 						 * 배정되어 있어서다 — 둘이 색으로 경쟁하면 어느 쪽도 눈에 들지
 						 * 않는다.
 						 */}
-						{statusOf(doc.status) !== DEFAULT_STATUS && (
-							<span className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-muted-foreground text-xs">
-								{STATUS_LABEL[statusOf(doc.status)]}
-							</span>
-						)}
-						<span
-							className={`shrink-0 text-muted-foreground text-xs tabular-nums ${
-								statusOf(doc.status) === DEFAULT_STATUS ? "ml-auto" : ""
-							}`}
-						>
+						<StatusIcon
+							status={statusOf(doc.status)}
+							className="ml-auto size-4"
+						/>
+						<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
 							{doc.sheets}매
 						</span>
 					</Link>

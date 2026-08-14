@@ -37,8 +37,12 @@ export function AuthButton() {
 	}
 
 	return (
-		<div className="flex items-center gap-2">
-			<span className="text-muted-foreground text-xs">
+		<div className="flex min-w-0 items-center gap-2">
+			{/*
+			 * 이름이 없으면 이메일이 대신 온다. 이메일에는 공백이 없어 줄바꿈도
+			 * 안 되므로, 자르지 않으면 머리말이 통째로 두 줄로 부푼다.
+			 */}
+			<span className="max-w-40 truncate text-muted-foreground text-xs">
 				{session.user.name || session.user.email}
 			</span>
 			<Button

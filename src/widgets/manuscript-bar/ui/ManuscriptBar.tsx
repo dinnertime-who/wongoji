@@ -3,6 +3,7 @@ import {
 	DOC_STATUSES,
 	type DocStatus,
 	STATUS_LABEL,
+	StatusIcon,
 	statusOf,
 } from "#/entities/archive";
 import {
@@ -81,6 +82,9 @@ export function ManuscriptBar({
 				 * 상태와 이력. 어느 원고에나 상태가 있으므로 늘 지금 상태가 적힌다 —
 				 * 여는 순간 "이 글은 초고다"가 보이고, 고르는 일은 켜는 일이 아니라
 				 * 다음으로 옮기는 일이 된다.
+				 *
+				 * **여기서만 아이콘과 글씨를 함께 둔다.** 목록에서는 아이콘만 그리므로,
+				 * 어떤 동그라미가 무슨 뜻인지 배우는 자리가 어딘가에 있어야 한다.
 				 */}
 				{onStatusChange && (
 					<DropdownMenu>
@@ -90,6 +94,12 @@ export function ManuscriptBar({
 								size="sm"
 								className="h-10 shrink-0 text-xs"
 							>
+								<StatusIcon
+									status={current}
+									labelled={false}
+									className="size-3.5"
+									data-icon="inline-start"
+								/>
 								{STATUS_LABEL[current]}
 								<ChevronDownIcon data-icon="inline-end" />
 							</Button>
@@ -101,6 +111,11 @@ export function ManuscriptBar({
 									onSelect={() => onStatusChange(next)}
 									disabled={next === current}
 								>
+									<StatusIcon
+										status={next}
+										labelled={false}
+										className="size-4.5"
+									/>
 									{STATUS_LABEL[next]}
 								</DropdownMenuItem>
 							))}

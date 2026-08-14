@@ -196,7 +196,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						 * 체험 원고에는 자리가 없다. 대신 이것이 무엇인지 적는다 —
 						 * 여러 편을 쓰려면 로그인해야 한다는 것을 여기서 처음 안다.
 						 */
-						<span className="min-w-0 truncate text-muted-foreground text-xs">
+						<span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">
 							로그인 없이 쓰는 원고 한 편 · 여러 편과 폴더는 로그인 후에
 						</span>
 					)

@@ -32,7 +32,11 @@ export function Breadcrumb({
 	const clipped = trail.length > shown.length;
 
 	return (
-		<span className="min-w-0 truncate text-muted-foreground text-xs">
+		/*
+		 * `flex-1`이 있어야 잘린다. 머리말은 `flex-wrap`이라, 줄어들 수 있다고
+		 * 말해 두지 않으면 좁아질 때 잘리는 대신 먼저 다음 줄로 내려간다.
+		 */
+		<span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">
 			{/* 줄인 자리는 링크로 두지 않는다. 어느 폴더를 가리키는지 알 수 없다 */}
 			{clipped && <span>… / </span>}
 			{shown.map((folder) => (

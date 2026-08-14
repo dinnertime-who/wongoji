@@ -26,7 +26,9 @@ import {
 	type Placement,
 	placeEntry,
 	ROOT,
+	StatusIcon,
 	type StoreIndex,
+	statusOf,
 	useArchive,
 } from "#/entities/archive";
 import {
@@ -103,7 +105,11 @@ function dropLine(dnd: EntryDnd, id: string, depth: number) {
  * 폴더 트리.
  *
  * root는 폴더로 그리지 않는다 — 그 안의 것들이 맨 위에 온다.
- * 이름은 줄임표로 자르지 않고 가로로 넘긴다. 트리가 깊어지면 미는 편이 낫다.
+ *
+ * **이름은 줄임표로 자른다.** 전에는 자르지 않고 가로로 밀었다 — 폭이 `16rem`에
+ * 못박혀 있었으므로 긴 이름을 보여 줄 다른 길이 없었기 때문이다. 이제는 경계를
+ * 끌어 폭을 넓힐 수 있으니(`features/resize-sidebar`) 미는 쪽이 할 일이 없어졌고,
+ * 가로 스크롤은 세로로 훑는 목록에서 늘 방해가 된다.
  */
 export function ManuscriptTree({
 	actions,
@@ -186,7 +192,7 @@ export function ManuscriptTree({
 		 */
 		<div
 			// 줄끼리 붙여 두면 어느 것을 눌렀는지 손가락이 헷갈린다
-			className={`flex min-w-max flex-1 flex-col gap-1 py-1 ${NO_CALLOUT} ${
+			className={`flex min-w-0 flex-1 flex-col gap-1 py-1 ${NO_CALLOUT} ${
 				dnd.isOverRoot ? "bg-accent/60" : ""
 			}`}
 			{...dnd.rootProps}
@@ -262,7 +268,7 @@ function Level({
 	dnd: EntryDnd;
 }) {
 	const { folders, docs } = childrenOf(index, path);
-	// 깊이를 패딩으로 준다. 이름이 길어지면 부모가 가로로 스크롤한다
+	// 깊이를 패딩으로 준다. 깊어질수록 이름에 남는 자리가 줄고, 거기서 잘린다
 	const indent = { paddingLeft: indentAt(depth) };
 
 	/*
@@ -320,18 +326,17 @@ function Level({
 									selection.pick("folder", folder.id);
 									onNavigate?.();
 								}}
-								className="flex flex-1 items-center gap-1 rounded py-1 pr-2 text-left text-sm hover:bg-muted"
+								className="flex min-w-0 flex-1 items-center gap-1 rounded py-1 pr-2 text-left text-sm hover:bg-muted"
 							>
 								<FolderIcon className="size-3.5 shrink-0 text-muted-foreground" />
-								<span className="whitespace-nowrap">{folder.name}</span>
+								<span className="truncate">{folder.name}</span>
 							</Link>
 
 							{/*
-							 * 가로 스크롤을 따라 흘러가지 않게 오른쪽에 붙여 둔다.
 							 * +가 없으면 갓 만든 폴더에 원고를 넣을 길이 없다 — 머리말의
 							 * 새 원고는 지금 보고 있는 원고 옆에 만든다.
 							 */}
-							<div className="sticky right-1 flex shrink-0 items-center bg-inherit">
+							<div className="flex shrink-0 items-center">
 								<RowButton
 									label={`${folder.name}에 새 원고`}
 									onClick={() => actions.addDoc(fullPath(folder))}
@@ -408,13 +413,22 @@ function Level({
 							onNavigate?.();
 						}}
 						style={{ paddingLeft: `${depth * 0.75 + 1.6}rem` }}
-						className="flex flex-1 items-center gap-1 py-1 pr-2 text-sm"
+						className="flex min-w-0 flex-1 items-center gap-1 py-1 pr-2 text-sm"
 					>
 						<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-						<span className="whitespace-nowrap">{displayTitle(doc)}</span>
+						<span className="truncate">{displayTitle(doc)}</span>
+						{/*
+						 * 앞은 무엇인가(원고), 뒤는 어디까지 왔는가(상태). 글씨였다면
+						 * 이 줄에 들어올 자리가 없었지만 아이콘은 제목이 잘리는 만큼만
+						 * 가져간다.
+						 */}
+						<StatusIcon
+							status={statusOf(doc.status)}
+							className="ml-auto size-3.5"
+						/>
 					</Link>
 
-					<div className="sticky right-1 flex shrink-0 items-center bg-inherit">
+					<div className="flex shrink-0 items-center">
 						<RowMenu label={`${displayTitle(doc)} 메뉴`}>
 							<DropdownMenuItem onSelect={() => actions.duplicateDoc(doc)}>
 								<CopyIcon />

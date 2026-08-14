@@ -325,8 +325,8 @@ src/
     edit-manuscript/
       model/opening.ts   원고를 여는 순서. 순수 함수 (아래 절 참고)
     auth/              로그인 단추 · 세션
-    create-entry · move-entry · copy-manuscript ·
-    reset-manuscript · manage-trash · export-manuscript · toggle-pane
+    create-entry · move-entry · copy-manuscript · reset-manuscript ·
+    manage-trash · export-manuscript · toggle-pane · resize-sidebar
   entities/
     archive/           보관함. 색인 하나가 폴더·원고·휴지통을 함께 들고 있다
       api/               서버와 주고받기 · 마지막으로 연 원고

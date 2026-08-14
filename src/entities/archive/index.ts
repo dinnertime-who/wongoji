@@ -61,3 +61,4 @@ export {
 } from "./model/types";
 export { useArchive, useArchiveMutation } from "./model/use-archive";
 export { Breadcrumb } from "./ui/Breadcrumb";
+export { StatusIcon } from "./ui/StatusIcon";

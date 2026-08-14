@@ -183,13 +183,11 @@ export function ManuscriptSidebar() {
 			</SidebarHeader>
 
 			{/*
-			 * 가로·세로 모두 스크롤한다. 원고가 쌓이면 세로가, 트리가 깊어지면 가로가
-			 * 필요하다. 이름을 자르는 것보다 미는 편이 낫다.
+			 * 세로로만 스크롤한다. 가로로도 밀던 시절이 있었는데, 폭이 못박혀 있어
+			 * 긴 이름을 보여 줄 다른 길이 없었기 때문이다. 이제는 경계를 끌어
+			 * 넓힐 수 있으므로 이름은 자르고 가로 스크롤은 걷었다.
 			 */}
-			<SidebarContent
-				// 정본은 가로 넘침을 숨긴다. 트리는 밀어내야 하므로 되돌린다
-				className="overflow-x-auto px-1"
-			>
+			<SidebarContent className="px-1">
 				{/* 트리가 짧아도 아래 빈 곳까지 늘어나야 한다. 거기가 root로 꺼내는 자리다 */}
 				<nav aria-label="원고 보관함" className="flex flex-1 flex-col">
 					<ManuscriptTree

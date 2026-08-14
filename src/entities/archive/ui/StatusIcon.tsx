@@ -1,0 +1,63 @@
+import { CircleCheckIcon, CircleDashedIcon, CircleDotIcon } from "lucide-react";
+import { cn } from "#/shared/lib/utils";
+import { type DocStatus, STATUS_LABEL } from "../config/status";
+
+/**
+ * 상태 하나에 아이콘 하나.
+ *
+ * 셋의 실루엣을 같은 원으로 맞췄다 — 윤곽만 잡힌 것(초고), 속이 찬 것(퇴고),
+ * 표가 된 것(완성). 뜻을 모르고 봐도 **진행으로 읽히게** 하려는 것이고, 목록에
+ * 셋이 섞여 있어도 한 계열로 보인다.
+ *
+ * **색은 쓰지 않는다.** 격자색은 이미 "지금 보고 있는 것"에 배정되어 있어, 상태에
+ * 색을 주면 둘이 경쟁한다. 색만으로 구별하면 색각 문제도 따라온다.
+ */
+const ICON: Record<DocStatus, typeof CircleDashedIcon> = {
+	draft: CircleDashedIcon,
+	revising: CircleDotIcon,
+	done: CircleCheckIcon,
+};
+
+/**
+ * 원고가 어디까지 왔는가.
+ *
+ * 이름은 `title`과 `aria-label`로 남긴다 — 이 앱에는 `TooltipProvider`가 마운트되어
+ * 있지 않고, 아이콘 단추들이 이미 그 두 벌로 이름을 달고 있다. 새 프로바이더를
+ * 들이지 않는다.
+ *
+ * 크기는 감싸는 span이 정하고 아이콘은 그것을 채운다(`size-full`). 그래야 단추 안에
+ * 들어갔을 때 shadcn의 `[&_svg:not([class*='size-'])]` 규칙이 제멋대로 늘리지 않는다.
+ */
+export function StatusIcon({
+	status,
+	labelled = true,
+	className,
+	...props
+}: {
+	status: DocStatus;
+	/**
+	 * 이름을 함께 읽힐 것인가.
+	 *
+	 * 글씨가 곁에 있는 자리(에디터 상단)에서는 꺼 둔다. 켜 두면 같은 이름을 두 번
+	 * 읽는다.
+	 */
+	labelled?: boolean;
+} & React.ComponentProps<"span">) {
+	const Icon = ICON[status];
+	const name = STATUS_LABEL[status];
+
+	return (
+		<span
+			{...(labelled
+				? { role: "img", "aria-label": name, title: name }
+				: { "aria-hidden": true })}
+			className={cn(
+				"inline-flex size-4 shrink-0 text-muted-foreground",
+				className,
+			)}
+			{...props}
+		>
+			<Icon className="size-full" />
+		</span>
+	);
+}

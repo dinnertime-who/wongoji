@@ -64,13 +64,22 @@ export function FolderPicker({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-sm">
-				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
+				{/*
+				 * 제목에 원고 이름이 통째로 들어온다. 정본의 `leading-none`은 한 줄을
+				 * 셈한 값이라, 넘쳐서 두 줄이 되면 글자가 서로 겹친다.
+				 *
+				 * `min-w-0`은 머리말 쪽에 있어야 한다 — 다이얼로그가 grid라 그 칸이
+				 * 제 내용만큼 벌어지고, 그러면 자를 폭 자체가 정해지지 않는다.
+				 */}
+				<DialogHeader className="min-w-0">
+					{/* 오른쪽 위 닫기 단추 자리를 비워 둔다. 줄임표가 그 밑에 깔린다 */}
+					<DialogTitle className="truncate pr-7">{title}</DialogTitle>
 					<DialogDescription>옮길 자리를 고르세요.</DialogDescription>
 				</DialogHeader>
 
 				<div className="max-h-72 overflow-auto rounded border border-border">
-					<div className="min-w-max py-1">
+					{/* 이름이 길면 밀지 않고 자른다 — 다이얼로그 폭은 정해져 있다 */}
+					<div className="py-1">
 						<Row
 							label="맨 위"
 							icon={<HomeIcon className="size-3.5 shrink-0" />}
@@ -179,12 +188,12 @@ function Row({
 			disabled={disabled}
 			onClick={onPick}
 			style={{ paddingLeft: `${depth * 0.75 + 0.5}rem` }}
-			className={`flex w-full items-center gap-1.5 py-1.5 pr-3 text-left text-sm disabled:opacity-40 ${
+			className={`flex w-full min-w-0 items-center gap-1.5 py-1.5 pr-3 text-left text-sm disabled:opacity-40 ${
 				picked ? "bg-muted font-medium" : "enabled:hover:bg-muted/60"
 			}`}
 		>
 			{icon}
-			<span className="whitespace-nowrap">{label}</span>
+			<span className="truncate">{label}</span>
 			{picked && <ChevronRightIcon className="size-3.5 shrink-0" />}
 		</button>
 	);

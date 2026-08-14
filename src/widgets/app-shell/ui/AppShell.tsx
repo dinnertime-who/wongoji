@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import {
+	readWidth,
+	SIDEBAR_DEFAULT,
+	SidebarResizer,
+	writeWidth,
+} from "#/features/resize-sidebar";
 import { safeGetItem, savePreference } from "#/shared/lib/storage";
 import { Sidebar, SidebarProvider } from "#/shared/ui/sidebar";
 
@@ -9,11 +15,25 @@ const SIDEBAR_KEY = "wongoji:sidebar";
 const ROOMY = 1280;
 
 /**
+ * 끄는 동안 폭 애니메이션을 끈다.
+ *
+ * 정본은 자리 잡는 칸(`sidebar-gap`)과 실제로 보이는 칸(`sidebar-container`) 양쪽에
+ * `transition-[width] duration-200`을 걸어 둔다. 접었다 펼 때는 그것이 맞지만, 끄는
+ * 동안에는 경계가 손을 200ms 뒤따라와 고무줄처럼 보인다. 두 칸 다 정본이 만든 것이라
+ * 바깥에서 클래스를 얹을 자리가 없어 `data-slot`으로 짚는다.
+ */
+const SMOOTH_OFF =
+	"cursor-col-resize select-none [&_[data-slot=sidebar-container]]:transition-none [&_[data-slot=sidebar-gap]]:transition-none";
+
+/**
  * 보관함을 옆에 두는 틀.
  *
  * 무엇을 옆에 둘지는 **받아서** 쓴다. 안에서 직접 부르면 위젯이 위젯을 부르게
  * 되고, 그러면 이 틀은 보관함 없이는 쓸 수 없는 것이 된다. 회원 기능이 들어와
  * 옆에 다른 것이 붙어도 이 파일은 그대로다.
+ *
+ * 폭을 정하는 손잡이도 여기서 그린다 — 보관함이 아니라 **틀의 일**이라, 옆에 붙는
+ * 것이 무엇으로 바뀌어도 폭은 같은 자리에서 정해진다.
  */
 export function AppShell({
 	sidebar,
@@ -23,12 +43,20 @@ export function AppShell({
 	children: React.ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
+	const [width, setWidth] = useState(SIDEBAR_DEFAULT);
+	const [dragging, setDragging] = useState(false);
 
-	// localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
+	/*
+	 * localStorage는 브라우저에만 있으므로 마운트 후에 읽는다.
+	 *
+	 * 접힘과 폭을 **한 effect에서 함께 읽는다.** 나눠 두면 첫 그림이 두 번
+	 * 덜컥거린다 — 기본 폭으로 펴졌다가 다시 제 폭으로 벌어진다.
+	 */
 	useEffect(() => {
 		const saved = safeGetItem(SIDEBAR_KEY);
 		// 처음 오는 사람에게는 화면이 넉넉할 때만 펴 준다
 		setOpen(saved === null ? window.innerWidth >= ROOMY : saved === "1");
+		setWidth(readWidth() ?? SIDEBAR_DEFAULT);
 	}, []);
 
 	/*
@@ -53,7 +81,15 @@ export function AppShell({
 		<SidebarProvider
 			open={open}
 			onOpenChange={change}
-			className="h-[100dvh] min-h-0 overflow-hidden bg-background text-foreground"
+			/*
+			 * 폭은 정본이 래퍼에 꽂는 CSS 변수 하나로 정해진다. `...style`이 뒤에
+			 * 오므로 여기서 넘긴 값이 이긴다 — 덕분에 `shared/ui/sidebar.tsx`는
+			 * shadcn 원본 그대로 둘 수 있다.
+			 */
+			style={{ "--sidebar-width": `${width}px` } as React.CSSProperties}
+			className={`h-[100dvh] min-h-0 overflow-hidden bg-background text-foreground ${
+				dragging ? SMOOTH_OFF : ""
+			}`}
 		>
 			{/*
 			 * 보관함은 가운데 정렬된 본문 바깥에 둔다. 안에 넣으면 원고 폭을 깎는다.
@@ -64,7 +100,18 @@ export function AppShell({
 			 * 접어도 DOM에는 남는다. 폭을 0으로 미끄러뜨려 접는 그림을 얻으려면
 			 * 그려 두어야 한다.
 			 */}
-			<Sidebar>{sidebar}</Sidebar>
+			<Sidebar>
+				{sidebar}
+				{/* 접혀 있으면 경계도 화면 밖이라 잡을 것이 없다 */}
+				{open && (
+					<SidebarResizer
+						width={width}
+						onWidth={setWidth}
+						onSettle={writeWidth}
+						onDragging={setDragging}
+					/>
+				)}
+			</Sidebar>
 
 			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 				{children}
