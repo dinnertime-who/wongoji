@@ -132,11 +132,13 @@ function readPatch(v: unknown): DocPatch | null {
 		patch.title = raw.title;
 	}
 	/*
-	 * 상태는 정해 둔 셋 중 하나이거나 `null`(라벨 떼기)뿐이다. 아무 문자열이나
-	 * 들어오면 화면이 모르는 뱃지가 목록에 뜬다.
+	 * 상태는 정해 둔 셋 중 하나뿐이다. 아무 문자열이나 들어오면 화면이 모르는
+	 * 뱃지가 목록에 뜬다. `null`도 받지 않는다 — 비어 있는 것은 초고로 읽으므로
+	 * 그것을 적어 넣는 일은 상태를 초고로 되돌리는 일과 같고, 길이 둘이면 어느
+	 * 쪽으로 왔느냐에 따라 `statusAt`이 달라진다.
 	 */
 	if (raw.status !== undefined) {
-		if (raw.status !== null && !isDocStatus(raw.status)) return null;
+		if (!isDocStatus(raw.status)) return null;
 		patch.status = raw.status;
 	}
 	for (const key of ["goal", "chars", "sheets"] as const) {

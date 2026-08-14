@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
 	Breadcrumb,
 	childrenOf,
+	DEFAULT_STATUS,
 	type DocEntry,
 	displayTitle,
 	type FolderEntry,
@@ -13,6 +14,7 @@ import {
 	type Placement,
 	placeEntry,
 	STATUS_LABEL,
+	statusOf,
 	useArchive,
 	useArchiveMutation,
 	useSaveStatus,
@@ -241,18 +243,22 @@ function EntryRow({
 						<FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
 						<span className="truncate">{displayTitle(doc)}</span>
 						{/*
-						 * 라벨을 단 원고에만 뱃지가 붙는다. 색을 쓰지 않는 것은 격자색이
-						 * 이미 "지금 보고 있는 것"에 배정되어 있어서다 — 둘이 색으로
-						 * 경쟁하면 어느 쪽도 눈에 들지 않는다.
+						 * **초고에는 뱃지를 붙이지 않는다.** 기본이 초고라 붙이면 목록
+						 * 전체가 같은 뱃지로 덮이고, 그러면 정작 눈에 띄어야 할 퇴고와
+						 * 완성이 그 사이에 묻힌다. 아무것도 없는 것이 곧 초고다.
+						 *
+						 * 색을 쓰지 않는 것은 격자색이 이미 "지금 보고 있는 것"에
+						 * 배정되어 있어서다 — 둘이 색으로 경쟁하면 어느 쪽도 눈에 들지
+						 * 않는다.
 						 */}
-						{doc.status && (
+						{statusOf(doc.status) !== DEFAULT_STATUS && (
 							<span className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-muted-foreground text-xs">
-								{STATUS_LABEL[doc.status]}
+								{STATUS_LABEL[statusOf(doc.status)]}
 							</span>
 						)}
 						<span
 							className={`shrink-0 text-muted-foreground text-xs tabular-nums ${
-								doc.status ? "" : "ml-auto"
+								statusOf(doc.status) === DEFAULT_STATUS ? "ml-auto" : ""
 							}`}
 						>
 							{doc.sheets}매

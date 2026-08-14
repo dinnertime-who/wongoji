@@ -105,10 +105,12 @@ export const archiveDoc = sqliteTable(
 		sheets: integer("sheets").default(0).notNull(),
 
 		/**
-		 * 진행 상태 — `draft` | `revising` | `done`. 없으면 라벨을 안 단 것이다.
+		 * 진행 상태 — `draft` | `revising` | `done`. **비어 있으면 초고다.**
 		 *
-		 * 기본값을 두지 않는다. 있던 원고 전부에 뜻 없는 뱃지가 돋게 하지 않으려는
-		 * 것이고, "아직 안 정했다"와 "초고다"는 다른 말이다.
+		 * 컬럼 기본값을 두지 않는다. 새 행은 `createDoc`이 초고를 적어 넣고, 비어
+		 * 있는 것은 상태가 생기기 전에 쓴 원고들이다 — 그것을 채우는 마이그레이션
+		 * 대신 읽는 쪽에서 기본값을 씌운다(`statusOf`). 컬럼에 default를 걸면 옛
+		 * 행은 어차피 안 채워지므로, 규칙이 두 군데 생기기만 한다.
 		 */
 		status: text("status"),
 		/** 지금 상태가 된 시각. 전 이력은 `archive_doc_version`이 들고 있다 */

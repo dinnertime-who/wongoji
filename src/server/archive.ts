@@ -103,6 +103,9 @@ export async function readArchive(db: Db, userId: string): Promise<StoreIndex> {
 					id: d.id,
 					title: d.title,
 					goal: d.goal,
+					// 되살릴 때 돌려주어야 한다. 안 들고 가면 완성본이 초고로 돌아온다
+					status: isDocStatus(d.status) ? d.status : null,
+					statusAt: d.statusAt?.getTime() ?? null,
 					path: d.path,
 					// biome-ignore lint/style/noNonNullAssertion: 위에서 걸렀다
 					deletedAt: d.deletedAt!.getTime(),
@@ -237,9 +240,13 @@ export async function applyArchiveOp(
 	 */
 	for (const after of effect.index.docs) {
 		const was = before.docs.find((d) => d.id === after.id);
-		if (!isPromotion(was?.status ?? undefined, after.status ?? undefined)) {
-			continue;
-		}
+		/*
+		 * 방금 목록에 나타난 원고는 아무 데서도 올라온 것이 아니다. 만든 것, 복제한
+		 * 것, 휴지통에서 되살린 것이 여기로 온다 — 이것을 거르지 않으면 새 원고마다
+		 * 빈 본문이, 되살릴 때마다 같은 본문이 이력에 한 줄씩 쌓인다.
+		 */
+		if (!was) continue;
+		if (!isPromotion(was.status, after.status)) continue;
 		await saveVersion(db, userId, after, "status", now);
 	}
 

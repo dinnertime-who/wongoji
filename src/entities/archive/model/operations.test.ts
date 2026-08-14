@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_STATUS, isPromotion, statusOf } from "../config/status";
 import {
 	ancestorIds,
 	canMoveFolder,
@@ -481,7 +482,42 @@ describe("복제", () => {
 	});
 });
 
+describe("진행 상태", () => {
+	it("새 원고는 초고로 선다", () => {
+		const made = createDoc(emptyIndex(), { now: NOW });
+		expect(made.doc.status).toBe(DEFAULT_STATUS);
+		expect(made.doc.statusAt).toBe(NOW);
+	});
+
+	it("비어 있는 것도 초고로 읽는다", () => {
+		// 상태가 생기기 전에 쓴 원고. 채우는 마이그레이션 대신 읽는 규칙으로 맞춘다
+		expect(statusOf(undefined)).toBe("draft");
+		expect(statusOf(null)).toBe("draft");
+	});
+
+	it("빈 값에 초고를 적는 것은 올리는 전이가 아니다", () => {
+		// 새 원고마다 빈 본문이 이력에 박제되던 자리다
+		expect(isPromotion(undefined, "draft")).toBe(false);
+		expect(isPromotion(null, "draft")).toBe(false);
+		expect(isPromotion(undefined, "done")).toBe(true);
+		expect(isPromotion("done", "revising")).toBe(false);
+	});
+});
+
 describe("휴지통이 들고 가는 값", () => {
+	it("되살린 완성본이 초고로 돌아오지 않는다", () => {
+		let index = emptyIndex();
+		const made = createDoc(index, { title: "감나무 있는 마당" });
+		index = updateDoc(made.index, made.doc.id, {
+			status: "done",
+			statusAt: NOW,
+		});
+
+		const revived = restore(trashDoc(index, made.doc.id), made.doc.id);
+
+		expect(revived.docs.find((d) => d.id === made.doc.id)?.status).toBe("done");
+	});
+
 	it("되살리면 제목과 목표가 돌아온다", () => {
 		let index = emptyIndex();
 		const made = createDoc(index, { title: "감나무 있는 마당" });

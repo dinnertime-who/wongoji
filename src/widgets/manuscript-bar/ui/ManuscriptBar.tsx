@@ -1,5 +1,10 @@
 import { ChevronDownIcon } from "lucide-react";
-import { DOC_STATUSES, type DocStatus, STATUS_LABEL } from "#/entities/archive";
+import {
+	DOC_STATUSES,
+	type DocStatus,
+	STATUS_LABEL,
+	statusOf,
+} from "#/entities/archive";
 import {
 	goalProgress,
 	goalRatio,
@@ -44,11 +49,14 @@ export function ManuscriptBar({
 	goal: number;
 	onGoalChange: (value: number) => void;
 	stats: LayoutStats;
-	/** 진행 상태. 없으면 라벨을 안 단 것이다 — 그것이 기본이다 */
+	/** 진행 상태. 비어 있으면 초고다 */
 	status?: DocStatus | null;
-	onStatusChange?: (next: DocStatus | null) => void;
+	onStatusChange?: (next: DocStatus) => void;
 	onOpenHistory?: () => void;
 }) {
+	// 비어 있는 원고도 초고로 읽는다 — 상태가 생기기 전에 쓴 것들이다
+	const current = statusOf(status);
+
 	/*
 	 * 남은 분량도 조판 기준으로 센다. 글자로 세면 `68 / 70매` 옆에 "1,200자
 	 * 남음"이 뜨는 일이 생긴다 — 두 숫자가 서로 다른 자를 쓰기 때문이다.
@@ -70,8 +78,9 @@ export function ManuscriptBar({
 				</div>
 
 				{/*
-				 * 상태와 이력. 라벨을 안 단 원고에는 "상태"라고만 적힌다 — 뱃지가
-				 * 저절로 돋지 않는다.
+				 * 상태와 이력. 어느 원고에나 상태가 있으므로 늘 지금 상태가 적힌다 —
+				 * 여는 순간 "이 글은 초고다"가 보이고, 고르는 일은 켜는 일이 아니라
+				 * 다음으로 옮기는 일이 된다.
 				 */}
 				{onStatusChange && (
 					<DropdownMenu>
@@ -81,7 +90,7 @@ export function ManuscriptBar({
 								size="sm"
 								className="h-10 shrink-0 text-xs"
 							>
-								{status ? STATUS_LABEL[status] : "상태"}
+								{STATUS_LABEL[current]}
 								<ChevronDownIcon data-icon="inline-end" />
 							</Button>
 						</DropdownMenuTrigger>
@@ -90,16 +99,15 @@ export function ManuscriptBar({
 								<DropdownMenuItem
 									key={next}
 									onSelect={() => onStatusChange(next)}
-									disabled={next === status}
+									disabled={next === current}
 								>
 									{STATUS_LABEL[next]}
 								</DropdownMenuItem>
 							))}
-							{status && (
-								<DropdownMenuItem onSelect={() => onStatusChange(null)}>
-									라벨 떼기
-								</DropdownMenuItem>
-							)}
+							{/*
+							 * "라벨 떼기"는 없앴다. 기본이 초고라 되돌아갈 없음이 없고,
+							 * 떼려던 사람은 초고를 고르면 같은 자리로 온다.
+							 */}
 							{onOpenHistory && (
 								<>
 									<DropdownMenuSeparator />

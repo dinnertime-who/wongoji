@@ -54,8 +54,13 @@ export type ArchiveOp =
 export type DocPatch = Partial<
 	Pick<DocEntry, "title" | "goal" | "chars" | "sheets">
 > & {
-	/** 진행 상태. `null`을 보내면 라벨을 뗀다 */
-	status?: DocStatus | null;
+	/**
+	 * 진행 상태. 셋 중 하나뿐이다.
+	 *
+	 * 비우는 길은 두지 않는다 — 기본이 초고라 되돌아갈 "없음"이 없다. 라벨을
+	 * 떼려던 사람은 초고를 고르면 된다.
+	 */
+	status?: DocStatus;
 };
 
 /**

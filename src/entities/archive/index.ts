@@ -2,11 +2,13 @@ export { ARCHIVE_KEY, fetchArchive, sendOp } from "./api/archive-api";
 export { readLastOpened, writeLastOpened } from "./api/last-opened";
 export { TRASH_DAYS } from "./config/limits";
 export {
+	DEFAULT_STATUS,
 	DOC_STATUSES,
 	type DocStatus,
 	isDocStatus,
 	isPromotion,
 	STATUS_LABEL,
+	statusOf,
 } from "./config/status";
 export {
 	ancestorIds,

@@ -221,7 +221,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						status={opened?.status}
 						onStatusChange={
 							opened &&
-							((next: DocStatus | null) =>
+							((next: DocStatus) =>
 								void change({
 									kind: "updateDoc",
 									id: opened.id,

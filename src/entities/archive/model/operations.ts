@@ -1,5 +1,6 @@
 import { init } from "@paralleldrive/cuid2";
 import { TRASH_DAYS } from "../config/limits";
+import { DEFAULT_STATUS } from "../config/status";
 import {
 	ancestorIds,
 	canMoveFolder,
@@ -144,6 +145,10 @@ export function createDoc(
 		goal: 0,
 		chars: 0,
 		sheets: 1,
+		// 새 원고는 초고로 선다. 빈 칸으로 두고 읽을 때만 기본값을 씌워도 화면은
+		// 같지만, 그러면 행이 "언제부터 초고인지"를 모른다
+		status: DEFAULT_STATUS,
+		statusAt: now,
 		createdAt: now,
 		updatedAt: now,
 	};
@@ -460,6 +465,8 @@ export function trashFolder(
 					id: d.id,
 					title: d.title,
 					goal: d.goal,
+					status: d.status,
+					statusAt: d.statusAt,
 					path: d.path,
 					deletedAt: now,
 				}),
@@ -491,6 +498,8 @@ export function trashDoc(
 				id,
 				title: doc.title,
 				goal: doc.goal,
+				status: doc.status,
+				statusAt: doc.statusAt,
 				path: doc.path,
 				deletedAt: now,
 			},
@@ -549,8 +558,12 @@ export function restore(index: StoreIndex, id: string): StoreIndex {
 /**
  * 되살린 원고.
  *
- * 제목과 목표는 버릴 때 들고 갔으므로 그대로 돌려준다. 분량은 본문을 다시 읽어야
- * 나오는 값이라 0으로 두고, 원고를 열 때 채운다.
+ * 제목과 목표와 상태는 버릴 때 들고 갔으므로 그대로 돌려준다. 분량은 본문을 다시
+ * 읽어야 나오는 값이라 0으로 두고, 원고를 열 때 채운다.
+ *
+ * **상태를 돌려주지 않으면 되살린 완성본이 초고가 된다.** 서버는 버린 행을 그대로
+ * 두어 상태 컬럼을 지키고 있지만, 되살아난 원고를 다시 쓸 때 여기서 지은 값이
+ * 그 위에 덮인다 — 들고 오지 않은 값은 지운 값과 구별되지 않는다.
  */
 function reviveDoc(
 	entry: Extract<TrashEntry, { kind: "doc" }>,
@@ -566,6 +579,8 @@ function reviveDoc(
 		goal: entry.goal,
 		chars: 0,
 		sheets: 1,
+		status: entry.status ?? null,
+		statusAt: entry.statusAt ?? null,
 		createdAt: now,
 		updatedAt: now,
 	};
