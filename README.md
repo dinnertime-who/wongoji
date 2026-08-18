@@ -345,6 +345,24 @@ D1에는 로그인 정보(`user`·`session`·`account`·`verification`)와 계�
 (`archive_folder`·`archive_doc`·`archive_doc_content`·`archive_tombstone`)이 있다.
 **로그인하지 않은 원고는 올라가지 않는다** — 그것은 이 브라우저 것이다.
 
+### 검색에 걸리는 쪽은 하나다
+
+문구와 주소는 `shared/config/site.ts`에 모여 있고, `__root`가 문서 머리에 얹는다.
+`public/`에 있는 것(robots · sitemap · OG 이미지 · 파비콘)은 vite가 `dist/client`로
+옮기고 Workers가 그대로 내보낸다.
+
+**색인되는 것은 `/` 하나뿐이다.** `/w/<id>`와 `/f/<id>`는 로그인하지 않은 크롤러에게
+빈 껍데기라 `_app`에서 `noindex`로 막는다. 여기 함정이 둘 있다.
+
+1. **robots.txt로 막지 않는다.** 거기서 막으면 크롤러가 문서를 아예 못 읽어 `noindex`도
+   못 본다. 주소만 주워 색인해 버릴 수 있다 — 읽게 두고, 읽은 자리에서 빼라고 말한다
+2. **canonical을 `__root`에 두지 않는다.** 루트에 두면 `noindex`인 쪽까지 "정본은
+   홈이다"라고 말하게 되고, 구글이 그 지시를 홈으로 옮겨 읽어 **홈까지 색인에서
+   뺄 수 있다.** 그래서 canonical은 색인되는 쪽(`routes/index.tsx`)에만 있다
+
+OG 이미지는 `docs/plan-seo.md`에 만든 방법이 적혀 있다 — 헤드리스 크롬으로 HTML을
+1200×630에 찍는다. 문구를 고치면 그림도 다시 찍어야 한다.
+
 ## 구조
 
 [Feature-Sliced Design](https://feature-sliced.design)으로 나눈다. 위층은 아래층만
@@ -382,8 +400,10 @@ src/
       lib/serialize.ts   평문 · 백업 JSON 읽고 쓰기
       model/save-queue.ts  밀린 저장을 합치는 규칙. 두 피처가 나눠 쓴다
   shared/            도메인을 모르는 것들 — shadcn 원본, cn, localStorage 겉포장
+    config/site.ts     바깥에 소개되는 문구와 주소. 검색·SNS가 이것을 읽는다
   server/            FSD 밖. better-auth · D1 · 스키마 (아래 절 참고)
     testing/           테스트가 쓰는 밑판 — D1 손잡이 · 진짜 세션 · 요청 짓기
+public/              그대로 나가는 것 — robots · sitemap · OG 이미지 · 파비콘
 docs/                규칙 명세서, 공모전 조사, 설계 기록
 ```
 

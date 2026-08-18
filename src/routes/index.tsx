@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LegacyNotice } from "#/features/import-legacy";
 import { EditorPage } from "#/pages/editor";
 import { HomePage } from "#/pages/home";
+import { SITE_URL } from "#/shared/config/site";
 import { pickEntry } from "./-boot";
 
 export const Route = createFileRoute("/")({
@@ -26,6 +27,17 @@ export const Route = createFileRoute("/")({
 		}
 		return { entry };
 	},
+	/**
+	 * **색인되는 쪽은 여기 하나다.**
+	 *
+	 * canonical을 `__root`가 아니라 이 쪽에 두는 이유가 있다. 루트에 두면 계정
+	 * 쪽(`_app`)까지 "정본은 홈이다"라고 말하게 되는데, 그 쪽들은 동시에
+	 * `noindex`다. **색인하지 말라는 쪽이 홈을 제 정본으로 가리키면** 구글이 그
+	 * 지시를 홈으로 옮겨 읽어 홈까지 색인에서 뺄 수 있다.
+	 */
+	head: () => ({
+		links: [{ rel: "canonical", href: SITE_URL }],
+	}),
 	component: Screen,
 });
 

@@ -8,6 +8,14 @@ import { SaveStatusProvider } from "#/entities/archive";
 import { ImportPrompt } from "#/features/import-legacy";
 import { QueryProvider } from "#/shared/api/query";
 import { SessionProvider } from "#/shared/api/session";
+import {
+	SITE_DESCRIPTION,
+	SITE_KEYWORDS,
+	SITE_OG_IMAGE,
+	SITE_SHARE_DESCRIPTION,
+	SITE_TITLE,
+	SITE_URL,
+} from "#/shared/config/site";
 import { Toaster } from "#/shared/ui/sonner";
 import appCss from "../styles.css?url";
 import { type Boot, loadBoot } from "./-boot";
@@ -27,6 +35,13 @@ export const Route = createRootRouteWithContext<{
 	loader: (): Promise<Boot> => loadBoot(),
 	staleTime: Number.POSITIVE_INFINITY,
 
+	/**
+	 * 검색 엔진과 SNS가 이 서비스를 무엇으로 아는가.
+	 *
+	 * 문구는 `shared/config/site`에 모여 있다. canonical만 여기 없다 — 그것은
+	 * "이 주소가 정본"이라는 선언이라 쪽마다 다르고, 색인되는 쪽(`index`)이
+	 * 제 것을 얹는다.
+	 */
 	head: () => ({
 		meta: [
 			{
@@ -37,11 +52,60 @@ export const Route = createRootRouteWithContext<{
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "200자 원고지",
+				title: SITE_TITLE,
 			},
 			{
 				name: "description",
-				content: "글을 200자 원고지 규칙에 맞춰 조판해 주는 에디터",
+				content: SITE_DESCRIPTION,
+			},
+			{
+				name: "keywords",
+				content: SITE_KEYWORDS,
+			},
+			/*
+			 * 링크를 나눌 때 딸려 가는 카드. og와 twitter를 둘 다 적는 이유는
+			 * 읽는 쪽이 제각각이기 때문이다 — 카카오톡·페이스북은 og를 보고,
+			 * 트위터는 twitter를 먼저 보고 없으면 og로 떨어진다.
+			 */
+			{ property: "og:type", content: "website" },
+			{ property: "og:url", content: SITE_URL },
+			{ property: "og:title", content: SITE_TITLE },
+			{ property: "og:description", content: SITE_SHARE_DESCRIPTION },
+			{ property: "og:image", content: SITE_OG_IMAGE },
+			/*
+			 * 규격을 함께 적는다. 스크래퍼가 그림을 받아 보기 전에 자리를 잡을
+			 * 수 있어서, 처음 공유될 때 카드가 접혀 나오는 일이 줄어든다.
+			 */
+			{ property: "og:image:width", content: "1200" },
+			{ property: "og:image:height", content: "630" },
+			{ property: "og:image:alt", content: SITE_SHARE_DESCRIPTION },
+			{ property: "og:site_name", content: "원고지" },
+			{ property: "og:locale", content: "ko_KR" },
+			{ name: "twitter:card", content: "summary_large_image" },
+			{ name: "twitter:title", content: SITE_TITLE },
+			{ name: "twitter:description", content: SITE_SHARE_DESCRIPTION },
+			{ name: "twitter:image", content: SITE_OG_IMAGE },
+			/*
+			 * 구조화 데이터. **`<script>`를 손으로 끼우지 않는다** — 이 열쇠를
+			 * 보면 라우터가 `application/ld+json`으로 찍어 준다(`HeadContent`).
+			 * 직접 넣으면 하이드레이션 때 문서 머리가 어긋난다.
+			 */
+			{
+				"script:ld+json": {
+					"@context": "https://schema.org",
+					"@type": "WebApplication",
+					name: "원고지",
+					alternateName: "200자 원고지 조판 에디터",
+					url: SITE_URL,
+					description: SITE_SHARE_DESCRIPTION,
+					applicationCategory: "WritingApplication",
+					operatingSystem: "All",
+					offers: {
+						"@type": "Offer",
+						price: "0",
+						priceCurrency: "KRW",
+					},
+				},
 			},
 		],
 		links: [
@@ -49,6 +113,8 @@ export const Route = createRootRouteWithContext<{
 				rel: "stylesheet",
 				href: appCss,
 			},
+			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 		],
 	}),
 	shellComponent: RootDocument,
