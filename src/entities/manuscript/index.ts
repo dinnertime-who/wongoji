@@ -8,12 +8,11 @@ export {
 	writeDoc,
 } from "./api/doc-storage";
 export { NIKL_QNA, TOPIK_PDF, TOPIK_RULES } from "./config/rules";
+export { docToFileText, docToPlainText } from "./lib/plain-text";
 export {
 	type Manuscript,
 	parseImported,
 	safeFileName,
-	toBackup,
-	toPlainText,
 } from "./lib/serialize";
 export {
 	BLANK_ROW_TYPE,

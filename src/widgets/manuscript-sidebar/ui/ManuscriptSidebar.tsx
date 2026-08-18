@@ -15,6 +15,7 @@ import {
 	useSaveStatus,
 } from "#/entities/archive";
 import { type Created, useCreateEntry } from "#/features/create-entry";
+import { DownloadArchive } from "#/features/export-archive";
 import { TrashDialog } from "#/features/manage-trash";
 import { FolderPicker } from "#/features/move-entry";
 import { useResetDoc } from "#/features/reset-manuscript";
@@ -199,6 +200,11 @@ export function ManuscriptSidebar() {
 			</SidebarContent>
 
 			<SidebarFooter className="border-border border-t px-1 py-1">
+				{/*
+				 * 보관함을 통째로 받는 자리. 휴지통과 나란히 둔다 — 둘 다 원고
+				 * 하나가 아니라 보관함 전체를 다루는 일이라 발치가 제자리다.
+				 */}
+				<DownloadArchive />
 				<Button
 					variant="ghost"
 					size="sm"

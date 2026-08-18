@@ -1,21 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-	type Manuscript,
-	parseImported,
-	safeFileName,
-	toBackup,
-	toPlainText,
-} from "./serialize";
+import { parseImported, safeFileName } from "./serialize";
 
 /**
- * 원고를 글자로 바꾸고 되돌린다.
+ * 파일에서 온 글을 원고로 되돌린다.
  *
  * **`parseImported`가 이 앱에서 가장 위험한 순수 함수다.** 여기서 읽어 낸 것이
  * 그대로 에디터에 앉고, 앉은 것은 곧 저장되어 원래 원고를 덮는다. 반쯤 읽어
  * 성한 문단만 남기면 사용자는 잃은 줄도 모른다.
  */
 
-describe("백업 파일 읽기", () => {
+describe("예전 백업 파일 읽기", () => {
 	it("제목과 블록을 그대로 돌려준다", () => {
 		const raw = JSON.stringify({
 			version: 1,
@@ -95,88 +89,17 @@ describe("평문 읽기", () => {
 	});
 
 	it("확장자를 믿지 않는다 — 내용으로 가른다", () => {
-		// 사용자가 백업을 .txt로 바꿔 두었어도 백업으로 읽힌다
-		const 백업 = toBackup({
+		// 예전 백업을 .txt로 바꿔 두었어도 백업으로 읽힌다
+		const 백업 = {
+			version: 1,
 			title: "제목",
 			blocks: [{ type: "paragraph", text: "본문" }],
-		});
+		};
 		expect(parseImported(JSON.stringify(백업)).title).toBe("제목");
 	});
 
 	it("빈 글은 빈 원고다", () => {
 		expect(parseImported("")).toEqual({ title: "", blocks: [] });
-	});
-});
-
-describe("왕복", () => {
-	it("백업으로 적었다 읽으면 그대로다", () => {
-		// 이 성질이 깨지면 백업 파일은 있는데 되살릴 수 없는 상태가 된다
-		const 원고: Manuscript = {
-			title: "감나무 있는 마당",
-			blocks: [
-				{ type: "paragraph", text: "마당에는 감나무가 있었다." },
-				{ type: "blankRow" },
-				{ type: "paragraph", text: '"거기 누구요?"' },
-			],
-		};
-		expect(parseImported(JSON.stringify(toBackup(원고)))).toEqual(원고);
-	});
-
-	it("백업에는 판 번호가 붙는다", () => {
-		expect(toBackup({ title: "제목", blocks: [] })).toEqual({
-			version: 1,
-			title: "제목",
-			blocks: [],
-		});
-	});
-});
-
-describe("평문으로 적기", () => {
-	it("제목을 맨 위에 두고 한 줄 띄운다", () => {
-		expect(
-			toPlainText({
-				title: "제목",
-				blocks: [{ type: "paragraph", text: "본문" }],
-			}),
-		).toBe("제목\n\n본문");
-	});
-
-	it("제목이 없으면 넣지 않는다", () => {
-		expect(
-			toPlainText({
-				title: "   ",
-				blocks: [{ type: "paragraph", text: "본문" }],
-			}),
-		).toBe("본문");
-	});
-
-	it("빈 행은 빈 줄로 나간다", () => {
-		expect(
-			toPlainText({
-				title: "",
-				blocks: [
-					{ type: "paragraph", text: "위" },
-					{ type: "blankRow" },
-					{ type: "paragraph", text: "아래" },
-				],
-			}),
-		).toBe("위\n\n아래");
-	});
-
-	it("빈 행은 다시 읽어들이면 사라진다", () => {
-		// 평문은 사람이 읽는 것이라 구조를 다 담지 못한다. 되살릴 것은 백업이다
-		const 원고: Manuscript = {
-			title: "",
-			blocks: [
-				{ type: "paragraph", text: "위" },
-				{ type: "blankRow" },
-				{ type: "paragraph", text: "아래" },
-			],
-		};
-		expect(parseImported(toPlainText(원고)).blocks).toEqual([
-			{ type: "paragraph", text: "위" },
-			{ type: "paragraph", text: "아래" },
-		]);
 	});
 });
 

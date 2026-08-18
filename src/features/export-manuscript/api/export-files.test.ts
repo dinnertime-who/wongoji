@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	type Block,
-	type Manuscript,
-	parseImported,
-	toPlainText,
-} from "#/entities/manuscript";
+import { type Manuscript, parseImported } from "#/entities/manuscript";
 import { buildDocxBlob } from "./export-files";
 
 const SAMPLE: Manuscript = {
@@ -49,21 +44,12 @@ async function docxXml(manuscript: Manuscript): Promise<string> {
 	return parts.join("\n");
 }
 
-describe("평문 · 백업", () => {
-	it("평문에는 제목과 소속이 앞에 붙는다", () => {
-		const text = toPlainText(SAMPLE);
-		expect(text.startsWith("감나무 있는 마당")).toBe(true);
-		expect(text).toContain("가을이 깊었다.");
-	});
-
-	it("백업 JSON을 다시 읽으면 제목과 빈 행이 살아난다", () => {
-		const restored = parseImported(JSON.stringify({ version: 1, ...SAMPLE }));
-		expect(restored).toEqual(SAMPLE);
-		expect(restored.blocks.some((b: Block) => b.type === "blankRow")).toBe(
-			true,
-		);
-	});
-
+/*
+ * 평문으로 적는 길은 여기서 보지 않는다 — `entities/manuscript`의
+ * `plain-text.test.ts`가 본다. 그쪽이 조판을 거치지 않은 문서 원본을 다루는
+ * 자리이고, 사람이 띄운 줄이 남는지가 거기서 갈린다.
+ */
+describe("불러오기", () => {
 	it("평문 파일은 문단으로 읽어들인다", () => {
 		const restored = parseImported("가나\n다라");
 		expect(restored.title).toBe("");

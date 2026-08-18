@@ -1,6 +1,7 @@
+import type { Content } from "@tiptap/react";
 import { CheckIcon, CopyIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { type Manuscript, toPlainText } from "#/entities/manuscript";
+import { docToFileText } from "#/entities/manuscript";
 import { Button } from "#/shared/ui/button";
 
 /** 복사했다고 알려 두는 시간 */
@@ -9,10 +10,20 @@ const FLASH = 1500;
 /**
  * 원고 전체를 클립보드에 담는다.
  *
- * 내보내기와 같은 평문이다 — 제목이 있으면 첫 줄에 오고 빈 행은 빈 줄이 된다.
- * 다른 곳에 붙여 넣을 때 원고지 격자까지 따라갈 이유가 없다.
+ * 내보내기와 같은 평문이다 — 제목이 있으면 첫 줄에 오고, **띄운 줄은 띄운
+ * 수만큼 남는다.** 다른 곳에 붙여 넣을 때 원고지 격자까지 따라갈 이유가 없다.
+ *
+ * 조판 블록이 아니라 문서 원본을 받는 이유가 여기 있다. 붙여 넣는 곳이 대개
+ * 사람이 아니라 기계(AI)라, 사람이 띄운 자리가 사라지면 글의 짜임이 달라진다.
  */
-export function CopyManuscript({ manuscript }: { manuscript: Manuscript }) {
+export function CopyManuscript({
+	title,
+	content,
+}: {
+	title: string;
+	/** 아직 본문을 앉히지 않았으면 없다 */
+	content: Content | null;
+}) {
 	/*
 	 * 번호를 함께 든다. 연달아 누르면 같은 결과가 이어지는데, 값이 그대로면
 	 * 사라지는 시계가 다시 돌지 않아 첫 번째 것이 그냥 끝나 버린다.
@@ -30,7 +41,7 @@ export function CopyManuscript({ manuscript }: { manuscript: Manuscript }) {
 
 	const copy = async () => {
 		try {
-			await navigator.clipboard.writeText(toPlainText(manuscript));
+			await navigator.clipboard.writeText(docToFileText(title, content));
 			setFlash((prev) => ({ ok: true, nth: (prev?.nth ?? 0) + 1 }));
 		} catch {
 			// https가 아니거나 권한이 없으면 거절당한다. 사용자가 할 수 있는 일이 없어

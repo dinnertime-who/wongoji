@@ -1,11 +1,12 @@
 import { type Block, parseBlocks } from "./typesetting";
 
 /**
- * 원고를 글자로 바꾸고 되돌린다.
+ * 파일에서 온 글을 원고로 되돌린다.
  *
- * 부수효과가 없다 — 파일을 만들거나 내려받는 일은 그것을 쓰는 쪽(feature)이
- * 한다. 여기 있는 것은 "원고를 어떤 글자로 적는가"뿐이고, 그건 원고 자신이
- * 아는 일이다.
+ * 부수효과가 없다 — 파일을 읽고 쓰는 일은 그것을 쓰는 쪽(feature)이 한다.
+ *
+ * **내보내는 길은 여기 없다.** 그쪽은 `plain-text.ts`가 맡는다 — 조판 블록이
+ * 아니라 에디터 문서 원본을 읽어야 사람이 친 엔터가 남기 때문이다.
  */
 
 export interface Manuscript {
@@ -21,21 +22,6 @@ export function safeFileName(title: string): string {
 		.slice(0, 60);
 	return trimmed || "원고";
 }
-
-/** 사람이 읽는 평문. 빈 행은 빈 줄로 나가지만 다시 읽어들이면 사라진다 */
-export function toPlainText({ title, blocks }: Manuscript): string {
-	const head = title.trim() ? [title.trim(), ""] : [];
-	const body = blocks.map((b) => (b.type === "paragraph" ? b.text : ""));
-	return [...head, ...body].join("\n").trim();
-}
-
-/**
- * 백업 파일에 담을 값. 되살릴 수 있는 완전한 사본이다.
- */
-export const toBackup = (manuscript: Manuscript) => ({
-	version: 1,
-	...manuscript,
-});
 
 /**
  * 저장된 값이 정말 블록 배열인가.

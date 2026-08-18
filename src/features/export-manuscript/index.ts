@@ -1,2 +1,2 @@
-export { exportBackup } from "./api/export-files";
+export { exportText } from "./api/export-files";
 export { ExportDialog } from "./ui/ExportDialog";

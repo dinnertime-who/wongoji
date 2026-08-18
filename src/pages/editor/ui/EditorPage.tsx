@@ -22,7 +22,7 @@ import {
 import { CopyManuscript } from "#/features/copy-manuscript";
 import { HistoryDialog, onDocRestored } from "#/features/doc-history";
 import { useManuscriptDoc, WongojiEditor } from "#/features/edit-manuscript";
-import { ExportDialog, exportBackup } from "#/features/export-manuscript";
+import { ExportDialog, exportText } from "#/features/export-manuscript";
 import { onDocReset } from "#/features/reset-manuscript";
 import { useSoloDraft } from "#/features/solo-draft";
 import {
@@ -116,13 +116,6 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	const manuscript: Manuscript = { title: doc.title, blocks: doc.blocks };
 
 	/*
-	 * 저장이 실패했을 때 배너가 내놓는 "백업 받기".
-	 *
-	 * 배너는 이 쪽 바깥(레이아웃)에 있어서 원고를 모른다. 지금 원고를 ref로
-	 * 붙들고 한 번만 등록한다 — 원고가 바뀔 때마다 다시 등록하면 글자 하나마다
-	 * 등록이 돈다.
-	 */
-	/*
 	 * 보관함에서 이 원고를 비우면 화면도 갈아 끼운다.
 	 *
 	 * 비우는 쪽과 쓰는 쪽이 둘 다 피처라 서로 부를 수 없다. 둘을 아는 이 쪽이
@@ -165,10 +158,24 @@ export function EditorPage({ docId }: { docId: string | null }) {
 		[docId, client, change],
 	);
 
-	const latest = useRef(manuscript);
-	latest.current = manuscript;
+	/*
+	 * 저장이 실패했을 때 배너가 내놓는 "백업 받기".
+	 *
+	 * 배너는 이 쪽 바깥(레이아웃)에 있어서 원고를 모른다. 지금 원고를 ref로
+	 * 붙들고 한 번만 등록한다 — 원고가 바뀔 때마다 다시 등록하면 글자 하나마다
+	 * 등록이 돈다.
+	 *
+	 * **블록이 아니라 문서 원본을 붙든다.** 저장하지 못한 글을 건져 내는 자리라
+	 * 여기서 잃는 것이 가장 뼈아프다 — 블록으로 적으면 사람이 띄운 줄이 빠진다.
+	 */
+	const latest = useRef({ title: doc.title, content });
+	latest.current = { title: doc.title, content };
 	useEffect(() => {
-		registerBackup(() => exportBackup(latest.current));
+		registerBackup(() => {
+			const now = latest.current;
+			// 본문을 아직 앉히지 않았으면 받을 것이 없다
+			if (now.content) exportText(now.title, now.content);
+		});
 		return () => registerBackup(null);
 	}, [registerBackup]);
 
@@ -181,6 +188,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						<RulesDialog />
 						<ExportDialog
 							manuscript={manuscript}
+							content={content}
 							onImport={(next) => doc.replace(next.title, next.blocks)}
 						/>
 					</>
@@ -254,7 +262,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 											{/* 목표가 없으면 글자 수까지 적는다 — 원고 위라 자리가 있다 */}
 											{goalProgress(stats.sheets, doc.goal) ??
 												`${stats.chars}자 · ${stats.sheets}매`}
-											<CopyManuscript manuscript={manuscript} />
+											<CopyManuscript title={doc.title} content={content} />
 										</span>
 									}
 								/>

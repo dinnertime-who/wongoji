@@ -1,8 +1,8 @@
+import type { Content } from "@tiptap/react";
 import {
+	docToFileText,
 	type Manuscript,
 	safeFileName,
-	toBackup,
-	toPlainText,
 } from "#/entities/manuscript";
 
 /**
@@ -25,19 +25,17 @@ function download(blob: Blob, filename: string) {
 	URL.revokeObjectURL(url);
 }
 
-export function exportText(manuscript: Manuscript) {
-	const blob = new Blob([toPlainText(manuscript)], {
+/**
+ * 평문 한 편.
+ *
+ * **조판 블록이 아니라 에디터 문서 원본을 받는다.** 블록은 빈 문단이 버려진
+ * 뒤라, 그것으로 적으면 사람이 엔터를 몇 번 쳤는지가 파일에 남지 않는다.
+ */
+export function exportText(title: string, content: Content) {
+	const blob = new Blob([docToFileText(title, content)], {
 		type: "text/plain;charset=utf-8",
 	});
-	download(blob, `${safeFileName(manuscript.title)}.txt`);
-}
-
-/** 되살릴 수 있는 완전한 사본. 제목과 빈 행까지 그대로 남는다 */
-export function exportBackup(manuscript: Manuscript) {
-	const blob = new Blob([JSON.stringify(toBackup(manuscript), null, 1)], {
-		type: "application/json;charset=utf-8",
-	});
-	download(blob, `${safeFileName(manuscript.title)}.json`);
+	download(blob, `${safeFileName(title)}.txt`);
 }
 
 /**

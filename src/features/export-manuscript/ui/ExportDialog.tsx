@@ -1,3 +1,4 @@
+import type { Content } from "@tiptap/react";
 import { useRef, useState } from "react";
 import { type Manuscript, parseImported } from "#/entities/manuscript";
 import { Button } from "#/shared/ui/button";
@@ -9,7 +10,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "#/shared/ui/dialog";
-import { exportBackup, exportDocx, exportText } from "../api/export-files";
+import { exportDocx, exportText } from "../api/export-files";
 
 /** 여러 줄짜리 항목이라 버튼 기본 높이를 풀고 왼쪽 정렬로 둔다 */
 const ROW =
@@ -17,9 +18,17 @@ const ROW =
 
 export function ExportDialog({
 	manuscript,
+	content,
 	onImport,
 }: {
 	manuscript: Manuscript;
+	/**
+	 * 에디터 문서 원본.
+	 *
+	 * 평문은 이것으로 적는다 — `manuscript.blocks`는 조판을 거치며 빈 문단이
+	 * 버려진 뒤라, 사람이 엔터를 몇 번 쳤는지가 남아 있지 않다.
+	 */
+	content: Content | null;
 	onImport: (next: Manuscript) => void;
 }) {
 	const [busy, setBusy] = useState(false);
@@ -61,7 +70,7 @@ export function ExportDialog({
 				<DialogHeader>
 					<DialogTitle>내보내기 · 불러오기</DialogTitle>
 					<DialogDescription>
-						원고는 이 브라우저에만 저장됩니다. 긴 글이라면 백업을 받아 두세요.
+						원고 한 편을 파일로 내보내거나, 파일에서 불러옵니다.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -88,23 +97,8 @@ export function ExportDialog({
 
 					<Button
 						variant="outline"
-						onClick={() => exportBackup(manuscript)}
-						className={ROW}
-					>
-						<span aria-hidden className="text-base leading-none">
-							💾
-						</span>
-						<span className="min-w-0">
-							<span className="block font-medium text-sm">백업 (.json)</span>
-							<span className="block text-muted-foreground text-xs leading-5">
-								제목과 빈 행까지 그대로 되살릴 수 있는 완전한 사본.
-							</span>
-						</span>
-					</Button>
-
-					<Button
-						variant="outline"
-						onClick={() => exportText(manuscript)}
+						onClick={() => content && exportText(manuscript.title, content)}
+						disabled={!content}
 						className={ROW}
 					>
 						<span aria-hidden className="text-base leading-none">
@@ -113,7 +107,7 @@ export function ExportDialog({
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">텍스트 (.txt)</span>
 							<span className="block text-muted-foreground text-xs leading-5">
-								어디서나 열리는 평문. 빈 행 표시는 남지 않습니다.
+								쓴 그대로. 띄운 줄은 띄운 수만큼 남습니다.
 							</span>
 						</span>
 					</Button>
@@ -129,7 +123,8 @@ export function ExportDialog({
 						<span className="min-w-0">
 							<span className="block font-medium text-sm">불러오기</span>
 							<span className="block text-muted-foreground text-xs leading-5">
-								.json 또는 .txt. <strong>지금 원고를 덮어씁니다.</strong>
+								.txt 또는 예전 백업 .json.{" "}
+								<strong>지금 원고를 덮어씁니다.</strong>
 							</span>
 						</span>
 					</Button>
