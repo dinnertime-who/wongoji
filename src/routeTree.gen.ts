@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as ApiArchiveRouteImport } from './routes/api.archive'
+import { Route as GuideIndexRouteImport } from './routes/guide.index'
+import { Route as GuideSlugRouteImport } from './routes/guide.$slug'
 import { Route as AppFFolderIdRouteImport } from './routes/_app.f.$folderId'
 import { Route as AppWDocIdRouteImport } from './routes/_app.w.$docId'
 import { Route as ApiArchiveOpsRouteImport } from './routes/api.archive.ops'
@@ -31,6 +33,16 @@ const AppRoute = AppRouteImport.update({
 const ApiArchiveRoute = ApiArchiveRouteImport.update({
   id: '/api/archive',
   path: '/api/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideIndexRoute = GuideIndexRouteImport.update({
+  id: '/guide/',
+  path: '/guide/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuideSlugRoute = GuideSlugRouteImport.update({
+  id: '/guide/$slug',
+  path: '/guide/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppFFolderIdRoute = AppFFolderIdRouteImport.update({
@@ -68,6 +80,8 @@ const ApiArchiveDocDocIdVersionsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/guide/$slug': typeof GuideSlugRoute
+  '/guide/': typeof GuideIndexRoute
   '/f/$folderId': typeof AppFFolderIdRoute
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
@@ -78,6 +92,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/guide/$slug': typeof GuideSlugRoute
+  '/guide': typeof GuideIndexRoute
   '/f/$folderId': typeof AppFFolderIdRoute
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
@@ -90,6 +106,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/guide/$slug': typeof GuideSlugRoute
+  '/guide/': typeof GuideIndexRoute
   '/_app/f/$folderId': typeof AppFFolderIdRoute
   '/_app/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
@@ -102,6 +120,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/archive'
+    | '/guide/$slug'
+    | '/guide/'
     | '/f/$folderId'
     | '/w/$docId'
     | '/api/archive/ops'
@@ -112,6 +132,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/archive'
+    | '/guide/$slug'
+    | '/guide'
     | '/f/$folderId'
     | '/w/$docId'
     | '/api/archive/ops'
@@ -123,6 +145,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/api/archive'
+    | '/guide/$slug'
+    | '/guide/'
     | '/_app/f/$folderId'
     | '/_app/w/$docId'
     | '/api/archive/ops'
@@ -135,6 +159,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ApiArchiveRoute: typeof ApiArchiveRouteWithChildren
+  GuideSlugRoute: typeof GuideSlugRoute
+  GuideIndexRoute: typeof GuideIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -159,6 +185,20 @@ declare module '@tanstack/react-router' {
       path: '/api/archive'
       fullPath: '/api/archive'
       preLoaderRoute: typeof ApiArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide/': {
+      id: '/guide/'
+      path: '/guide'
+      fullPath: '/guide/'
+      preLoaderRoute: typeof GuideIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guide/$slug': {
+      id: '/guide/$slug'
+      path: '/guide/$slug'
+      fullPath: '/guide/$slug'
+      preLoaderRoute: typeof GuideSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/f/$folderId': {
@@ -247,6 +287,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ApiArchiveRoute: ApiArchiveRouteWithChildren,
+  GuideSlugRoute: GuideSlugRoute,
+  GuideIndexRoute: GuideIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

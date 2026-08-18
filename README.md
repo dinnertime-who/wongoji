@@ -345,14 +345,15 @@ D1에는 로그인 정보(`user`·`session`·`account`·`verification`)와 계�
 (`archive_folder`·`archive_doc`·`archive_doc_content`·`archive_tombstone`)이 있다.
 **로그인하지 않은 원고는 올라가지 않는다** — 그것은 이 브라우저 것이다.
 
-### 검색에 걸리는 쪽은 하나다
+### 검색에 걸리는 쪽
 
 문구와 주소는 `shared/config/site.ts`에 모여 있고, `__root`가 문서 머리에 얹는다.
 `public/`에 있는 것(robots · sitemap · OG 이미지 · 파비콘)은 vite가 `dist/client`로
 옮기고 Workers가 그대로 내보낸다.
 
-**색인되는 것은 `/` 하나뿐이다.** `/w/<id>`와 `/f/<id>`는 로그인하지 않은 크롤러에게
-빈 껍데기라 `_app`에서 `noindex`로 막는다. 여기 함정이 둘 있다.
+색인되는 것은 **홈(`/`)과 사용법 글 다섯(`/guide`, `/guide/<slug>`)**뿐이다.
+`/w/<id>`와 `/f/<id>`는 로그인하지 않은 크롤러에게 빈 껍데기라 `_app`에서
+`noindex`로 막는다. 여기 함정이 둘 있다.
 
 1. **robots.txt로 막지 않는다.** 거기서 막으면 크롤러가 문서를 아예 못 읽어 `noindex`도
    못 본다. 주소만 주워 색인해 버릴 수 있다 — 읽게 두고, 읽은 자리에서 빼라고 말한다
@@ -362,6 +363,22 @@ D1에는 로그인 정보(`user`·`session`·`account`·`verification`)와 계�
 
 OG 이미지는 `docs/plan-seo.md`에 만든 방법이 적혀 있다 — 헤드리스 크롬으로 HTML을
 1200×630에 찍는다. 문구를 고치면 그림도 다시 찍어야 한다.
+
+### 사용법 글은 조판 엔진을 그대로 돌린다
+
+`/guide`의 네 글이 검색어를 받는다 — 원고지 작성법 · 띄어쓰기와 줄바꿈 · 문장부호 ·
+공모전 매수 계산. 목록은 `shared/config/guide.ts`의 `ARTICLES` 하나이고, 라우트가
+문서 머리를 짓고 목차가 늘어놓고 에디터 발치의 링크가 가리키는 것이 모두 거기서 온다.
+글을 더할 때 고칠 곳은 그 배열과 본문 컴포넌트 둘이다.
+
+**규칙을 보이는 예시는 캡처 이미지가 아니라 `layoutBlocks`를 그대로 돌린 결과다**
+(`pages/guide/ui/prose.tsx`의 `Example`). 원고지 사용법을 설명하는 글은 대개 그림을
+쓰는데, 그러면 조판 규칙을 고쳤을 때 글 속 그림이 조용히 거짓이 된다. 순수 계산이라
+서버에서 돌고, 첫 HTML에 격자가 실려 나가 크롤러도 그 예를 본다.
+
+함정 하나 — **sitemap은 `public/`의 정적 파일이라 `ARTICLES`와 저절로 맞지 않는다.**
+어긋나도 화면은 멀쩡하고 테스트도 통과하는데 구글만 모른다. 그래서
+`shared/config/guide.test.ts`가 둘을 맞대어 본다.
 
 ## 구조
 
@@ -401,6 +418,7 @@ src/
       model/save-queue.ts  밀린 저장을 합치는 규칙. 두 피처가 나눠 쓴다
   shared/            도메인을 모르는 것들 — shadcn 원본, cn, localStorage 겉포장
     config/site.ts     바깥에 소개되는 문구와 주소. 검색·SNS가 이것을 읽는다
+    config/guide.ts    사용법 글 목록. 라우트·목차·에디터 발치가 함께 읽는다
   server/            FSD 밖. better-auth · D1 · 스키마 (아래 절 참고)
     testing/           테스트가 쓰는 밑판 — D1 손잡이 · 진짜 세션 · 요청 짓기
 public/              그대로 나가는 것 — robots · sitemap · OG 이미지 · 파비콘

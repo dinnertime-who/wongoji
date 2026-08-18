@@ -32,6 +32,7 @@ import {
 	writePane,
 } from "#/features/toggle-pane";
 import { Button } from "#/shared/ui/button";
+import { GuideFooter } from "#/shared/ui/guide-footer";
 import { ManuscriptBar } from "#/widgets/manuscript-bar";
 import { PageHeader } from "#/widgets/page-header";
 
@@ -272,6 +273,13 @@ export function EditorPage({ docId }: { docId: string | null }) {
 					<div className="fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
 						<PaneToggle pane={pane} onChoose={choosePane} />
 					</div>
+
+					{/*
+					 * 사용법으로 가는 길. **체험 원고 쪽에만 둔다** — 계정 쪽은
+					 * 색인하지 않고, 쓰는 동안 띄워 두는 화면에 읽을거리 목록이
+					 * 붙어 있을 이유도 없다. 크롤러가 `/`에서 여기를 타고 간다.
+					 */}
+					{docId === null && <GuideFooter />}
 				</>
 			)}
 

@@ -39,7 +39,24 @@ function WongojiCell({ cell }: { cell: Cell | undefined }) {
 	);
 }
 
-export function WongojiSheet({ page, index }: { page: Page; index: number }) {
+export function WongojiSheet({
+	page,
+	index,
+	rows = ROWS,
+	pageNumber = true,
+}: {
+	page: Page;
+	index: number;
+	/**
+	 * 그릴 줄 수. 기본은 한 장 전체다.
+	 *
+	 * 사용법 글이 규칙 하나를 보이려고 두 줄짜리 예를 넣을 때, 빈 줄 여덟 개가
+	 * 함께 따라오면 글이 늘어진다. 그때만 줄여 쓴다.
+	 */
+	rows?: number;
+	/** 오른쪽 아래 쪽 번호. 한 장짜리 예에서는 셀 것이 없다 */
+	pageNumber?: boolean;
+}) {
 	return (
 		<section
 			className="wongoji-sheet rounded-sm border border-[var(--grid)] bg-[var(--paper)] p-4 shadow-sm sm:p-6"
@@ -49,7 +66,7 @@ export function WongojiSheet({ page, index }: { page: Page; index: number }) {
 				className="grid border-t border-l border-[var(--grid)] text-[clamp(0.7rem,2.1vw,1.05rem)]"
 				style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}
 			>
-				{Array.from({ length: ROWS }, (_, row) =>
+				{Array.from({ length: rows }, (_, row) =>
 					Array.from({ length: COLS }, (_, col) => (
 						<WongojiCell
 							// biome-ignore lint/suspicious/noArrayIndexKey: 격자는 크기가 고정이고 순서가 바뀌지 않는다. 좌표가 곧 칸의 정체성이다.
@@ -59,9 +76,11 @@ export function WongojiSheet({ page, index }: { page: Page; index: number }) {
 					)),
 				)}
 			</div>
-			<footer className="mt-2 text-right text-[0.7rem] text-muted-foreground tabular-nums">
-				{index + 1}
-			</footer>
+			{pageNumber && (
+				<footer className="mt-2 text-right text-[0.7rem] text-muted-foreground tabular-nums">
+					{index + 1}
+				</footer>
+			)}
 		</section>
 	);
 }
