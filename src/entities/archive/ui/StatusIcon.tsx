@@ -9,13 +9,24 @@ import { type DocStatus, STATUS_LABEL } from "../config/status";
  * 표가 된 것(완성). 뜻을 모르고 봐도 **진행으로 읽히게** 하려는 것이고, 목록에
  * 셋이 섞여 있어도 한 계열로 보인다.
  *
- * **색은 쓰지 않는다.** 격자색은 이미 "지금 보고 있는 것"에 배정되어 있어, 상태에
- * 색을 주면 둘이 경쟁한다. 색만으로 구별하면 색각 문제도 따라온다.
+ * **색은 모양 위에 덧붙는다.** 색만으로 가르면 색각 문제가 따라오므로 실루엣을
+ * 먼저 두고, 색은 한눈에 훑을 때를 위한 두 번째 단서로만 쓴다 — 색을 못 보아도
+ * 잃는 정보가 없다.
+ *
+ * 그래서 칠하는 것은 둘뿐이다. **초고에는 색을 두지 않는다** — 셋 다 칠하면
+ * 목록이 신호등이 되고, 초고는 "아직 아무 일도 일어나지 않았다"라 표시할 것이
+ * 없다. 값과 고른 이유는 `styles.css`의 `--status-*`에 적혀 있다.
  */
 const ICON: Record<DocStatus, typeof CircleDashedIcon> = {
 	draft: CircleDashedIcon,
 	revising: CircleDotIcon,
 	done: CircleCheckIcon,
+};
+
+const TONE: Record<DocStatus, string> = {
+	draft: "text-muted-foreground",
+	revising: "text-status-revising",
+	done: "text-status-done",
 };
 
 /**
@@ -51,10 +62,7 @@ export function StatusIcon({
 			{...(labelled
 				? { role: "img", "aria-label": name, title: name }
 				: { "aria-hidden": true })}
-			className={cn(
-				"inline-flex size-4 shrink-0 text-muted-foreground",
-				className,
-			)}
+			className={cn("inline-flex size-4 shrink-0", TONE[status], className)}
 			{...props}
 		>
 			<Icon className="size-full" />

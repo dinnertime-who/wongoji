@@ -49,6 +49,9 @@
 	 */
 	--color-grid: var(--grid);
 	--color-grid-soft: var(--grid-soft);
+	/* 원고가 어디까지 왔는가. 초고는 색을 두지 않는다 — 아래 :root 참고 */
+	--color-status-revising: var(--status-revising);
+	--color-status-done: var(--status-done);
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
@@ -74,6 +77,24 @@
 	--ink: #23211c;
 	--ink-muted: #857f72;
 	--surface-muted: #ebe8e0;
+
+	/*
+	 * 상태 색. **격자색을 쓰지 않는다.**
+	 *
+	 * 격자색(`--grid`)은 이미 "지금 보고 있는 줄"에 배정되어 있고, 무엇보다
+	 * 종이 위에서 대비가 2.6:1밖에 안 나와 4px짜리 아이콘에 얹을 색이 아니다
+	 * (그래픽 요소는 3:1이 기준이다). 완성에는 같은 계열의 **짙은** 초록을 둔다 —
+	 * 계열이 같아 팔레트에서 튀지 않으면서 선택 표시와는 밝기로 갈린다.
+	 *
+	 * 퇴고의 황토색은 `--ink-muted`와 밝기가 같다(종이 위에서 둘 다 3.9:1).
+	 * 그래서 색만 달라지고 **무게는 그대로**라, 목록에 섞여 있어도 퇴고만
+	 * 도드라지지 않는다.
+	 *
+	 * 초고에는 색을 두지 않는다. 셋 다 칠하면 목록이 신호등이 되고, 무엇보다
+	 * 초고는 "아직 아무 일도 일어나지 않았다"라 표시할 것이 없다.
+	 */
+	--status-revising: #a8761f;
+	--status-done: #4a7a3a;
 
 	/*
 	 * shadcn 토큰을 원고지 팔레트에 잇는다.
