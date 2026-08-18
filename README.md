@@ -1,4 +1,6 @@
-# 200자 원고지
+# 원고지
+
+> **서비스 주소**: [https://wongo.dinnertimes.app](https://wongo.dinnertimes.app)
 
 글을 200자 원고지(20칸 × 10줄) 규칙에 맞춰 조판해 주는 웹 에디터. 공모전 요강이 "200자 원고지 70매"처럼 매수로 분량을 정하기 때문에, 분량 목표와 워드(.docx) 내보내기를 함께 둔다.
 
@@ -7,7 +9,7 @@
 로그인 없이도 **원고 한 편**을 그대로 쓸 수 있다. 조판을 보러 온 사람이 계정부터
 만들 이유가 없다. 그때 원고는 이 브라우저에만 있다.
 
-구글로 로그인하면 보관함이 열린다 — 여러 편, 폴더, 차례, 휴지통. **계정 원고의 정본은
+구글로 로그인하면 보관함이 열린다 — 여러 편, 폴더, 차례, 상태 라벨(초고·퇴고·완성), 이력 되돌리기, 휴지통. **계정 원고의 정본은
 서버에 있고** 브라우저는 그것을 받아 그릴 뿐이다.
 
 ## 먼저 알아야 할 것 — 원고지에는 표준이 없다
@@ -45,6 +47,8 @@
 - **폴더 트리** — 중첩 가능. 원고는 폴더 밖에도 놓을 수 있다(보이지 않는 root)
 - **이동 · 복제** — 복제는 `제목 (사본)`, 겹치면 번호가 올라간다. 사본은 원본 바로 아래
 - **차례** — 끌어다 사이에 끼우거나 ⋯ 메뉴의 위로·아래로. 폴더가 늘 원고 위에 온다
+- **상태 라벨** — 없음 · 초고 · 퇴고 · 완성. 진행 단계를 나타내며 완성본을 고치면 조용히 퇴고로 내리고 토스트로 알린다
+- **버전 이력과 되돌리기** — 상태를 올릴 때마다 그때의 원고가 보존되며, 언제든 이전 상태의 본문으로 안전하게 되돌린다
 - **휴지통** — 30일 뒤 사라진다. 남은 날과, 폴더가 데리고 간 원고 수를 보여 준다.
   하나씩 완전 삭제하거나 전부 비운다. 되돌릴 수 없으므로 둘 다 한 번 더 묻는다
 - **저장** — 타이핑이 멎고 300ms 뒤. 실패하면 배너가 뜨고 백업 내려받기를 권한다
@@ -304,13 +308,13 @@ pnpm db:migrate:remote
 
 ```bash
 pnpm dlx wrangler secret put BETTER_AUTH_SECRET    # openssl rand -base64 32
-pnpm dlx wrangler secret put BETTER_AUTH_URL       # https://<배포주소> — 끝에 슬래시 없이
+pnpm dlx wrangler secret put BETTER_AUTH_URL       # https://wongo.dinnertimes.app — 끝에 슬래시 없이
 pnpm dlx wrangler secret put GOOGLE_CLIENT_ID
 pnpm dlx wrangler secret put GOOGLE_CLIENT_SECRET
 ```
 
 `BETTER_AUTH_URL`이 틀리면 구글이 엉뚱한 주소로 돌려보내 로그인이 조용히 실패
-한다. 배포 주소가 정해진 뒤에 넣는다.
+한다. 배포 주소(`https://wongo.dinnertimes.app`)에 맞춰 넣는다.
 
 ### 4. 구글 콘솔에 배포 주소 더하기
 
@@ -319,7 +323,7 @@ pnpm dlx wrangler secret put GOOGLE_CLIENT_SECRET
 
 ```
 http://localhost:3000/api/auth/callback/google
-https://<배포주소>/api/auth/callback/google
+https://wongo.dinnertimes.app/api/auth/callback/google
 ```
 
 ### 배포
@@ -332,7 +336,7 @@ pnpm db:migrate:remote    # 스키마가 바뀌었을 때만
 pnpm run deploy           # build + wrangler deploy
 ```
 
-- `wrangler.jsonc` — Worker 이름은 `wongoji`. 배포 URL은 `wongoji.<계정>.workers.dev`
+- `wrangler.jsonc` — Worker 이름은 `wongoji`. 서비스 주소는 `https://wongo.dinnertimes.app`
 - **`wrangler.jsonc`를 고쳤으면 `pnpm cf-typegen`을 다시 돌린다.** `env`의 타입이 거기서 나오고, 빠뜨리면 엉뚱한 곳에서 typecheck가 깨진다
 - `vite.config.ts` — `@cloudflare/vite-plugin`이 SSR 환경을 Workers 런타임으로 돌린다. 개발 서버도 workerd에서 실행된다
 - `pnpm dlx wrangler deploy --dry-run` 으로 배포 없이 번들을 검증할 수 있다
@@ -359,6 +363,7 @@ src/
     reorder-entry/     끌어 놓기. 트리와 폴더 쪽이 나눠 쓴다
     solo-draft/        로그인 없이 쓰는 원고 한 편
     import-legacy/     로그인 없던 시절의 원고를 계정으로 한 번 옮기기
+    doc-history/       상태 승급 시점의 버전 보존 및 되돌리기
     edit-manuscript/
       model/opening.ts   원고를 여는 순서. 순수 함수 (아래 절 참고)
     auth/              로그인 단추 · 세션
