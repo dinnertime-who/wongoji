@@ -15,6 +15,7 @@ import {
 import { GrassGrid, tally, useWritingLog } from "#/entities/writing-log";
 import { useCreateEntry } from "#/features/create-entry";
 import { Button } from "#/shared/ui/button";
+import { ScrollArea } from "#/shared/ui/scroll-area";
 import { Skeleton } from "#/shared/ui/skeleton";
 import { PageHeader } from "#/widgets/page-header";
 
@@ -45,59 +46,59 @@ export function LibraryPage() {
 			</PageHeader>
 
 			{/*
-			 * 쪽 전체의 세로 스크롤은 **ScrollArea로 감싸지 않는다.**
+			 * **넘치는 칸은 전체 폭이고, 폭 제한은 그 안쪽에 있다.**
 			 *
-			 * Radix가 스크롤 칸 안쪽을 `display: table; min-width: 100%`인 겹으로
-			 * 한 번 더 감싸는데, 그것은 내용에 맞춰 **늘어난다.** 그러면 여기 걸어
-			 * 둔 `max-w-3xl`이 풀려서, 안에 든 것 중 제일 넓은 것(잔디 격자 686px)이
-			 * 쪽 전체의 폭을 정한다 — 좁은 화면에서 격자만 밀려야 할 것이 쪽 전체가
-			 * 가로로 밀린다. 실제로 그래서 잔디가 제 안에서 스크롤되지 않았다.
+			 * 순서를 뒤집으면 — `mx-auto max-w-3xl`에 `overflow`를 걸면 — 스크롤
+			 * 칸이 가운데 768px 칸 자체가 되어 **스크롤바도 거기 생긴다.** 넓은
+			 * 화면에서는 창 오른쪽 끝에서 한참 안쪽, 본문 옆 빈 자리에 막대가 떠
+			 * 있게 된다.
 			 *
-			 * 폴더 쪽·원고 쪽도 여기서는 그냥 `overflow-auto`를 쓴다. ScrollArea가
-			 * 값을 하는 자리는 잔디 격자처럼 **칸이 정해진 채 안이 넘치는 곳**이고,
-			 * 거기서는 쓴다(`GrassGrid`).
+			 * `min-h-0`이 있어야 한다 — flex 자식의 기본 최소 높이는 제 내용이라,
+			 * 그대로 두면 칸이 내용만큼 늘어나 스크롤될 것이 남지 않는다.
 			 */}
-			<div className="mx-auto w-full max-w-3xl overflow-auto px-6 py-10">
-				<section aria-labelledby="잔디">
-					<h1 id="잔디" className="font-heading text-2xl">
-						써 온 날들
-					</h1>
+			<ScrollArea className="min-h-0 flex-1" type="auto">
+				<div className="mx-auto w-full max-w-3xl px-6 py-10">
+					<section aria-labelledby="잔디">
+						<h1 id="잔디" className="font-heading text-2xl">
+							써 온 날들
+						</h1>
 
-					{loadingLog || !data ? (
-						<Skeleton className="mt-6 h-32 w-full" />
-					) : (
-						<>
-							<Tally today={data.today} log={data.log} />
-							<div className="mt-6">
-								<GrassGrid today={data.today} log={data.log} />
-							</div>
-						</>
-					)}
-				</section>
+						{loadingLog || !data ? (
+							<Skeleton className="mt-6 h-32 w-full" />
+						) : (
+							<>
+								<Tally today={data.today} log={data.log} />
+								<div className="mt-6">
+									<GrassGrid today={data.today} log={data.log} />
+								</div>
+							</>
+						)}
+					</section>
 
-				<section aria-labelledby="이어쓰기" className="mt-12">
-					<div className="flex items-center justify-between gap-4">
-						<h2 id="이어쓰기" className="font-heading text-lg">
-							이어 쓰기
+					<section aria-labelledby="이어쓰기" className="mt-12">
+						<div className="flex items-center justify-between gap-4">
+							<h2 id="이어쓰기" className="font-heading text-lg">
+								이어 쓰기
+							</h2>
+							{/*
+							 * **서재가 착륙지가 되면서 필요해졌다.** 로그인한 사람이
+							 * 처음 닿는 쪽인데 여기서 글을 시작할 길이 없으면, 새 원고를
+							 * 만들려고 보관함을 열어야 한다 — 좁은 화면에서는 그것이
+							 * 서랍이라 한 겹 더 깊다.
+							 */}
+							<NewDoc />
+						</div>
+						<Recent docs={index.docs} isPending={loadingIndex} />
+					</section>
+
+					<section aria-labelledby="상태" className="mt-12">
+						<h2 id="상태" className="font-heading text-lg">
+							어디까지 왔나
 						</h2>
-						{/*
-						 * **서재가 착륙지가 되면서 필요해졌다.** 로그인한 사람이
-						 * 처음 닿는 쪽인데 여기서 글을 시작할 길이 없으면, 새 원고를
-						 * 만들려고 보관함을 열어야 한다 — 좁은 화면에서는 그것이
-						 * 서랍이라 한 겹 더 깊다.
-						 */}
-						<NewDoc />
-					</div>
-					<Recent docs={index.docs} isPending={loadingIndex} />
-				</section>
-
-				<section aria-labelledby="상태" className="mt-12">
-					<h2 id="상태" className="font-heading text-lg">
-						어디까지 왔나
-					</h2>
-					<Progress docs={index.docs} />
-				</section>
-			</div>
+						<Progress docs={index.docs} />
+					</section>
+				</div>
+			</ScrollArea>
 		</>
 	);
 }

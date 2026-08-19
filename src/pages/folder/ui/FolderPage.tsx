@@ -87,23 +87,36 @@ export function FolderPage({ folderId }: { folderId: string }) {
 				<Breadcrumb path={folder.path} leaf={folder.name} />
 			</PageHeader>
 
-			<div className="mx-auto w-full max-w-3xl overflow-auto px-6 py-10">
-				<PageTitle
-					value={folder.name}
-					onChange={rename}
-					placeholder="이름 없는 폴더"
-					label="폴더 이름"
-				/>
+			{/*
+			 * **넘치는 칸은 전체 폭이고, 폭 제한은 그 안쪽에 있다.**
+			 *
+			 * 순서를 뒤집으면 — `mx-auto max-w-3xl`에 `overflow`를 걸면 — 스크롤
+			 * 칸이 가운데 768px 칸 자체가 되어 **스크롤바도 거기 생긴다.** 넓은
+			 * 화면에서는 창 오른쪽 끝에서 한참 안쪽, 목록 옆 빈 자리에 막대가 뜬다.
+			 *
+			 * 서재 쪽은 같은 자리에 ScrollArea를 쓴다. 여기는 끌어 놓기가 얹혀
+			 * 있어서 스크롤 칸을 갈아 끼우기 전에 그 손짓부터 확인해야 하므로,
+			 * 자리만 바로잡고 칸은 그대로 둔다.
+			 */}
+			<div className="min-h-0 flex-1 overflow-auto">
+				<div className="mx-auto w-full max-w-3xl px-6 py-10">
+					<PageTitle
+						value={folder.name}
+						onChange={rename}
+						placeholder="이름 없는 폴더"
+						label="폴더 이름"
+					/>
 
-				<EntryList inside={inside} folders={folders} docs={docs} />
+					<EntryList inside={inside} folders={folders} docs={docs} />
 
-				<div className="mt-4 flex gap-2">
-					<Button variant="outline" size="sm" onClick={addDoc}>
-						새 원고
-					</Button>
-					<Button variant="outline" size="sm" onClick={addFolder}>
-						새 폴더
-					</Button>
+					<div className="mt-4 flex gap-2">
+						<Button variant="outline" size="sm" onClick={addDoc}>
+							새 원고
+						</Button>
+						<Button variant="outline" size="sm" onClick={addFolder}>
+							새 폴더
+						</Button>
+					</div>
 				</div>
 			</div>
 		</>
