@@ -130,7 +130,7 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 			 * 둘을 기다렸다가 알린다 — 먼저 끝난 쪽이 나중 것을 지우면 배너가
 			 * 깜빡이다 사라진다.
 			 */
-			void Promise.all([indexed, written]).then(([, body]) => {
+			Promise.all([indexed, written]).then(([, body]) => {
 				if (!body.ok) report(body);
 			});
 			return written;
@@ -284,7 +284,7 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		const stats = layoutBlocks(blocks).stats;
 		if (entry.chars === stats.chars && entry.sheets === stats.sheets) return;
 
-		void change({
+		change({
 			kind: "updateDoc",
 			id: effect.docId,
 			patch: { chars: stats.chars, sheets: stats.sheets },
@@ -322,7 +322,7 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 	const reload = useCallback(() => {
 		discard();
 		send({ kind: "reread" });
-		void queryClient.invalidateQueries({ queryKey: docQueryKey(docId) });
+		queryClient.invalidateQueries({ queryKey: docQueryKey(docId) });
 	}, [docId, queryClient, send, discard]);
 
 	/** 화면을 갈아 끼운다. 저장은 부르는 쪽이 따로 시킨다 */

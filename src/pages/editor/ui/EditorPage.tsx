@@ -142,16 +142,17 @@ export function EditorPage({ docId }: { docId: string | null }) {
 		() =>
 			onDocDemoted((id) => {
 				if (id !== docId) return;
-				void client.invalidateQueries({ queryKey: ARCHIVE_KEY });
+				client.invalidateQueries({ queryKey: ARCHIVE_KEY });
 				toast("완성본을 고쳐 퇴고로 되돌렸습니다", {
 					action: {
 						label: "완성 유지",
-						onClick: () =>
-							void change({
+						onClick: async () => {
+							await change({
 								kind: "updateDoc",
 								id,
 								patch: { status: "done" },
-							}),
+							});
+						},
 					},
 				});
 			}),
@@ -230,12 +231,13 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						status={opened?.status}
 						onStatusChange={
 							opened &&
-							((next: DocStatus) =>
-								void change({
+							(async (next: DocStatus) => {
+								await change({
 									kind: "updateDoc",
 									id: opened.id,
 									patch: { status: next },
-								}))
+								});
+							})
 						}
 						onOpenHistory={opened && (() => setHistory(true))}
 					/>

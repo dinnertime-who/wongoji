@@ -30,7 +30,7 @@ export function HomePage() {
 		if (making.current) return;
 		making.current = true;
 
-		void createDocIn(ROOT).then(({ docId }) => {
+		createDocIn(ROOT).then(({ docId }) => {
 			// 못 만들었으면 다시 해 볼 수 있게 열어 둔다. 실패는 배너가 받는다
 			if (!docId) {
 				making.current = false;

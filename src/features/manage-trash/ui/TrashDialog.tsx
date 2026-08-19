@@ -50,8 +50,8 @@ export function TrashDialog({
 	const entries = [...index.trash].sort((a, b) => b.deletedAt - a.deletedAt);
 
 	const erase = () => {
-		if (confirming === "all") void change({ kind: "purgeAll" });
-		else if (confirming) void change({ kind: "purge", ids: [confirming.id] });
+		if (confirming === "all") change({ kind: "purgeAll" });
+		else if (confirming) change({ kind: "purge", ids: [confirming.id] });
 		setConfirming(null);
 	};
 
@@ -78,9 +78,9 @@ export function TrashDialog({
 										key={entry.id}
 										entry={entry}
 										index={index}
-										onUndo={() =>
-											void change({ kind: "restore", id: entry.id })
-										}
+										onUndo={async () => {
+											await change({ kind: "restore", id: entry.id });
+										}}
 										onErase={() => setConfirming(entry)}
 									/>
 								))}

@@ -65,7 +65,7 @@ export function useSoloDraft(enabled: boolean): ManuscriptEditing {
 		if (!enabled || opened.current) return;
 		opened.current = true;
 
-		void readDraft().then((draft) => {
+		readDraft().then((draft) => {
 			setTitle(draft.title);
 			setGoal(draft.goal);
 
@@ -82,7 +82,7 @@ export function useSoloDraft(enabled: boolean): ManuscriptEditing {
 			if (patch.title !== undefined) report(writeDraftTitle(patch.title));
 			if (patch.goal !== undefined) report(writeDraftGoal(patch.goal));
 			if (patch.content !== undefined) {
-				void writeDraftBody(patch.content).then(report);
+				writeDraftBody(patch.content).then(report);
 			}
 		},
 		[report],

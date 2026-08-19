@@ -68,8 +68,9 @@ export function FolderPage({ folderId }: { folderId: string }) {
 	const inside = fullPath(folder);
 	const { folders, docs } = childrenOf(index, inside);
 
-	const rename = (name: string) =>
-		void change({ kind: "renameFolder", id: folder.id, name });
+	const rename = async (name: string) => {
+		await change({ kind: "renameFolder", id: folder.id, name });
+	};
 
 	const addDoc = async () => {
 		const { docId, result } = await createDocIn(inside);
@@ -142,8 +143,9 @@ function EntryList({
 
 	const dnd = useEntryDnd({
 		canDrop: (moving, to) => placeEntry(index, moving, aimed(to)) !== index,
-		onDrop: (moving, to) =>
-			void change({ kind: "placeEntry", moving, to: aimed(to) }),
+		onDrop: async (moving, to) => {
+			await change({ kind: "placeEntry", moving, to: aimed(to) });
+		},
 	});
 
 	const empty = folders.length === 0 && docs.length === 0;

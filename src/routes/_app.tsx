@@ -111,22 +111,23 @@ function Chrome() {
 		setDocOwner(userId);
 		if (!userId) return;
 
-		void drainOutbox();
+		// 아래 올리기와 **나란히 간다.** 기다리면 둘이 줄을 서고 첫 화면이 그만큼 늦다
+		drainOutbox();
 		/*
 		 * 서버가 정본이 되기 전에 이 브라우저에만 남은 본문을 마저 올린다.
 		 * 색인은 서버에 있는데 본문이 404인 원고가 실제로 있었다 — 그 사람에게는
 		 * 원고가 통째로 사라진 것으로 보인다.
 		 */
-		void liftAccountBodies(userId).then((lifted) => {
+		liftAccountBodies(userId).then((lifted) => {
 			/*
 			 * 올린 뒤에는 다시 읽게 한다. 캐시는 스스로 낡지 않으므로
 			 * (`staleTime: Infinity`), 방금 채운 본문이 있어도 화면은 먼저 읽어 둔
 			 * "없음"에 머문다.
 			 */
-			if (lifted) void client.invalidateQueries({ queryKey: ["doc"] });
+			if (lifted) client.invalidateQueries({ queryKey: ["doc"] });
 		});
 
-		const retry = () => void drainOutbox();
+		const retry = () => drainOutbox();
 		window.addEventListener("online", retry);
 		return () => window.removeEventListener("online", retry);
 	}, [userId, client]);
@@ -134,7 +135,7 @@ function Chrome() {
 	useEffect(() => {
 		// 용량이 부족할 때 브라우저가 미전송 본문을 먼저 지우지 않게 요청한다.
 		// 거절되어도 알리지 않는다 — 사용자가 할 수 있는 조치가 없다.
-		void requestPersistentStorage();
+		requestPersistentStorage();
 	}, []);
 
 	return (

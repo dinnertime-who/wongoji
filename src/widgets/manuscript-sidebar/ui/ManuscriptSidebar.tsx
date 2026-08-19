@@ -156,7 +156,7 @@ export function ManuscriptSidebar() {
 		 * 휴지통 안에서만 할 수 있고, 거기서는 묻는다.
 		 */
 		trashDoc: (doc) => {
-			void change({ kind: "trashDoc", id: doc.id });
+			change({ kind: "trashDoc", id: doc.id });
 			// 보고 있던 원고를 버렸으면 열어 둘 수 없다
 			if (doc.id === currentDocId) navigate({ to: "/", replace: true });
 		},
@@ -164,7 +164,7 @@ export function ManuscriptSidebar() {
 		resetDoc: (doc) => setSheet({ kind: "resetDoc", doc }),
 
 		trashFolder: (folder) => {
-			void change({ kind: "trashFolder", id: folder.id });
+			change({ kind: "trashFolder", id: folder.id });
 			const gone = ancestorIds(
 				index.docs.find((d) => d.id === currentDocId)?.path ?? ROOT,
 			).includes(folder.id);
@@ -247,10 +247,10 @@ export function ManuscriptSidebar() {
 				title="폴더 이름 바꾸기"
 				initial={sheet.kind === "renameFolder" ? sheet.folder.name : ""}
 				confirmLabel="바꾸기"
-				onConfirm={(name) => {
+				onConfirm={async (name) => {
 					if (sheet.kind !== "renameFolder") return;
 					const { id } = sheet.folder;
-					void change({ kind: "renameFolder", id, name });
+					await change({ kind: "renameFolder", id, name });
 				}}
 			/>
 
@@ -275,7 +275,7 @@ export function ManuscriptSidebar() {
 							? sheet.doc.path
 							: ROOT
 				}
-				onPick={(path) => {
+				onPick={async (path) => {
 					// 골라서 옮기면 그 폴더 맨 끝으로 간다. 자리까지 고르게 하지 않는다
 					const moving =
 						sheet.kind === "moveFolder"
@@ -284,7 +284,7 @@ export function ManuscriptSidebar() {
 								? ({ kind: "doc", id: sheet.doc.id } as const)
 								: null;
 					if (!moving) return;
-					void change({
+					await change({
 						kind: "placeEntry",
 						moving,
 						to: { path, before: null },
@@ -307,9 +307,9 @@ export function ManuscriptSidebar() {
 				title="이 원고를 비울까요?"
 				description="하나뿐인 원고라 버릴 수 없습니다. 본문과 제목, 분량 목표를 지우고 빈 원고로 되돌립니다. 되돌릴 수 없으니 남길 것이 있다면 먼저 내보내세요."
 				confirmLabel="비우기"
-				onConfirm={() => {
+				onConfirm={async () => {
 					if (sheet.kind === "resetDoc") {
-						void resetDoc(sheet.doc.id).then(report);
+						report(await resetDoc(sheet.doc.id));
 					}
 				}}
 			/>
