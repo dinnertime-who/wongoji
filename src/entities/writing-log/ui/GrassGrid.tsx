@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScrollArea } from "#/shared/ui/scroll-area";
 import { buildGrid } from "../lib/grid";
 import { describeDay, monthMarks } from "../lib/labels";
 import type { GrassCell, WritingLog } from "../model/types";
@@ -106,9 +107,23 @@ export function GrassGrid({
 				 * (작년)에 그려졌다가 한 프레임 뒤에 튄다. rtl 스크롤러는 브라우저가
 				 * 처음부터 오른쪽에 세우므로 튈 자리가 없다 — 안쪽을 ltr로 되돌려
 				 * 격자 자체는 왼쪽에서 오른쪽으로 흐르게 둔다.
+				 *
+				 * ScrollArea는 제 안에 진짜 스크롤 칸(viewport)을 두므로 이 트릭이
+				 * 그대로 산다. `dir`을 Root에 주면 Radix가 스크롤바 방향까지 함께
+				 * 맞춘다.
+				 *
+				 * `type="auto"`인 것은 **넘친다는 표시가 있어야 하기 때문이다.**
+				 * 기본값(`hover`)은 손을 얹어야 스크롤바가 뜨는데, 가로로 더 있다는
+				 * 것을 모르는 사람은 손을 얹을 이유가 없다. 세로 스크롤과 달리 가로는
+				 * 있으리라 짐작하지 않는다.
 				 */}
-				<div className="min-w-0 flex-1 overflow-x-auto pb-1" dir="rtl">
-					<div dir="ltr" className="w-max">
+				<ScrollArea
+					className="min-w-0 flex-1"
+					orientation="horizontal"
+					dir="rtl"
+					type="auto"
+				>
+					<div dir="ltr" className="w-max pb-1">
 						{/* 달 이름. 칸 폭에 맞춰 자리를 잡느라 절대 위치로 놓는다 */}
 						<div className="relative h-4 text-[10px] text-muted-foreground">
 							{marks.map((mark) => (
@@ -167,7 +182,7 @@ export function GrassGrid({
 							))}
 						</div>
 					</div>
-				</div>
+				</ScrollArea>
 			</div>
 
 			<div className="mt-2 flex items-center justify-between gap-4 text-muted-foreground text-xs">
