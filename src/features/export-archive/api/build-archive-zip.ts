@@ -1,6 +1,7 @@
 import type { Content } from "@tiptap/react";
 import { docToFileText, readDoc, safeFileName } from "#/entities/manuscript";
 import type { ZipEntry } from "../lib/tree";
+import { download } from "./download";
 
 /**
  * 보관함을 zip 하나로 묶는다.
@@ -29,11 +30,16 @@ export interface ArchiveZipResult {
 	missed: string[];
 }
 
-/** 받은 날을 파일 이름에 적는다. 여러 번 받아도 서로 덮지 않는다 */
-export function archiveFileName(now: Date): string {
+/**
+ * 받은 날을 파일 이름에 적는다. 여러 번 받아도 서로 덮지 않는다.
+ *
+ * 폴더 하나를 받을 때는 그 폴더 이름이 앞에 온다 — 같은 날 여러 폴더를 받는
+ * 일이 잦고, 날짜만 적혀 있으면 받아 놓은 zip끼리 구별이 되지 않는다.
+ */
+export function archiveFileName(now: Date, name = "원고지-보관함"): string {
 	const pad = (n: number) => String(n).padStart(2, "0");
 	const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-	return `원고지-보관함-${stamp}.zip`;
+	return `${name}-${stamp}.zip`;
 }
 
 /**
@@ -101,10 +107,5 @@ export async function buildArchiveZip(
 
 /** 만든 zip을 브라우저에 내려 준다 */
 export function downloadZip(blob: Blob, filename: string) {
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = safeFileName(filename.replace(/\.zip$/, "")).concat(".zip");
-	a.click();
-	URL.revokeObjectURL(url);
+	download(blob, safeFileName(filename.replace(/\.zip$/, "")).concat(".zip"));
 }

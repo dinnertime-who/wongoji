@@ -15,7 +15,7 @@ import {
 	useSaveStatus,
 } from "#/entities/archive";
 import { type Created, useCreateEntry } from "#/features/create-entry";
-import { DownloadArchive } from "#/features/export-archive";
+import { DownloadArchive, useArchiveDownload } from "#/features/export-archive";
 import { TrashDialog } from "#/features/manage-trash";
 import { FolderPicker } from "#/features/move-entry";
 import { useResetDoc } from "#/features/reset-manuscript";
@@ -82,6 +82,12 @@ export function ManuscriptSidebar() {
 	const change = useArchiveMutation();
 	const { createDocIn, duplicateDocById, createFolderIn } = useCreateEntry();
 	const resetDoc = useResetDoc();
+	/*
+	 * 발치의 "전체 받기"는 제 안에서 따로 든다. 저기는 제 단추에 진행을 그리고
+	 * 여기는 토스트를 빌리므로, 둘이 한 상태를 나눠 쓰면 폴더를 받는 동안 발치의
+	 * 단추가 "전체 받기 3/12"라고 거짓말을 한다.
+	 */
+	const { downloadFolder, downloadDoc } = useArchiveDownload();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const [sheet, setSheet] = useState<Sheet>(CLOSED);
 
@@ -136,6 +142,13 @@ export function ManuscriptSidebar() {
 		nudge: (moving, dir) => void change({ kind: "nudgeEntry", moving, dir }),
 
 		duplicateDoc: (doc) => open(duplicateDocById(doc.id)),
+
+		/*
+		 * 받는 일은 색인을 건드리지 않는다. `change`를 지나지 않고 기능이 곧장
+		 * 하는 이유다 — 알릴 것(진행·못 담은 것)도 저장 배너가 아니라 토스트다.
+		 */
+		downloadFolder,
+		downloadDoc,
 
 		/*
 		 * 버릴 때 확인을 받지 않는다. 30일 동안 휴지통에 있으므로 되돌릴 수 있고,

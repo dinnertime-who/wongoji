@@ -5,6 +5,7 @@ import {
 	ChevronDownIcon,
 	ChevronRightIcon,
 	CopyIcon,
+	DownloadIcon,
 	FileTextIcon,
 	FolderIcon,
 	MoreHorizontalIcon,
@@ -21,6 +22,7 @@ import {
 	displayTitle,
 	type FolderEntry,
 	fullPath,
+	isUnder,
 	type Moving,
 	type Path,
 	type Placement,
@@ -60,6 +62,10 @@ export interface TreeActions {
 	moveDoc: (doc: DocEntry) => void;
 	duplicateDoc: (doc: DocEntry) => void;
 	trashDoc: (doc: DocEntry) => void;
+	/** 그 폴더 아래를 zip 하나로 받는다 */
+	downloadFolder: (folder: FolderEntry) => void;
+	/** 원고 한 편을 평문 하나로 받는다. zip으로 싸지 않는다 */
+	downloadDoc: (doc: DocEntry) => void;
 	/** 하나뿐인 원고를 비운다. 버리는 대신이다 */
 	resetDoc: (doc: DocEntry) => void;
 	/*
@@ -350,6 +356,19 @@ function Level({
 										<PencilIcon />
 										이름 바꾸기
 									</DropdownMenuItem>
+									{/*
+									 * 빈 폴더에서는 흐리게 둔다. 눌러 봐야 "받을 원고가
+									 * 없습니다"를 듣는 일이고, 그 말은 누르기 전에 보이는
+									 * 편이 낫다. 휴지통에 든 것은 세지 않는다 — zip에도
+									 * 담지 않으므로 그것을 세면 빈 zip이 나온다.
+									 */}
+									<DropdownMenuItem
+										disabled={!index.docs.some((d) => isUnder(d.path, inside))}
+										onSelect={() => actions.downloadFolder(folder)}
+									>
+										<DownloadIcon />
+										받기
+									</DropdownMenuItem>
 									<DropdownMenuSeparator />
 									<NudgeItems
 										moving={{ kind: "folder", id: folder.id }}
@@ -433,6 +452,11 @@ function Level({
 							<DropdownMenuItem onSelect={() => actions.duplicateDoc(doc)}>
 								<CopyIcon />
 								복제
+							</DropdownMenuItem>
+							{/* 복제는 여기에 한 벌 더, 받기는 밖으로 한 벌. 짝이라 나란히 둔다 */}
+							<DropdownMenuItem onSelect={() => actions.downloadDoc(doc)}>
+								<DownloadIcon />
+								받기
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<NudgeItems

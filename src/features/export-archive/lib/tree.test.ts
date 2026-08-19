@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyIndex, type StoreIndex } from "#/entities/archive";
-import { toZipEntries } from "./tree";
+import { toZipEntries, type ZipScope } from "./tree";
 
 /**
  * 여기서 틀리면 **받아 간 파일이 조용히 사라진다.** 같은 이름이 겹쳤을 때
@@ -36,8 +36,8 @@ const index = (over: Partial<StoreIndex>): StoreIndex => ({
 	...over,
 });
 
-const paths = (i: StoreIndex) =>
-	toZipEntries(i)
+const paths = (i: StoreIndex, scope?: ZipScope) =>
+	toZipEntries(i, scope)
 		.map((e) => e.path)
 		.sort();
 
@@ -167,5 +167,98 @@ describe("담는 것", () => {
 			],
 		});
 		expect(paths(i)).toEqual(["살아 있는 것.txt"]);
+	});
+});
+
+describe("폴더 하나만 받을 때", () => {
+	const novel = folder("f1", "소설");
+
+	it("그 폴더가 zip 안의 맨 위 칸이 된다", () => {
+		const i = index({
+			folders: [novel],
+			docs: [doc("d1", "감나무", "/f1/")],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/감나무.txt",
+		]);
+	});
+
+	it("안쪽 폴더는 그 아래로 겹쳐 놓는다", () => {
+		const i = index({
+			folders: [novel, folder("f2", "단편", "/f1/")],
+			docs: [doc("d1", "감나무", "/f1/f2/"), doc("d2", "머리말", "/f1/")],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/단편/감나무.txt",
+			"소설/머리말.txt",
+		]);
+	});
+
+	it("바깥의 원고는 담지 않는다 — 폴더 하나를 받았는데 보관함이 딸려 오면 안 된다", () => {
+		const i = index({
+			folders: [novel, folder("f9", "시", "/", 1)],
+			docs: [
+				doc("d1", "감나무", "/f1/"),
+				doc("d2", "뿌리에 둔 것"),
+				doc("d3", "옆 폴더의 것", "/f9/"),
+			],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/감나무.txt",
+		]);
+	});
+
+	it("빈 폴더는 아무것도 내놓지 않는다", () => {
+		const i = index({ folders: [novel], docs: [doc("d1", "바깥")] });
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([]);
+	});
+
+	it("이름이 겹치면 여기서도 가른다", () => {
+		const i = index({
+			folders: [novel],
+			docs: [doc("d1", "제목", "/f1/", 0), doc("d2", "제목", "/f1/", 1)],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/제목 (2).txt",
+			"소설/제목.txt",
+		]);
+	});
+
+	it("이름에 슬래시가 있어도 칸 하나로 남는다", () => {
+		const odd = folder("f1", "소설/시");
+		const i = index({ folders: [odd], docs: [doc("d1", "감나무", "/f1/")] });
+		expect(paths(i, { kind: "folder", folder: odd })).toEqual([
+			"소설시/감나무.txt",
+		]);
+	});
+
+	it("중간 폴더가 사라진 원고도 그 폴더 안에 둔다 — 빠뜨리지 않는다", () => {
+		const i = index({
+			folders: [novel],
+			docs: [doc("d1", "떠도는 원고", "/f1/없음/")],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/떠도는 원고.txt",
+		]);
+	});
+
+	it("휴지통은 여기서도 담지 않는다", () => {
+		const i = index({
+			folders: [novel],
+			docs: [doc("d1", "살아 있는 것", "/f1/")],
+			trash: [
+				{
+					kind: "doc",
+					id: "d9",
+					title: "버린 것",
+					path: "/f1/",
+					goal: 0,
+					deletedAt: 0,
+				},
+			],
+		});
+		expect(paths(i, { kind: "folder", folder: novel })).toEqual([
+			"소설/살아 있는 것.txt",
+		]);
 	});
 });
