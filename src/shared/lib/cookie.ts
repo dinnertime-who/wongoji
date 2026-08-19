@@ -63,3 +63,26 @@ export function writeCookie(name: string, value: string): void {
 /** 브라우저에서 읽는다 */
 export const readCookieHere = (name: string): string | null =>
 	typeof document === "undefined" ? null : readCookie(document.cookie, name);
+
+/**
+ * 이제 아무도 읽지 않는 쿠키를 걷는다.
+ *
+ * `wongoji_last`는 `/`에 들어온 사람을 마지막으로 연 원고로 보내던 값이다. 그
+ * 쪽이 서재로 바뀌면서 읽는 곳이 없어졌는데, **코드에서 지운다고 브라우저에
+ * 있던 것까지 사라지지는 않는다** — 만료를 한 해로 두었으므로 그대로 두면 이미
+ * 쓰던 사람의 모든 요청에 한 해 동안 딸려 간다. 정적 자산 요청까지 포함해서다.
+ *
+ * 적을 때와 **같은 `Path`·`SameSite`여야 지워진다.** 하나라도 다르면 브라우저는
+ * 다른 쿠키로 보고 원래 것을 그대로 둔다.
+ *
+ * 언젠가 지울 코드다. 쓰던 사람의 브라우저를 한 번씩 지나고 나면 할 일이
+ * 없어진다 — 2027년쯤 걷어도 잃을 것이 없다.
+ */
+export function sweepRetiredCookies(): void {
+	if (typeof document === "undefined") return;
+
+	for (const name of ["wongoji_last"]) {
+		// biome-ignore lint/suspicious/noDocumentCookie: Cookie Store는 Safari·Firefox에 없다
+		document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+	}
+}

@@ -6,7 +6,6 @@ import {
 	useArchive,
 	useArchiveMutation,
 	useSaveStatus,
-	writeLastOpened,
 } from "#/entities/archive";
 import {
 	type Block,
@@ -229,7 +228,6 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 		if (effect.kind !== "openMeta" || !entry) return;
 
 		flush();
-		writeLastOpened(effect.docId);
 		setTitle(entry.title);
 		setGoal(entry.goal);
 		// 새 본문이 올 때까지 앞 원고를 그대로 두지 않는다

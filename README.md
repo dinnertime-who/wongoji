@@ -565,7 +565,7 @@ src/
     resize-sidebar
   entities/
     archive/           보관함. 색인 하나가 폴더·원고·휴지통을 함께 들고 있다
-      api/               서버와 주고받기 · 마지막으로 연 원고
+      api/               서버와 주고받기
       lib/path.ts        materialized path 계산
       model/             자료구조 · 순수 연산 · 연산 종류 · 질의 훅 · 저장 실패 상태
       model/parse-op.ts  브라우저가 보낸 것이 연산인지 본다. 서버의 유일한 관문

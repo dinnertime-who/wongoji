@@ -31,11 +31,13 @@ describe("readCookie", () => {
 	});
 
 	it("퍼센트 인코딩을 푼다", () => {
-		expect(readCookie("wongoji_last=a%2Fb", "wongoji_last")).toBe("a/b");
+		expect(readCookie("wongoji_tz=Asia%2FSeoul", "wongoji_tz")).toBe(
+			"Asia/Seoul",
+		);
 	});
 
 	it("인코딩이 깨져 있으면 없는 것으로 본다 — 던지지 않는다", () => {
-		expect(readCookie("wongoji_last=%E0%A4%A", "wongoji_last")).toBeNull();
+		expect(readCookie("wongoji_tz=%E0%A4%A", "wongoji_tz")).toBeNull();
 	});
 
 	it("없거나 빈 헤더는 null이다", () => {

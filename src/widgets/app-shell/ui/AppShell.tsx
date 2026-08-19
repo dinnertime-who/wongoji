@@ -4,6 +4,7 @@ import {
 	SIDEBAR_DEFAULT,
 	SidebarResizer,
 } from "#/features/resize-sidebar";
+import { sweepRetiredCookies } from "#/shared/lib/cookie";
 import { type Panel, writePanel } from "#/shared/lib/panel";
 import { safeGetItem, safeRemoveItem } from "#/shared/lib/storage";
 import { syncTimeZone } from "#/shared/lib/timezone";
@@ -105,6 +106,8 @@ export function AppShell({
 	 */
 	useEffect(() => {
 		syncTimeZone();
+		// 읽는 곳이 없어진 쿠키를 걷는다. 지우는 이유는 `cookie.ts`에 적어 두었다
+		sweepRetiredCookies();
 	}, []);
 
 	/*
