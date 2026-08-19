@@ -75,8 +75,9 @@ describe("임자를 가린다", () => {
 		setDocOwner("u-훑기-뒤");
 		await hold("내것", { text: "뒷사람" });
 
+		// 넣던 시각도 함께 나온다 — 못 보낸 글은 보낸 날이 아니라 쓴 날에 심긴다
 		expect(await held()).toEqual([
-			{ docId: "내것", content: { text: "뒷사람" } },
+			{ docId: "내것", content: { text: "뒷사람" }, at: expect.any(Number) },
 		]);
 	});
 

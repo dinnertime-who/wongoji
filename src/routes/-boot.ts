@@ -1,10 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { readLastOpenedFrom } from "#/entities/archive";
+import type { WritingLogPayload } from "#/entities/writing-log";
 import { readArchive, sweepExpired } from "#/server/archive";
 import { auth } from "#/server/auth";
 import { db } from "#/server/db";
+import { grassFrom, readWritingLog } from "#/server/writing-log";
+import { dayIn } from "#/shared/lib/day";
 import { readPanel } from "#/shared/lib/panel";
+import { readTimeZone } from "#/shared/lib/timezone";
 
 /**
  * 첫 그림에 필요한 것을 서버에서 미리 뜬다.
@@ -81,6 +85,31 @@ export const loadArchive = createServerFn({ method: "GET" }).handler(
 		// 기한이 지난 휴지통을 먼저 비운다. 라우트 쪽과 같은 순서다
 		await sweepExpired(db, userId);
 		return await readArchive(db, userId);
+	},
+);
+
+/**
+ * 서재가 그릴 잔디.
+ *
+ * **오늘을 서버가 정해서 함께 보낸다.** 잔디는 오늘이 어느 칸인지부터 정해야
+ * 그려지는데, 서버는 UTC에 살아서 제 힘으로는 한국의 새벽 두 시를 전날이라
+ * 부른다. 그 시간대가 쿠키에 있다(`shared/lib/timezone.ts`) — 보관함 폭을
+ * 쿠키에 둔 것과 같은 이유고, 같은 덜컥거림을 막는다.
+ */
+export const loadWritingLog = createServerFn({ method: "GET" }).handler(
+	async (): Promise<WritingLogPayload | null> => {
+		const request = getRequest();
+		const userId = (await userOf(request))?.id;
+		if (!userId) return null;
+
+		const today = dayIn(
+			Date.now(),
+			readTimeZone(request.headers.get("cookie")),
+		);
+		return {
+			today,
+			log: await readWritingLog(db, userId, grassFrom(today), today),
+		};
 	},
 );
 

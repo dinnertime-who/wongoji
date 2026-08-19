@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppLibraryRouteImport } from './routes/_app.library'
 import { Route as ApiArchiveRouteImport } from './routes/api.archive'
+import { Route as ApiWritingLogRouteImport } from './routes/api.writing-log'
 import { Route as GuideIndexRouteImport } from './routes/guide.index'
 import { Route as GuideSlugRouteImport } from './routes/guide.$slug'
 import { Route as AppFFolderIdRouteImport } from './routes/_app.f.$folderId'
@@ -30,9 +32,19 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppLibraryRoute = AppLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiArchiveRoute = ApiArchiveRouteImport.update({
   id: '/api/archive',
   path: '/api/archive',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWritingLogRoute = ApiWritingLogRouteImport.update({
+  id: '/api/writing-log',
+  path: '/api/writing-log',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideIndexRoute = GuideIndexRouteImport.update({
@@ -79,7 +91,9 @@ const ApiArchiveDocDocIdVersionsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/api/writing-log': typeof ApiWritingLogRoute
   '/guide/$slug': typeof GuideSlugRoute
   '/guide/': typeof GuideIndexRoute
   '/f/$folderId': typeof AppFFolderIdRoute
@@ -91,7 +105,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/api/writing-log': typeof ApiWritingLogRoute
   '/guide/$slug': typeof GuideSlugRoute
   '/guide': typeof GuideIndexRoute
   '/f/$folderId': typeof AppFFolderIdRoute
@@ -105,7 +121,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/_app/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
+  '/api/writing-log': typeof ApiWritingLogRoute
   '/guide/$slug': typeof GuideSlugRoute
   '/guide/': typeof GuideIndexRoute
   '/_app/f/$folderId': typeof AppFFolderIdRoute
@@ -119,7 +137,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/library'
     | '/api/archive'
+    | '/api/writing-log'
     | '/guide/$slug'
     | '/guide/'
     | '/f/$folderId'
@@ -131,7 +151,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/library'
     | '/api/archive'
+    | '/api/writing-log'
     | '/guide/$slug'
     | '/guide'
     | '/f/$folderId'
@@ -144,7 +166,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/_app/library'
     | '/api/archive'
+    | '/api/writing-log'
     | '/guide/$slug'
     | '/guide/'
     | '/_app/f/$folderId'
@@ -159,6 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ApiArchiveRoute: typeof ApiArchiveRouteWithChildren
+  ApiWritingLogRoute: typeof ApiWritingLogRoute
   GuideSlugRoute: typeof GuideSlugRoute
   GuideIndexRoute: typeof GuideIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -180,11 +205,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/library': {
+      id: '/_app/library'
+      path: '/library'
+      fullPath: '/library'
+      preLoaderRoute: typeof AppLibraryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/archive': {
       id: '/api/archive'
       path: '/api/archive'
       fullPath: '/api/archive'
       preLoaderRoute: typeof ApiArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/writing-log': {
+      id: '/api/writing-log'
+      path: '/api/writing-log'
+      fullPath: '/api/writing-log'
+      preLoaderRoute: typeof ApiWritingLogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guide/': {
@@ -247,11 +286,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppLibraryRoute: typeof AppLibraryRoute
   AppFFolderIdRoute: typeof AppFFolderIdRoute
   AppWDocIdRoute: typeof AppWDocIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppLibraryRoute: AppLibraryRoute,
   AppFFolderIdRoute: AppFFolderIdRoute,
   AppWDocIdRoute: AppWDocIdRoute,
 }
@@ -287,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ApiArchiveRoute: ApiArchiveRouteWithChildren,
+  ApiWritingLogRoute: ApiWritingLogRoute,
   GuideSlugRoute: GuideSlugRoute,
   GuideIndexRoute: GuideIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

@@ -24,6 +24,11 @@ import {
 import { makeId } from "#/entities/archive/model/operations";
 import { type ArchiveOp, applyOp } from "#/entities/archive/model/ops";
 import {
+	blocksFromDoc,
+	toEditorContent,
+} from "#/entities/manuscript/lib/tiptap";
+import { countChars } from "#/entities/manuscript/lib/typesetting/layout";
+import {
 	archiveDoc,
 	archiveDocContent,
 	archiveDocVersion,
@@ -837,6 +842,14 @@ export async function readDocContent(
  *
  * 견주는 값이 늘었다고 비싸지지 않는다 — 어차피 300ms에 한 번이고, 같으면
  * 쓰기 한 번을 아낀다.
+ *
+ * **얼마나 늘었는지도 함께 낸다.** 잔디가 그 값으로 심긴다. 여기서 내는 이유는
+ * `demoteOnEdit`이 이 자리에 사는 이유와 같다 — 앞 본문과 뒤 본문을 함께 쥐고
+ * 있는 곳이 여기뿐이다. 색인의 `chars`로는 낼 수 없다: 색인과 본문은 서로 다른
+ * 요청으로 나란히 오므로 어느 쪽이 먼저 닿을지 정해져 있지 않다.
+ *
+ * **심을지 말지는 여기서 정하지 않는다.** 되돌리기도 옛 원고 올리기도 이 함수를
+ * 지나는데, 그 둘은 글을 쓴 것이 아니다. 부르는 쪽이 정한다.
  */
 export async function writeDocContent(
 	db: Db,
@@ -844,7 +857,7 @@ export async function writeDocContent(
 	docId: string,
 	content: unknown,
 	now = Date.now(),
-): Promise<{ changed: boolean }> {
+): Promise<{ changed: boolean; delta: number }> {
 	const next = JSON.stringify(content);
 
 	const [row] = await db
@@ -856,7 +869,7 @@ export async function writeDocContent(
 				eq(archiveDocContent.docId, docId),
 			),
 		);
-	if (row?.content === next) return { changed: false };
+	if (row?.content === next) return { changed: false, delta: 0 };
 
 	const values = { userId, docId, content: next, updatedAt: new Date(now) };
 	await db
@@ -867,8 +880,31 @@ export async function writeDocContent(
 			set: { content: values.content, updatedAt: values.updatedAt },
 		});
 
-	return { changed: true };
+	return {
+		changed: true,
+		delta: charsOf(content) - charsOf(parse(row?.content)),
+	};
 }
+
+/** 이미 문자열로 들고 있는 앞 본문을 되살린다. 깨져 있으면 빈 원고로 본다 */
+function parse(stored: string | undefined): unknown {
+	if (stored === undefined) return null;
+	try {
+		return JSON.parse(stored);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * 본문에 쓰인 글자 수. **조판하지 않는다.**
+ *
+ * 목록에 적히는 `chars`와 같은 값이다 — 같은 `countChars`를 지난다. 조판을
+ * 돌리지 않는 이유는 이 자리가 300ms마다 오는 자리이기 때문이고, 그래도 값이
+ * 갈라지지 않는 이유는 `layoutBlocks`가 제 안에서 같은 함수를 부르기 때문이다.
+ */
+const charsOf = (content: unknown): number =>
+	countChars(blocksFromDoc(toEditorContent(content)));
 
 /**
  * 영영 지운다. 자취를 남긴다.

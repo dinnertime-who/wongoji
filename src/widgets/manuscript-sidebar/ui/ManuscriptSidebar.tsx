@@ -1,5 +1,10 @@
-import { useNavigate } from "@tanstack/react-router";
-import { FilePlusIcon, FolderPlusIcon, Trash2Icon } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+	FilePlusIcon,
+	FolderPlusIcon,
+	SproutIcon,
+	Trash2Icon,
+} from "lucide-react";
 import { useState } from "react";
 import {
 	ancestorIds,
@@ -213,6 +218,26 @@ export function ManuscriptSidebar() {
 			</SidebarContent>
 
 			<SidebarFooter className="border-border border-t px-1 py-1">
+				{/*
+				 * 서재로 드는 문. **이 문 하나가 서재의 유일한 입구다** — `/`는
+				 * 로그인한 사람을 곧바로 제 원고로 보내므로(`routes/index.tsx`),
+				 * 서재는 찾아올 때만 오는 곳이다.
+				 *
+				 * 받기·휴지통과 나란히 둔 이유도 같다. 셋 다 원고 하나가 아니라
+				 * 보관함 전체를 두고 하는 일이라 발치가 제자리다.
+				 */}
+				<Button
+					variant="ghost"
+					size="sm"
+					className="w-full justify-start text-muted-foreground"
+					asChild
+				>
+					<Link to="/library" onClick={closeDrawer}>
+						<SproutIcon />
+						서재
+					</Link>
+				</Button>
+
 				{/*
 				 * 보관함을 통째로 받는 자리. 휴지통과 나란히 둔다 — 둘 다 원고
 				 * 하나가 아니라 보관함 전체를 다루는 일이라 발치가 제자리다.

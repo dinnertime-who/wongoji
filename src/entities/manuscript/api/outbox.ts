@@ -67,15 +67,24 @@ export async function pending(docId: string): Promise<DocContent | undefined> {
 	}
 }
 
-/** 보내야 할 것들. 앱이 뜰 때와 연결이 돌아왔을 때 훑는다 */
+/**
+ * 보내야 할 것들. 앱이 뜰 때와 연결이 돌아왔을 때 훑는다.
+ *
+ * **넣던 시각(`at`)도 함께 낸다.** 어젯밤에 쓰고 못 보낸 글을 오늘 보낼 때,
+ * 잔디는 어제 칸에 심겨야 한다 — 보낸 날이 아니라 쓴 날이 그 사람의 하루다.
+ */
 export async function held(): Promise<
-	{ docId: string; content: DocContent }[]
+	{ docId: string; content: DocContent; at: number }[]
 > {
 	if (!owner) return [];
 	try {
 		return (await entries<string, Pending>(store))
 			.filter(([, v]) => v?.userId === owner)
-			.map(([docId, v]) => ({ docId: String(docId), content: v.content }));
+			.map(([docId, v]) => ({
+				docId: String(docId),
+				content: v.content,
+				at: v.at,
+			}));
 	} catch {
 		return [];
 	}

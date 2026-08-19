@@ -73,7 +73,11 @@ export async function importLegacyIntoAccount(): Promise<void> {
 		// 본문이 없는 원고는 색인만 올라간다. 여기서 빈 것을 올리면 잃은 것을 덮는다
 		if (content == null) continue;
 
-		const written = await writeDoc(renamed.get(oldId) ?? oldId, content);
+		/*
+		 * 잔디는 심지 않는다(`null`). 옛 원고를 계정으로 옮기는 것이지 오늘 쓴
+		 * 글이 아니다 — 심으면 이사 온 날 하루가 새까매진다.
+		 */
+		const written = await writeDoc(renamed.get(oldId) ?? oldId, content, null);
 		// 하나라도 못 올렸으면 비우지 않는다. 여기서 멈추면 다음에 다시 온다
 		if (!written.ok) throw new Error(written.message);
 	}

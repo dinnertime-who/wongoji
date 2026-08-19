@@ -1,3 +1,4 @@
+import { localDay } from "#/shared/lib/day";
 import type { SaveResult } from "#/shared/lib/storage";
 import { held, hold, pending, release, setDocOwner } from "./outbox";
 
@@ -75,10 +76,23 @@ export async function readDoc(id: string): Promise<DocContent | null> {
  *
  * **대기열에 먼저 넣고 보낸다.** 순서를 뒤집으면 보내다 끊긴 글이 어디에도 남지
  * 않는다. 성공하면 대기열에서 뺀다.
+ *
+ * ---
+ *
+ * `wroteAt`은 **사람이 이 글을 쓴 시각**이다. 잔디가 그것으로 심긴다.
+ *
+ * 브라우저가 날짜를 잘라서 보내는 이유는 시간대가 여기 있기 때문이다 — 서버는
+ * UTC에 살아서 한국의 새벽 두 시를 전날이라 부른다(`shared/lib/day.ts`).
+ *
+ * **인자를 생략할 수 없게 두었다.** 이 함수를 지나는 저장이 전부 "글을 쓴 것"은
+ * 아니기 때문이다 — 옛 원고를 계정으로 옮기는 길도 여기로 온다. 기본값을 두면
+ * 그 길이 조용히 딸려 들어와 **이사 온 날 하루가 새까매진다.** `null`을 적는
+ * 손이 그때 한 번 멈추라고 있는 것이다.
  */
 export async function writeDoc(
 	id: string,
 	content: DocContent,
+	wroteAt: number | null,
 ): Promise<SaveResult> {
 	await hold(id, content);
 
@@ -86,7 +100,9 @@ export async function writeDoc(
 		const response = await fetch(url(id), {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ content }),
+			body: JSON.stringify(
+				wroteAt === null ? { content } : { content, day: localDay(wroteAt) },
+			),
 		});
 		if (!response.ok) throw new Error(String(response.status));
 
@@ -120,9 +136,13 @@ export async function writeDoc(
  *
  * 실패하면 그대로 둔다 — 다음 기회에 다시 온다. 여기서 대기열을 비우면
  * 잃는 것이 생긴다.
+ *
+ * **대기열에 적힌 시각으로 보낸다.** 지금이 아니다 — 어젯밤 지하철에서 쓴 글이
+ * 오늘 아침 잔디에 심기면, 정작 쓴 날은 비고 안 쓴 날에 자란다. 대기열은 넣을
+ * 때 이미 시각을 적어 두었으므로 여기서는 그것을 그대로 넘긴다.
  */
 export async function drainOutbox(): Promise<void> {
-	for (const { docId, content } of await held()) {
-		await writeDoc(docId, content);
+	for (const { docId, content, at } of await held()) {
+		await writeDoc(docId, content, at);
 	}
 }

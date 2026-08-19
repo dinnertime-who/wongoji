@@ -214,9 +214,12 @@ describe("본문", () => {
 
 		expect(await writeDocContent(db, u, docId, 글("같은 글"))).toEqual({
 			changed: false,
+			delta: 0,
 		});
+		// 늘어난 글자 수도 함께 낸다. 잔디가 그 값으로 심긴다
 		expect(await writeDocContent(db, u, docId, 글("고친 글"))).toEqual({
 			changed: true,
+			delta: 0,
 		});
 	});
 });

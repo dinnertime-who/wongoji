@@ -52,6 +52,11 @@
 	/* 원고가 어디까지 왔는가. 초고는 색을 두지 않는다 — 아래 :root 참고 */
 	--color-status-revising: var(--status-revising);
 	--color-status-done: var(--status-done);
+	--color-grass-0: var(--grass-0);
+	--color-grass-1: var(--grass-1);
+	--color-grass-2: var(--grass-2);
+	--color-grass-3: var(--grass-3);
+	--color-grass-4: var(--grass-4);
 	--radius-sm: calc(var(--radius) * 0.6);
 	--radius-md: calc(var(--radius) * 0.8);
 	--radius-lg: var(--radius);
@@ -95,6 +100,27 @@
 	 */
 	--status-revising: #a8761f;
 	--status-done: #4a7a3a;
+
+	/*
+	 * 잔디. **초록을 새로 들이지 않는다** — 이미 이 앱에 있는 두 초록을 양 끝에
+	 * 세우고 사이를 채웠다. 3단계가 원고지 격자색(`--grid`)이고 4단계가 완성
+	 * 라벨의 짙은 초록(`--status-done`)이다. 잔디를 눈으로 훑다가 원고 목록으로
+	 * 내려가면 같은 색이 같은 뜻으로 이어진다.
+	 *
+	 * 0단계만 초록이 아니다. 쉰 날을 옅은 초록으로 칠하면 "조금 썼다"로 읽혀서,
+	 * 이 잔디가 지키려는 구별(퇴고한 날 ≠ 쉰 날)이 바로 거기서 무너진다.
+	 * 종이보다 한 겹 가라앉은 회색이라 격자의 바탕처럼 보인다.
+	 *
+	 * **0과 1을 가르는 것은 밝기가 아니라 채도다.** 처음에는 1을 아주 옅은
+	 * 초록(`#d7e5cd`)으로 두었는데, 10px짜리 칸에서는 0과 구별되지 않았다 —
+	 * 밝기가 네 단계밖에 안 벌어져서, 화면에서 두 색이 같은 회색으로 읽혔다.
+	 * 퇴고한 날이 쉰 날처럼 보이면 이 잔디를 만든 이유가 없어진다.
+	 */
+	--grass-0: #e8e5dc;
+	--grass-1: #c9dfba;
+	--grass-2: #a6c692;
+	--grass-3: var(--grid);
+	--grass-4: var(--status-done);
 
 	/*
 	 * shadcn 토큰을 원고지 팔레트에 잇는다.

@@ -45,7 +45,8 @@ export async function liftAccountBodies(userId: string): Promise<number> {
 			return lifted;
 		}
 
-		if ((await writeDoc(id, content)).ok) lifted += 1;
+		// 옮기는 것이지 쓰는 것이 아니다. 잔디는 심지 않는다(`null`)
+		if ((await writeDoc(id, content, null)).ok) lifted += 1;
 	}
 
 	// 한 바퀴를 끝까지 돌았다. 중간에 돌아 나간 경우는 여기 닿지 않는다

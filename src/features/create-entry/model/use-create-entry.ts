@@ -44,7 +44,8 @@ export function useCreateEntry() {
 			 * 실패해도 되돌리지 않는다. 못 보낸 본문은 대기열에 남고 읽기가 그쪽을
 			 * 먼저 보므로, 사용자에게는 이미 있는 원고다 — 연결이 돌아오면 올라간다.
 			 */
-			const body = await writeDoc(made.createdDocId, emptyDoc());
+			// 잔디는 심지 않는다(`null`). 빈 원고를 만든 것은 아직 글을 쓴 것이 아니다
+			const body = await writeDoc(made.createdDocId, emptyDoc(), null);
 			return { docId: made.createdDocId, result: body };
 		},
 		[change],

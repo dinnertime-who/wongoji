@@ -6,6 +6,7 @@ import {
 } from "#/features/resize-sidebar";
 import { type Panel, writePanel } from "#/shared/lib/panel";
 import { safeGetItem, safeRemoveItem } from "#/shared/lib/storage";
+import { syncTimeZone } from "#/shared/lib/timezone";
 import { Sidebar, SidebarProvider } from "#/shared/ui/sidebar";
 
 /** 이 너비 아래에서는 보관함을 접은 채로 시작한다 */
@@ -90,6 +91,21 @@ export function AppShell({
 		safeRemoveItem(OLD_OPEN);
 		safeRemoveItem(OLD_WIDTH);
 	}, [panel.open, panel.width]);
+
+	/*
+	 * 시간대도 같은 자리에서 적어 둔다.
+	 *
+	 * 이유가 폭과 똑같다 — **브라우저만 아는 값인데 서버가 첫 HTML을 그릴 때
+	 * 알아야 한다.** 잔디의 마지막 칸이 오늘인지 어제인지가 여기 달려 있고,
+	 * 서버는 UTC에 살아서 한국의 새벽 두 시를 전날이라 부른다.
+	 *
+	 * 서재가 아니라 여기서 적는 이유는 시점이다. 서재에서 적으면 **처음 들어간
+	 * 그 한 번은 이미 UTC로 그려진 뒤**라, 잔디가 한 칸 밀렸다가 다음 방문에야
+	 * 맞는다. 이 틀은 계정 쪽 어느 화면에서든 지나므로 서재에 닿기 전에 적힌다.
+	 */
+	useEffect(() => {
+		syncTimeZone();
+	}, []);
 
 	/*
 	 * 실패해도 알리지 않는다. 접힘 상태를 못 적은 것은 다음에 열 때 기본값으로

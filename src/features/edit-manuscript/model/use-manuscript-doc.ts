@@ -124,7 +124,11 @@ export function useManuscriptDoc(docId: string): ManuscriptEditing {
 			 */
 			queryClient.setQueryData(docQueryKey(id), content);
 
-			const written = writeDoc(id, content);
+			/*
+			 * **잔디가 심기는 유일한 자리다.** 사람이 지금 이 원고를 고쳤다 —
+			 * 다른 저장 경로(만들기·비우기·옛 원고 올리기)는 전부 `null`을 준다.
+			 */
+			const written = writeDoc(id, content, Date.now());
 			/*
 			 * 색인 쪽 실패는 `change`가 스스로 알린다. 본문 실패만 여기서 얹되
 			 * 둘을 기다렸다가 알린다 — 먼저 끝난 쪽이 나중 것을 지우면 배너가

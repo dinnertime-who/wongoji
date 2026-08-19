@@ -30,7 +30,8 @@ export function useResetDoc(): (docId: string) => Promise<SaveResult> {
 
 	return useCallback(
 		async (docId: string) => {
-			const body = await writeDoc(docId, emptyDoc());
+			// 비운 것은 쓴 것이 아니다. 잔디는 심지 않는다(`null`)
+			const body = await writeDoc(docId, emptyDoc(), null);
 			if (!body.ok) return body;
 
 			const done = await change({

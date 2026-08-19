@@ -61,7 +61,15 @@ describe("올릴지 가리기", () => {
 		fetchMock.mockResolvedValue(응답(404));
 
 		expect(await liftAccountBodies("u1")).toBe(1);
-		expect(manuscript.writeDoc).toHaveBeenCalledWith("d1", { text: "본문" });
+		/*
+		 * 셋째 인자가 `null`이다. **옮기는 것은 쓰는 것이 아니다** — 여기서 시각을
+		 * 넘기면 이사 온 날 하루에 옛 원고가 통째로 잔디로 심긴다.
+		 */
+		expect(manuscript.writeDoc).toHaveBeenCalledWith(
+			"d1",
+			{ text: "본문" },
+			null,
+		);
 	});
 
 	it("서버에 있으면 손대지 않는다", async () => {
