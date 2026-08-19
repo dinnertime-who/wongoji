@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { readLastOpenedFrom } from "#/entities/archive";
 import type { WritingLogPayload } from "#/entities/writing-log";
 import { readArchive, sweepExpired } from "#/server/archive";
 import { auth } from "#/server/auth";
@@ -117,44 +116,34 @@ export const loadWritingLog = createServerFn({ method: "GET" }).handler(
  * `/`에 들어온 사람이 갈 곳.
  *
  * - `trial` — 로그인하지 않았다. 체험 원고 한 편을 그대로 그린다
- * - `doc` — 이 원고를 연다. **서버가 곧바로 redirect한다**
+ * - `library` — 서재로 보낸다. **서버가 곧바로 redirect한다**
  * - `empty` — 로그인했는데 보관함이 비었다. 화면이 원고 하나를 만들고 연다
  */
-export type Entry =
-	| { kind: "trial" }
-	| { kind: "doc"; docId: string }
-	| { kind: "empty" };
+export type Entry = { kind: "trial" } | { kind: "library" } | { kind: "empty" };
 
 /**
- * 어느 원고를 열 것인가. **판단을 서버로 내렸다.**
+ * 어디로 보낼 것인가. **판단은 서버가 한다.**
  *
- * 전에는 이 결정이 브라우저에 있었다 — 마지막으로 연 원고가 localStorage에
- * 있었으므로 서버가 알 수 없었고, 그래서 `/`는 빈 화면을 보낸 다음 JS가 다
- * 뜨고 세션이 오고 색인이 와야 비로소 어디로 갈지 정했다. **왕복 넷을 지나서야
- * 첫 글자가 보였다.**
+ * 전에는 이 결정이 브라우저에 있었다 — 세션도 마지막 원고도 localStorage에
+ * 있어서 서버가 알 수 없었고, 그래서 `/`는 빈 화면을 보낸 다음 JS가 다 뜨고
+ * 세션이 오고 색인이 와야 비로소 어디로 갈지 정했다. **왕복 넷을 지나서야 첫
+ * 글자가 보였다.** 그 판단이 여기로 올라오면서 `throw redirect`가 SSR에서 진짜
+ * 302가 되었고, 브라우저는 이 쪽의 JS를 받지도 않는다.
  *
- * 이제 둘 다 서버가 안다 — 세션은 쿠키에, 마지막 원고도 쿠키에 있다.
+ * **가는 곳이 마지막 원고에서 서재로 바뀌었다.** 302 한 번으로 끝나는 짜임은
+ * 그대로다 — 바뀐 것은 목적지뿐이다.
+ *
+ * 보관함이 빈 사람만 예외로 둔다. 갓 만든 계정을 텅 빈 서재에 세우면 잔디도
+ * 목록도 없는 화면을 보게 되므로, 그 사람에게는 원고 하나를 만들어 연다 —
+ * **아무것도 없는 화면으로 시작하지 않는다**는 규칙이 그것이다.
  */
 export const pickEntry = createServerFn({ method: "GET" }).handler(
 	async (): Promise<Entry> => {
-		const request = getRequest();
-		const userId = (await userOf(request))?.id;
+		const userId = (await userOf(getRequest()))?.id;
 		if (!userId) return { kind: "trial" };
 
 		const { docs } = await readArchive(db, userId);
-		if (docs.length === 0) return { kind: "empty" };
-
-		/*
-		 * 적혀 있는 것이 이 보관함에 있을 때만 그리로 간다. 계정을 바꿨거나 다른
-		 * 기기에서 버린 원고면 없으므로, 가장 최근에 고친 것으로 떨어진다.
-		 */
-		const last = readLastOpenedFrom(request.headers.get("cookie"));
-		if (last && docs.some((doc) => doc.id === last)) {
-			return { kind: "doc", docId: last };
-		}
-
-		const newest = [...docs].sort((a, b) => b.updatedAt - a.updatedAt)[0];
-		return newest ? { kind: "doc", docId: newest.id } : { kind: "empty" };
+		return docs.length === 0 ? { kind: "empty" } : { kind: "library" };
 	},
 );
 
