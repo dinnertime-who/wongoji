@@ -1,4 +1,4 @@
-export { layoutBlocks, parseBlocks } from "./layout";
+export { countChars, layoutBlocks, parseBlocks } from "./layout";
 export {
 	goalLines,
 	goalProgress,

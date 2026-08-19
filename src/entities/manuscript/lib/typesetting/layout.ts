@@ -28,6 +28,33 @@ import {
  */
 const DIALOGUE_START = /^["'“‘]/;
 
+/**
+ * 원고에 실제로 쓴 글자. **빈 행은 지시자지 글자가 아니므로 빠진다.**
+ *
+ * 문단 사이를 빈 문자열로 잇는다. 줄바꿈을 끼우면 그것까지 글자로 세어져,
+ * 문단이 잦을수록 매수가 부푼다 — 문단 200개면 199자다. 매는 "공백 포함
+ * 글자수 ÷ 200"이고 줄바꿈은 사람이 친 글자가 아니다.
+ */
+const writtenText = (blocks: Block[]): string =>
+	blocks
+		.filter((b) => b.type !== "blankRow")
+		.map((b) => b.text)
+		.join("");
+
+/**
+ * 글자 수만 센다. **조판하지 않는다.**
+ *
+ * `layoutBlocks(...).stats.chars`와 **언제나 같은 값이다** — 같은 `writtenText`를
+ * 지나므로 갈라질 자리가 없다. 나눠 둔 이유는 값이 아니라 값이다: 조판은 글자마다
+ * 칸을 놓고 장을 나누는 일이라, 이 숫자 하나만 필요한 자리에서 치르기엔 비싸다.
+ *
+ * 그런 자리가 서버다. 본문을 저장할 때마다 **얼마나 늘었는지**를 알아야 잔디에
+ * 심는데(`server/writing-log.ts`), 저장은 타이핑이 멎을 때마다 오므로 그때마다
+ * 원고 전체를 조판할 수는 없다.
+ */
+export const countChars = (blocks: Block[]): number =>
+	writtenText(blocks).length;
+
 /** 글자가 하나라도 든 줄인가. 들여쓰기 칸만 있는 줄은 빈 줄이다. */
 const hasContent = (cells: Cell[]) => cells.some((c) => c.glyphs.length > 0);
 
@@ -78,17 +105,7 @@ export function layoutBlocks(
 	blocks: Block[],
 	profile: Profile = DEFAULT_PROFILE,
 ): LayoutResult {
-	/*
-	 * 매수는 쓴 글자 수로 센다. 빈 행은 지시자지 글자가 아니므로 빠진다.
-	 *
-	 * 문단 사이를 빈 문자열로 잇는다. 줄바꿈을 끼우면 그것까지 글자로 세어져,
-	 * 문단이 잦을수록 매수가 부푼다 — 문단 200개면 199자다. 매는 "공백 포함
-	 * 글자수 ÷ 200"이고 줄바꿈은 사람이 친 글자가 아니다.
-	 */
-	const written = blocks
-		.filter((b) => b.type !== "blankRow")
-		.map((b) => b.text)
-		.join("");
+	const written = writtenText(blocks);
 
 	const lines: Cell[][] = [];
 	let cur: Cell[] = [];
