@@ -123,7 +123,11 @@ export function GrassGrid({
 					dir="rtl"
 					type="auto"
 				>
-					<div dir="ltr" className="w-max pb-1">
+					{/*
+					 * 아래 여백은 스크롤바가 앉을 자리다. 스크롤바는 칸 안쪽에 절대
+					 * 위치로 뜨므로, 비워 두지 않으면 격자 마지막 줄에 겹쳐 앉는다.
+					 */}
+					<div dir="ltr" className="w-max pb-3">
 						{/* 달 이름. 칸 폭에 맞춰 자리를 잡느라 절대 위치로 놓는다 */}
 						<div className="relative h-4 text-[10px] text-muted-foreground">
 							{marks.map((mark) => (

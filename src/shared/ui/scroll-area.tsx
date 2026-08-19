@@ -52,8 +52,13 @@ function ScrollBar({
 			data-slot="scroll-area-scrollbar"
 			data-orientation={orientation}
 			orientation={orientation}
+			/*
+			 * 정본보다 얇다(2.5 → 1.5). 이 앱에서 스크롤바가 붙는 곳은 잔디 격자인데,
+			 * 정본 두께가 잔디 한 칸과 같은 10px이라 **여덟 번째 요일 줄처럼 보였다.**
+			 * 종이 위에 머리카락 선을 긋는 팔레트라 스크롤바도 그만큼 가늘어야 한다.
+			 */
 			className={cn(
-				"flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",
+				"flex touch-none p-px transition-colors select-none data-horizontal:h-1.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-1.5 data-vertical:border-l data-vertical:border-l-transparent",
 				className,
 			)}
 			{...props}
