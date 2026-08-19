@@ -2,6 +2,7 @@
   "name": "wongoji",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.22.0",
   "imports": {
     "#/*": "./src/*"
   },
@@ -76,11 +77,5 @@
     "vite": "^8.0.0",
     "vitest": "^4.1.10",
     "wrangler": "^4.120.1"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
   }
 }

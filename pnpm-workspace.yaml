@@ -1,0 +1,33 @@
+# pnpm 설정. **pnpm 11부터 여기가 제자리다** — `package.json`의 `pnpm` 필드는
+# 더 이상 읽히지 않는다. 경고 한 줄만 뜨고 조용히 안 먹으므로, 옮기지 않으면
+# "설정해 두었는데 안 걸리는" 상태가 된다.
+#
+# **`packages`를 반드시 둔다.** 이 레포는 단일 패키지지만, pnpm은 이 파일이
+# 있다는 것만으로 워크스페이스로 판정하고 `packages`가 없거나 비면
+# `ERROR packages field missing or empty`로 설치를 거부한다. 예전에 이 파일이
+# `packages` 없이 만들어져(`pnpm approve-builds`가 그렇게 만든다) Cloudflare
+# Workers Builds의 install 단계를 통째로 깨뜨린 적이 있다(2026-08-12).
+packages:
+  - .
+
+# 설치할 때 빌드 스크립트를 돌려도 되는가.
+#
+# **pnpm 11이 `onlyBuiltDependencies`(이름 목록)를 이 map으로 갈아치웠다.** 옛
+# 형식은 읽히기만 하고 쓰이지 않는다 — esbuild를 목록에 두고도 "무시됐다"는
+# 에러가 났던 것이 그래서다.
+#
+# 그리고 **pnpm 11부터 이건 경고가 아니라 에러다.** 여기서 답하지 않은 패키지가
+# 하나라도 있으면 `ERR_PNPM_IGNORED_BUILDS`로 install이 실패하고, pnpm 11은 모든
+# 스크립트 앞에서 install을 한 번 돌리므로 **`pnpm gate`도 `pnpm dev`도 못 뜬다.**
+#
+# 값은 pnpm 10 시절에 실제로 돌던 것을 그대로 옮긴 것이다. 셋을 막아 둔 채로
+# D1 테스트도 빌드도 배포도 잘 돌아왔다 — 세 패키지 모두 플랫폼별 바이너리를
+# optional dependency로 따로 받으므로 제 postinstall이 필요 없다.
+allowBuilds:
+  # vite가 이것 없이는 못 뜬다
+  esbuild: true
+  # workerd 바이너리는 @cloudflare/workerd-darwin-arm64가 들고 온다
+  workerd: false
+  # drizzle-orm의 peer 그래프에 딸려 올 뿐, 이 앱은 D1만 쓴다
+  better-sqlite3: false
+  '@prisma/client': false
