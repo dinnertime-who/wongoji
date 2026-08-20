@@ -60,7 +60,7 @@ export function LibraryPage() {
 				<div className="mx-auto w-full max-w-3xl px-6 py-10">
 					<section aria-labelledby="잔디">
 						<h1 id="잔디" className="font-heading text-2xl">
-							써 온 날들
+							기록
 						</h1>
 
 						{loadingLog || !data ? (

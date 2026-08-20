@@ -29,9 +29,22 @@ function ScrollArea({
 			className={cn("relative", className)}
 			{...props}
 		>
+			{/*
+			 * 정본에서 고친 둘째 — **안쪽 겹을 `display: table`에서 내린다.**
+			 *
+			 * Radix는 Viewport 안에 겹을 하나 더 두고 인라인 스타일로 `display: table;
+			 * min-width: 100%`을 박는다. 표는 제 내용만큼 벌어지는 상자라, 그 안에
+			 * 넓은 것이 하나 있으면 **칸이 창보다 넓어진다** — 서재에서 잔디가
+			 * 747px이면 `max-w-3xl`로 묶어 둔 본문까지 747px이 되어 좁은 화면에서
+			 * 쪽 전체가 가로로 밀렸다. 제목도 목록도 함께 밀린다.
+			 *
+			 * 인라인 스타일이라 `!`를 붙여야 이긴다. block으로 내려도 넘치는 것은
+			 * 그대로 넘쳐서(가로 잔디) 스크롤은 살아 있다 — 다만 그 넓이가 바깥
+			 * 칸의 폭을 정하지 못한다.
+			 */}
 			<ScrollAreaPrimitive.Viewport
 				data-slot="scroll-area-viewport"
-				className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+				className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:block!"
 			>
 				{children}
 			</ScrollAreaPrimitive.Viewport>
