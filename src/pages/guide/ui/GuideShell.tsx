@@ -28,7 +28,7 @@ export function GuideShell({
 
 	return (
 		<>
-			<PageHeader width="narrow" sidebar={false}>
+			<PageHeader sidebar={false}>
 				<nav className="flex min-w-0 items-center gap-2 text-xs">
 					<Link
 						to="/"

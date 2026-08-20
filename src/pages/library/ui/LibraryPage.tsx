@@ -41,7 +41,7 @@ export function LibraryPage() {
 
 	return (
 		<>
-			<PageHeader width="narrow">
+			<PageHeader>
 				<span className="font-medium text-sm">서재</span>
 			</PageHeader>
 

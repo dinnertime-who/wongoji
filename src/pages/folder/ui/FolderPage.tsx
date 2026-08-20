@@ -83,7 +83,7 @@ export function FolderPage({ folderId }: { folderId: string }) {
 
 	return (
 		<>
-			<PageHeader width="narrow">
+			<PageHeader>
 				<Breadcrumb path={folder.path} leaf={folder.name} />
 			</PageHeader>
 
