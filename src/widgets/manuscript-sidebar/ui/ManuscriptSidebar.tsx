@@ -179,7 +179,15 @@ export function ManuscriptSidebar() {
 
 	return (
 		<>
-			<SidebarHeader className="flex-row items-center gap-1 py-2 pr-2 pl-2">
+			{/*
+			 * 높이를 머리말과 같은 48px로 맞춘다(`PageHeader`).
+			 *
+			 * 정본의 `p-2`대로 두면 44px이라 여기 단추들의 중심이 y=22, 머리말의 접는
+			 * 단추가 y=24로 2px 어긋난다. 머리말이 본문 폭을 따라가던 시절에는 그
+			 * 단추가 화면 한가운데 있어 견줄 것이 없었지만, 창 왼쪽 끝으로 옮기면서
+			 * 둘이 경계를 사이에 두고 나란히 서게 되었다 — 2px이 그때부터 보인다.
+			 */}
+			<SidebarHeader className="h-12 flex-row items-center gap-1 px-2">
 				<span className="flex-1 px-1 text-muted-foreground text-xs">원고</span>
 				<Button
 					variant="ghost"

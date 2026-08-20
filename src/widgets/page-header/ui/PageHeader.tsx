@@ -55,10 +55,17 @@ export function PageHeader({
 							title="보관함"
 							aria-label="보관함"
 						/>
-						{/* 창틀과 지금 자리를 가르는 금. 둘이 붙어 한 덩어리로 읽히지 않게 */}
+						{/*
+						 * 창틀과 지금 자리를 가르는 금. 둘이 붙어 한 덩어리로 읽히지 않게.
+						 *
+						 * **`data-vertical:` 를 붙여야 가운데 선다.** 정본이 세로 금에
+						 * `data-vertical:self-stretch`를 걸어 두는데, 맨 `self-center`는
+						 * 변형이 붙은 그것과 다른 클래스라 tailwind-merge가 둘 다 남긴다.
+						 * 그러면 높이가 못박힌 금이 줄 맨 위에 붙어 8px 떠 보인다.
+						 */}
 						<Separator
 							orientation="vertical"
-							className="mr-0.5 h-4 self-center"
+							className="mr-0.5 h-4 data-vertical:self-center"
 						/>
 					</>
 				)}
