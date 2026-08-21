@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LegacyNotice } from "#/features/import-legacy";
 import { EditorPage } from "#/pages/editor";
 import { HomePage } from "#/pages/home";
+import { FAQ } from "#/shared/config/landing";
 import { SITE_URL } from "#/shared/config/site";
 import { pickEntry } from "./-boot";
 
@@ -33,6 +34,37 @@ export const Route = createFileRoute("/")({
 	 */
 	head: () => ({
 		links: [{ rel: "canonical", href: SITE_URL }],
+		meta: [
+			/*
+			 * 쪽 아래 문답을 기계에게도 읽힌다.
+			 *
+			 * **구조화 데이터는 쪽에 실제로 보이는 글과 같아야 한다.** 그래서 화면과
+			 * 여기가 같은 배열(`shared/config/landing`의 `FAQ`)을 읽는다 — 따로
+			 * 적어 두면 한쪽만 고쳤을 때 규정을 어기게 되고, 그것을 알게 되는 것은
+			 * 서치 콘솔에 경고가 뜨는 몇 주 뒤다.
+			 *
+			 * `_app`이 아니라 여기 두는 이유는 canonical과 같다 — 문답이 실제로
+			 * 그려지는 쪽이 `/` 하나이기 때문이다.
+			 */
+			/*
+			 * **색인해도 되는 쪽이라고 적어 둔다.** 적지 않아도 기본값이 그것이지만,
+			 * 계정 쪽(`_app`)이 `noindex`를 걸고 있어서 이 서비스에서 "무엇이
+			 * 색인되는가"가 두 곳에 나뉘어 있다. 한쪽만 읽고 반대로 짐작하지
+			 * 않도록 양쪽 다 제 입으로 말하게 둔다.
+			 */
+			{ name: "robots", content: "index, follow" },
+			{
+				"script:ld+json": {
+					"@context": "https://schema.org",
+					"@type": "FAQPage",
+					mainEntity: FAQ.map((item) => ({
+						"@type": "Question",
+						name: item.q,
+						acceptedAnswer: { "@type": "Answer", text: item.a },
+					})),
+				},
+			},
+		],
 	}),
 	component: Screen,
 });

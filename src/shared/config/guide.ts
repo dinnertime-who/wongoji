@@ -74,6 +74,36 @@ export function articleUrl(slug: string): string {
 	return `${SITE_URL}${articlePath(slug)}`;
 }
 
+/**
+ * 이 글이 사이트 어디쯤에 있는가. 구조화 데이터로 나간다.
+ *
+ * 검색 결과에서 주소 대신 `원고지 › 사용법 › 문장부호`로 보이는 그것이다. 쪽이
+ * 어느 갈래에 속하는지도 함께 알려 주므로, 사용법 글 넷이 홈에 딸린 한 묶음으로
+ * 읽힌다 — 따로 떨어진 쪽 넷일 때보다 낫다.
+ *
+ * 목차 자신이면 `article`이 없다. 그때는 두 단이다.
+ */
+export function breadcrumb(article?: Article) {
+	const trail = [
+		{ name: "원고지", url: SITE_URL },
+		{ name: "사용법", url: `${SITE_URL}${GUIDE_INDEX_PATH}` },
+		...(article
+			? [{ name: article.label, url: articleUrl(article.slug) }]
+			: []),
+	];
+
+	return {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: trail.map((step, i) => ({
+			"@type": "ListItem",
+			position: i + 1,
+			name: step.name,
+			item: step.url,
+		})),
+	};
+}
+
 /** sitemap에 들어가야 할 주소 전부. 목차가 앞, 글이 뒤 */
 export function guideUrls(): string[] {
 	return [

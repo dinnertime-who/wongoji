@@ -8,6 +8,7 @@ import { SaveStatusProvider } from "#/entities/archive";
 import { ImportPrompt } from "#/features/import-legacy";
 import { QueryProvider } from "#/shared/api/query";
 import { SessionProvider } from "#/shared/api/session";
+import { FEATURES } from "#/shared/config/landing";
 import {
 	SITE_DESCRIPTION,
 	SITE_KEYWORDS,
@@ -95,11 +96,33 @@ export const Route = createRootRouteWithContext<{
 					"@context": "https://schema.org",
 					"@type": "WebApplication",
 					name: "원고지",
-					alternateName: "200자 원고지 조판 에디터",
+					/*
+					 * 이 서비스를 부르는 다른 이름들. 사람마다 다른 말로 찾는데
+					 * `name`은 하나뿐이라, 나머지를 여기 적는다.
+					 */
+					alternateName: [
+						"온라인 원고지",
+						"원고지 작성 사이트",
+						"200자 원고지 조판 에디터",
+					],
 					url: SITE_URL,
 					description: SITE_SHARE_DESCRIPTION,
 					applicationCategory: "WritingApplication",
+					/*
+					 * **브라우저만 있으면 된다는 것을 기계에게도 말한다.** `원고지 작성
+					 * 프로그램`으로 찾는 사람이 재는 것이 이것이고, 검색 결과에서
+					 * "설치가 필요 없음"으로 읽히는 자리가 여기다.
+					 */
 					operatingSystem: "All",
+					browserRequirements: "Requires JavaScript",
+					isAccessibleForFree: true,
+					inLanguage: "ko-KR",
+					/*
+					 * 화면에 적은 것과 같은 목록이다(`shared/config/landing`). 이름만
+					 * 옮기고 설명은 두지 않는다 — schema.org의 `featureList`는 짧은
+					 * 이름을 늘어놓는 자리다.
+					 */
+					featureList: FEATURES.map((f) => f.title),
 					offers: {
 						"@type": "Offer",
 						price: "0",

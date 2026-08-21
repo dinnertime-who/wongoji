@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	ARCHIVE_KEY,
@@ -33,6 +33,7 @@ import {
 } from "#/features/toggle-pane";
 import { Button } from "#/shared/ui/button";
 import { GuideFooter } from "#/shared/ui/guide-footer";
+import { LandingIntro } from "#/shared/ui/landing-intro";
 import { ManuscriptBar } from "#/widgets/manuscript-bar";
 import { PageHeader } from "#/widgets/page-header";
 
@@ -49,6 +50,13 @@ const CARET_PAUSE = 600;
  * 같은 모양(`ManuscriptEditing`)을 내놓으므로 이 쪽은 한 벌이면 된다.
  */
 export function EditorPage({ docId }: { docId: string | null }) {
+	/**
+	 * 로그인 없이 여는 체험 원고인가.
+	 *
+	 * 세 가지가 여기서 갈린다 — 머리말에 브레드크럼 대신 안내가 오고, 원고지
+	 * 아래에 읽을거리가 붙고, **쓰는 자리의 높이를 얻는 방식이 다르다.**
+	 */
+	const trial = docId === null;
 	const { index } = useArchive();
 	const { registerBackup } = useSaveStatus();
 	const change = useArchiveMutation();
@@ -60,8 +68,8 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	 * 아무 일도 하지 않는다 — 계정 쪽은 빈 id를, 체험 쪽은 꺼짐을 받는다.
 	 */
 	const account = useManuscriptDoc(docId ?? "");
-	const solo = useSoloDraft(docId === null);
-	const doc = docId === null ? solo : account;
+	const solo = useSoloDraft(trial);
+	const doc = trial ? solo : account;
 
 	/** 목록에 적힌 지금 원고. 브레드크럼이 놓일 자리를 여기서 읽는다 */
 	const opened = docId ? index.docs.find((d) => d.id === docId) : undefined;
@@ -78,6 +86,39 @@ export function EditorPage({ docId }: { docId: string | null }) {
 		setPane(next);
 		writePane(next);
 	};
+
+	/*
+	 * 쓰는 자리가 아직 화면에 있는가.
+	 *
+	 * 원고·원고지를 고르는 단추가 이것을 보고 숨는다. 체험 원고 쪽은 원고지
+	 * 아래로 소개와 사용법이 이어지는 긴 쪽이라, 화면에 못박힌 단추가 읽는 글
+	 * 위에 그대로 떠 있게 된다.
+	 *
+	 * **없으면 그냥 보인다.** IntersectionObserver가 없는 환경(오래된 브라우저,
+	 * SSR)에서 `false`로 시작하면 단추가 영영 나타나지 않는다 — 좁은 화면에서
+	 * 원고지를 보는 유일한 길이 그것이라 잃을 수 없다.
+	 */
+	const [onWriting, setOnWriting] = useState(true);
+
+	/*
+	 * ref 콜백으로 붙인다. `main`은 본문을 여는 동안·못 열었을 때 그려지지 않아
+	 * 나타나고 사라지는데, effect로 붙이면 "언제 나타나는가"를 의존성 배열에
+	 * 옮겨 적어야 하고 그 목록은 화면 조건이 늘 때마다 조용히 낡는다. 콜백은
+	 * 달릴 때와 떨어질 때 자신이 불린다.
+	 */
+	const writing = useCallback((el: HTMLElement | null) => {
+		if (!el || typeof IntersectionObserver === "undefined") return;
+
+		const watch = new IntersectionObserver(([entry]) =>
+			setOnWriting(entry.isIntersecting),
+		);
+		watch.observe(el);
+		return () => {
+			watch.disconnect();
+			// 붙들 것이 사라졌으면 단추는 도로 보이는 쪽으로 둔다
+			setOnWriting(true);
+		};
+	}, []);
 
 	/*
 	 * 제목은 조판에 넣지 않는다. 원고를 가리키는 이름일 뿐이라 원고지 칸을
@@ -183,7 +224,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	return (
 		<>
 			<PageHeader
-				sidebar={docId !== null}
+				sidebar={!trial}
 				actions={
 					<>
 						<RulesDialog />
@@ -201,7 +242,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						leaf={displayTitle({ title: doc.title })}
 					/>
 				) : (
-					docId === null && (
+					trial && (
 						/*
 						 * 체험 원고에는 자리가 없다. 대신 이것이 무엇인지 적는다 —
 						 * 여러 편을 쓰려면 로그인해야 한다는 것을 여기서 처음 안다.
@@ -247,7 +288,36 @@ export function EditorPage({ docId }: { docId: string | null }) {
 					 * 마운트되어 쪽을 오가도 다시 만들어지지 않는다 — undo 히스토리도
 					 * 살아남는다.
 					 */}
-					<main className="mx-auto grid min-h-0 w-full max-w-6xl flex-1 gap-6 px-4 pt-4 pb-20 lg:grid-cols-2 lg:pb-6">
+					{/*
+					 * 쓰는 자리의 높이.
+					 *
+					 * **계정 쪽과 체험 쪽이 높이를 얻는 방식이 다르다.**
+					 *
+					 * 계정 쪽(`/w/<id>`)은 `AppShell`이 세운 `h-[100dvh]` 기둥 안에
+					 * 있어서 `flex-1`이 남는 높이를 그대로 받는다. 체험 쪽(`/`)에는
+					 * 그 기둥이 없다 — `_app`을 지나지 않아 머리말·본문·발치가
+					 * 그냥 `body`에 얹힌다. 거기서 `flex-1`은 아무 일도 하지 않고,
+					 * 격자가 제 높이를 **미리보기 칸에서 빌려 쓰고 있었다.** 넓은
+					 * 화면에서는 옆에 선 원고지가 줄을 밀어 열어 주니 멀쩡해 보였는데,
+					 * 좁은 화면에서는 그 칸이 `hidden`이라 밀어 줄 것이 없어져
+					 * **에디터가 34px로 납작하게 접혔다.** 첫 화면에 글 쓸 자리가
+					 * 없었던 것이다.
+					 *
+					 * 그래서 체험 쪽만 높이를 화면에서 곧바로 떼어 준다. `flex-1`로
+					 * 남는 것을 받아 쓸 수 없는 이유가 하나 더 있다 — 아래에 소개와
+					 * 사용법이 붙어 쪽이 화면보다 길어지므로, **남는 높이라는 것이
+					 * 아예 생기지 않는다.**
+					 *
+					 * `svh`는 주소창이 나와 있을 때의 높이다. 모바일에서 `dvh`로
+					 * 잡으면 스크롤할 때 주소창이 접히며 에디터가 늘었다 줄었다 한다.
+					 * `26rem`은 가로로 누운 폰에서도 몇 줄은 보이게 하는 바닥이다.
+					 */}
+					<main
+						ref={writing}
+						className={`mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 pt-4 pb-20 lg:grid-cols-2 lg:pb-6 ${
+							trial ? "min-h-[max(26rem,68svh)]" : "min-h-0"
+						}`}
+					>
 						<div
 							className={`flex min-h-0 flex-col ${
 								pane === "write" ? "" : "hidden lg:flex"
@@ -279,17 +349,35 @@ export function EditorPage({ docId }: { docId: string | null }) {
 						</div>
 					</main>
 
-					{/* 좁은 화면에서만 고른다. 넓은 화면에서는 둘 다 보이니 고를 것이 없다 */}
-					<div className="fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg lg:hidden">
+					{/*
+					 * 좁은 화면에서만 고른다. 넓은 화면에서는 둘 다 보이니 고를 것이 없다.
+					 *
+					 * **원고지에서 눈을 뗐으면 함께 물러난다.** 체험 원고 쪽은 아래로
+					 * 소개와 사용법이 이어지는 긴 쪽인데, 화면에 못박힌 단추는 그 글
+					 * 위에 그대로 떠서 읽는 줄을 가린다. 무엇을 고르는 단추인지가
+					 * 화면 밖으로 나갔으면 단추도 있을 이유가 없다.
+					 */}
+					<div
+						className={`fixed right-4 bottom-4 z-20 flex rounded-full border border-border bg-background px-3 py-2 shadow-lg transition-opacity lg:hidden ${
+							onWriting ? "opacity-100" : "pointer-events-none opacity-0"
+						}`}
+					>
 						<PaneToggle pane={pane} onChoose={choosePane} />
 					</div>
 
 					{/*
-					 * 사용법으로 가는 길. **체험 원고 쪽에만 둔다** — 계정 쪽은
-					 * 색인하지 않고, 쓰는 동안 띄워 두는 화면에 읽을거리 목록이
-					 * 붙어 있을 이유도 없다. 크롤러가 `/`에서 여기를 타고 간다.
+					 * 읽을거리. **체험 원고 쪽에만 둔다** — 계정 쪽은 색인하지 않고,
+					 * 쓰는 동안 띄워 두는 화면에 서비스 소개가 붙어 있을 이유도 없다.
+					 *
+					 * 소개가 먼저, 사용법 링크가 뒤다. `/`에서 크롤러가 읽을 본문이
+					 * 앞의 것이고, 뒤의 것은 거기서 사용법 넷으로 타고 가는 길이다.
 					 */}
-					{docId === null && <GuideFooter />}
+					{trial && (
+						<>
+							<LandingIntro />
+							<GuideFooter />
+						</>
+					)}
 				</>
 			)}
 

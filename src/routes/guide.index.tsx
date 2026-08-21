@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GuideIndexPage } from "#/pages/guide";
-import { GUIDE_INDEX_PATH } from "#/shared/config/guide";
+import { breadcrumb, GUIDE_INDEX_PATH } from "#/shared/config/guide";
 import { SITE_URL } from "#/shared/config/site";
 
 const TITLE = "원고지 사용법 — 200자 원고지 작성 규칙 정리";
@@ -16,6 +16,8 @@ export const Route = createFileRoute("/guide/")({
 			{ property: "og:description", content: DESCRIPTION },
 			{ name: "twitter:title", content: TITLE },
 			{ name: "twitter:description", content: DESCRIPTION },
+			// 검색 결과에 `원고지 › 사용법`으로 보이는 자리
+			{ "script:ld+json": breadcrumb() },
 		],
 		links: [{ rel: "canonical", href: `${SITE_URL}${GUIDE_INDEX_PATH}` }],
 	}),

@@ -1,6 +1,11 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { GuideArticlePage, hasArticleBody } from "#/pages/guide";
-import { ARTICLES, type Article, articleUrl } from "#/shared/config/guide";
+import {
+	ARTICLES,
+	type Article,
+	articleUrl,
+	breadcrumb,
+} from "#/shared/config/guide";
 
 /**
  * 사용법 글 하나.
@@ -34,6 +39,8 @@ export const Route = createFileRoute("/guide/$slug")({
 				{ property: "og:type", content: "article" },
 				{ name: "twitter:title", content: article.title },
 				{ name: "twitter:description", content: article.description },
+				// 검색 결과에 `원고지 › 사용법 › 문장부호`로 보이는 자리
+				{ "script:ld+json": breadcrumb(article) },
 			],
 			links: [{ rel: "canonical", href: articleUrl(article.slug) }],
 		};
