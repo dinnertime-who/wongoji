@@ -52,6 +52,12 @@ export const Route = createRootRouteWithContext<{
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
 			},
+			/*
+			 * 브라우저가 제 껍데기(주소창·상태바)를 칠하는 색. **종이색과 같은
+			 * 값이다** — 다른 색을 두면 설치해서 띄웠을 때 제목 표시줄만 띠처럼
+			 * 남는다. `manifest`의 `theme_color`와 한 쌍이라 한쪽만 고치지 않는다.
+			 */
+			{ name: "theme-color", content: "#f4f2ec" },
 			{
 				title: SITE_TITLE,
 			},
@@ -138,6 +144,15 @@ export const Route = createRootRouteWithContext<{
 			},
 			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
 			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			/*
+			 * 설치할 수 있는 앱이라는 선언(`public/manifest.webmanifest`).
+			 *
+			 * **서비스 워커는 두지 않았다.** 크롬은 108(모바일)·112(데스크톱)부터
+			 * 설치 메뉴를 여는 데 워커를 요구하지 않아서, 이 한 줄로 주소창의
+			 * 설치 아이콘과 안드로이드의 "앱 설치"가 뜬다. 워커가 필요한 것은
+			 * 오프라인이고 그것은 따로 할 일이다([docs/plan-offline.md]).
+			 */
+			{ rel: "manifest", href: "/manifest.webmanifest" },
 		],
 	}),
 	shellComponent: RootDocument,
