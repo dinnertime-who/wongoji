@@ -19,6 +19,7 @@ import {
 	useSaveStatus,
 } from "#/entities/archive";
 import { useCreateEntry } from "#/features/create-entry";
+import { useFolderName } from "#/features/rename-folder";
 import {
 	DropLine,
 	type DropRow,
@@ -42,7 +43,6 @@ export function FolderPage({ folderId }: { folderId: string }) {
 	const navigate = useNavigate();
 	const { index, isPending } = useArchive();
 	const { report } = useSaveStatus();
-	const change = useArchiveMutation();
 	const { createDocIn, createFolderIn } = useCreateEntry();
 
 	const folder = index.folders.find((f) => f.id === folderId);
@@ -67,10 +67,6 @@ export function FolderPage({ folderId }: { folderId: string }) {
 
 	const inside = fullPath(folder);
 	const { folders, docs } = childrenOf(index, inside);
-
-	const rename = async (name: string) => {
-		await change({ kind: "renameFolder", id: folder.id, name });
-	};
 
 	const addDoc = async () => {
 		const { docId, result } = await createDocIn(inside);
@@ -100,12 +96,7 @@ export function FolderPage({ folderId }: { folderId: string }) {
 			 */}
 			<div className="min-h-0 flex-1 overflow-auto">
 				<div className="mx-auto w-full max-w-3xl px-6 py-10">
-					<PageTitle
-						value={folder.name}
-						onChange={rename}
-						placeholder="이름 없는 폴더"
-						label="폴더 이름"
-					/>
+					<FolderTitle folder={folder} />
 
 					<EntryList inside={inside} folders={folders} docs={docs} />
 
@@ -120,6 +111,25 @@ export function FolderPage({ folderId }: { folderId: string }) {
 				</div>
 			</div>
 		</>
+	);
+}
+
+/**
+ * 이 폴더의 큰 제목.
+ *
+ * 부품을 따로 뗀 것은 훅 때문이다. 위에서는 없는 폴더를 만나면 곧바로
+ * 돌아 나가는데, 그 뒤에 훅을 부를 수는 없다. 목록(`EntryList`)을 뗀 것과
+ * 같은 사정이다.
+ */
+function FolderTitle({ folder }: { folder: FolderEntry }) {
+	const { name, change } = useFolderName(folder);
+	return (
+		<PageTitle
+			value={name}
+			onChange={change}
+			placeholder="이름 없는 폴더"
+			label="폴더 이름"
+		/>
 	);
 }
 
