@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { SaveStatusProvider } from "#/entities/archive";
 import { ImportPrompt } from "#/features/import-legacy";
+import { FeedbackDialog } from "#/features/send-feedback";
 import { QueryProvider } from "#/shared/api/query";
 import { SessionProvider } from "#/shared/api/session";
 import { FEATURES } from "#/shared/config/landing";
@@ -21,6 +22,7 @@ import { Analytics } from "#/shared/ui/analytics";
 import { Toaster } from "#/shared/ui/sonner";
 import appCss from "../styles.css?url";
 import { type Boot, loadBoot } from "./-boot";
+import { sendFeedback } from "./-feedback";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
@@ -189,6 +191,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 							 */}
 							<ImportPrompt />
 							{children}
+							<FeedbackDialog send={sendFeedback} />
 							{/*
 							 * 스쳐 가는 알림. **원고를 잃을 수 있는 실패는 여기로 오지
 							 * 않는다** — 그런 것은 사라지지 않는 배너가 받는다.

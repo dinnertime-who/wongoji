@@ -9,6 +9,13 @@
 	"observability": {
 		"enabled": true
 	},
+	"send_email": [
+		{
+			"name": "FEEDBACK_EMAIL",
+			"destination_address": "dinnertime.dev@gmail.com",
+			"allowed_sender_addresses": ["feedback@dinnertimes.app"]
+		}
+	],
 	// better-auth의 표가 사는 곳.
 	//
 	// **한 벌만 둔다.** `wrangler d1 create`가 찍어 주는 스니펫은 binding을 DB
