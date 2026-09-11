@@ -50,6 +50,47 @@ afterEach(() => {
 });
 
 describe("GA collection boundaries", () => {
+	it("waits for GA processing before starting OAuth and clears the fallback timer", async () => {
+		const redirect = vi.fn();
+		const completed = analytics.trackLoginStart().then(redirect);
+		await Promise.resolve();
+		expect(redirect).not.toHaveBeenCalled();
+		const params = events("login_started")[0][2] as {
+			event_callback: () => void;
+		};
+		params.event_callback();
+		await completed;
+		expect(redirect).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it("continues after one second with a blocked tag, even if the callback arrives late", async () => {
+		const redirect = vi.fn();
+		const completed = analytics.trackLoginStart().then(redirect);
+		await vi.advanceTimersByTimeAsync(999);
+		expect(redirect).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		await completed;
+		const params = events("login_started")[0][2] as {
+			event_callback: () => void;
+		};
+		params.event_callback();
+		expect(redirect).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not delay login when analytics is disabled or throws", async () => {
+		vi.stubEnv("VITE_GA_MEASUREMENT_ID", "");
+		await analytics.trackLoginStart();
+		expect(vi.getTimerCount()).toBe(0);
+		vi.stubEnv("VITE_GA_MEASUREMENT_ID", "G-TEST123");
+		analytics.trackPageView("/", false);
+		window.gtag = () => {
+			throw new Error("blocked");
+		};
+		await analytics.trackLoginStart();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it("is disabled without a measurement ID, in normal development, and during SSR", () => {
 		vi.stubEnv("VITE_GA_MEASUREMENT_ID", "");
 		analytics.trackWriting(false);

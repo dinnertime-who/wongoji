@@ -16,7 +16,7 @@ export { useSessionUser, useUserId } from "#/shared/api/session";
 
 /** 구글 동의 화면으로 보낸다. 돌아오는 곳은 지금 보던 쪽. */
 export async function signInWithGoogle() {
-	trackLoginStart();
+	await trackLoginStart();
 	try {
 		const result = await authClient.signIn.social({
 			provider: "google",

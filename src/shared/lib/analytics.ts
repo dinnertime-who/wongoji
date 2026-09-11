@@ -12,6 +12,7 @@ declare global {
 const GUEST_WRITE = "wongoji:analytics:guest-write";
 const LOGIN_ATTEMPT = "wongoji:analytics:login-attempt";
 const DAY = 24 * 60 * 60 * 1000;
+const LOGIN_EVENT_TIMEOUT = 1000;
 const written = new Set<AuthState>();
 let initialized = false;
 let previousPath: string | undefined;
@@ -137,13 +138,28 @@ export function trackWriting(signedIn: boolean): void {
 	event("writing_started", { auth_state: authState });
 }
 
-export function trackLoginStart(): void {
+export async function trackLoginStart(): Promise<void> {
 	if (!init()) return;
 	storage("sessionStorage", LOGIN_ATTEMPT, String(Date.now()));
-	event("login_started", {
-		method: "google",
-		auth_state: "guest",
-		entry_point: analyticsPath(window.location.pathname),
+	await new Promise<void>((resolve) => {
+		const finish = () => {
+			clearTimeout(timer);
+			resolve();
+		};
+		// 태그가 차단되면 GA 자체 timeout도 실행되지 않으므로 별도로 제한한다.
+		const timer = setTimeout(finish, LOGIN_EVENT_TIMEOUT);
+		try {
+			window.gtag?.("event", "login_started", {
+				...context(),
+				method: "google",
+				auth_state: "guest",
+				entry_point: analyticsPath(window.location.pathname),
+				event_callback: finish,
+				event_timeout: LOGIN_EVENT_TIMEOUT,
+			});
+		} catch {
+			finish();
+		}
 	});
 }
 
