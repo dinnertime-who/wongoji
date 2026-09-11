@@ -17,6 +17,7 @@ import {
 	SITE_TITLE,
 	SITE_URL,
 } from "#/shared/config/site";
+import { Analytics } from "#/shared/ui/analytics";
 import { Toaster } from "#/shared/ui/sonner";
 import appCss from "../styles.css?url";
 import { type Boot, loadBoot } from "./-boot";
@@ -173,6 +174,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<SessionProvider user={user}>
+					<Analytics />
 					<QueryProvider client={queryClient}>
 						{/*
 						 * 저장 실패를 알리는 창구. **`_app`이 아니라 여기다** — 홈에서도

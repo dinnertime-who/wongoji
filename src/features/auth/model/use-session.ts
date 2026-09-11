@@ -1,4 +1,5 @@
 import { authClient } from "#/shared/api/auth-client";
+import { clearLoginAttempt, trackLoginStart } from "#/shared/lib/analytics";
 
 export type { SessionUser } from "#/shared/api/session";
 export { useSessionUser, useUserId } from "#/shared/api/session";
@@ -14,11 +15,19 @@ export { useSessionUser, useUserId } from "#/shared/api/session";
  */
 
 /** 구글 동의 화면으로 보낸다. 돌아오는 곳은 지금 보던 쪽. */
-export function signInWithGoogle() {
-	return authClient.signIn.social({
-		provider: "google",
-		callbackURL: window.location.pathname,
-	});
+export async function signInWithGoogle() {
+	trackLoginStart();
+	try {
+		const result = await authClient.signIn.social({
+			provider: "google",
+			callbackURL: window.location.pathname,
+		});
+		if (result.error) clearLoginAttempt();
+		return result;
+	} catch (error) {
+		clearLoginAttempt();
+		throw error;
+	}
 }
 
 export function signOut() {

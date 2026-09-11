@@ -17,6 +17,8 @@ import {
 	type Block,
 	blocksFromDoc,
 } from "#/entities/manuscript";
+import { useSessionUser } from "#/shared/api/session";
+import { trackWriting } from "#/shared/lib/analytics";
 import { Button } from "#/shared/ui/button";
 
 /**
@@ -105,6 +107,9 @@ export function WongojiEditor({
 	onCaret,
 	overlay,
 }: WongojiEditorProps) {
+	const signedIn = useSessionUser() !== null;
+	const signedInRef = useRef(signedIn);
+	signedInRef.current = signedIn;
 	/*
 	 * 알림 창구를 ref로 붙든다.
 	 *
@@ -142,7 +147,10 @@ export function WongojiEditor({
 				spellcheck: "false",
 			},
 		},
-		onUpdate: ({ editor }) => announce(editor, notify.current),
+		onUpdate: ({ editor }) => {
+			if (editor.getText().trim().length > 0) trackWriting(signedInRef.current);
+			announce(editor, notify.current);
+		},
 		// 글자를 치지 않고 커서만 옮겨도 알린다 — 자리를 옮긴 것도 "지금 여기"다
 		onSelectionUpdate: ({ editor }) =>
 			caret.current?.(editor.state.selection.$head.index(0)),
