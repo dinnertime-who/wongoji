@@ -68,14 +68,31 @@ export function ManuscriptBar({
 
 	return (
 		<div className="mx-auto w-full max-w-6xl px-4 pt-4">
-			<div className="flex flex-wrap items-center gap-2">
-				<div className="min-w-0 flex-1">
+			<div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+				<div className="col-span-2 min-w-0 sm:col-span-1">
 					<PageTitle
 						value={title}
 						onChange={onTitleChange}
 						placeholder="제목 없음"
 						label="제목"
+						wrap
 					/>
+				</div>
+				<div className="flex h-10 items-center gap-1.5 justify-self-start rounded-lg border border-border bg-[var(--paper)] px-2.5 text-xs">
+					<Label htmlFor="goal" className="text-muted-foreground">
+						목표
+					</Label>
+					<Input
+						id="goal"
+						type="number"
+						min={0}
+						max={9999}
+						value={goal || ""}
+						onChange={(e) => onGoalChange(Number(e.target.value) || 0)}
+						placeholder="—"
+						className="h-auto w-11 border-0 bg-transparent p-0 text-right text-xs tabular-nums shadow-none focus-visible:ring-0"
+					/>
+					<span className="text-muted-foreground">매</span>
 				</div>
 
 				{/*
@@ -92,7 +109,7 @@ export function ManuscriptBar({
 							<Button
 								variant="outline"
 								size="sm"
-								className="h-10 shrink-0 text-xs"
+								className="h-10 justify-self-end text-xs"
 							>
 								<StatusIcon
 									status={current}
@@ -134,22 +151,6 @@ export function ManuscriptBar({
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)}
-				<div className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-[var(--paper)] px-2.5 text-xs">
-					<Label htmlFor="goal" className="text-muted-foreground">
-						목표
-					</Label>
-					<Input
-						id="goal"
-						type="number"
-						min={0}
-						max={9999}
-						value={goal || ""}
-						onChange={(e) => onGoalChange(Number(e.target.value) || 0)}
-						placeholder="—"
-						className="h-auto w-11 border-0 bg-transparent p-0 text-right text-xs tabular-nums shadow-none focus-visible:ring-0"
-					/>
-					<span className="text-muted-foreground">매</span>
-				</div>
 			</div>
 
 			<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">

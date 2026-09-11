@@ -10,12 +10,38 @@ export function PageTitle({
 	onChange,
 	placeholder,
 	label,
+	wrap = false,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder: string;
 	label: string;
+	/** 긴 이름을 여러 줄로 보여 준다. 제목처럼 세로 공간을 써도 되는 자리에서만 켠다. */
+	wrap?: boolean;
 }) {
+	const className =
+		"w-full border-0 bg-transparent p-0 font-bold text-3xl leading-tight tracking-tight outline-none placeholder:font-bold placeholder:text-muted-foreground/45";
+
+	if (wrap) {
+		return (
+			<textarea
+				value={value}
+				onChange={(e) => onChange(e.target.value.replace(/[\r\n]+/g, " "))}
+				onKeyDown={(e) => {
+					// 줄은 화면 너비에 따라 저절로 접히되 제목 값에는 줄바꿈을 넣지 않는다.
+					if (e.key === "Enter") e.preventDefault();
+				}}
+				placeholder={placeholder}
+				aria-label={label}
+				rows={1}
+				// 자동 채우기가 사람 이름이나 제목을 넣으려 든다
+				autoComplete="off"
+				spellCheck={false}
+				className={`${className} field-sizing-content resize-none overflow-hidden`}
+			/>
+		);
+	}
+
 	return (
 		<input
 			value={value}
@@ -25,7 +51,7 @@ export function PageTitle({
 			// 자동 채우기가 사람 이름이나 제목을 넣으려 든다
 			autoComplete="off"
 			spellCheck={false}
-			className="w-full border-0 bg-transparent p-0 font-bold text-3xl leading-tight tracking-tight outline-none placeholder:font-bold placeholder:text-muted-foreground/45"
+			className={className}
 		/>
 	);
 }
