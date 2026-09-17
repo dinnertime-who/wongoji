@@ -1,6 +1,5 @@
 import {
 	TEMPLATE_COLORS,
-	TEMPLATE_NUMBER,
 	TEMPLATE_PAPER,
 	type TemplateOptions,
 	templateFileName,
@@ -51,7 +50,6 @@ export async function buildTemplatePng(
 	const context = canvas.getContext("2d");
 	if (!context) throw new Error("이 브라우저에서는 PNG를 만들 수 없습니다.");
 	const zip = options.pages > 1 ? new (await import("jszip")).default() : null;
-	const { lines } = templateLayout(options.format);
 	const color =
 		TEMPLATE_COLORS.find((item) => item.value === options.color)?.hex ??
 		"#b95b52";
@@ -59,6 +57,10 @@ export async function buildTemplatePng(
 	try {
 		for (let index = 0; index < options.pages; index++) {
 			signal.throwIfAborted();
+			const { lines, number } = templateLayout(
+				options.format,
+				options.start + index,
+			);
 			context.setTransform(1, 0, 0, 1, 0, 0);
 			context.fillStyle = "white";
 			context.fillRect(0, 0, canvas.width, canvas.height);
@@ -72,13 +74,9 @@ export async function buildTemplatePng(
 				context.stroke();
 			}
 			context.fillStyle = color;
-			context.font = `${TEMPLATE_NUMBER.size}px Arial, Helvetica, sans-serif`;
+			context.font = `${number.size}px Helvetica, Arial, sans-serif`;
 			context.textAlign = "right";
-			context.fillText(
-				`No. ${options.start + index}`,
-				TEMPLATE_NUMBER.x,
-				TEMPLATE_NUMBER.y,
-			);
+			context.fillText(`No. ${options.start + index}`, number.x, number.y);
 			const raw = await new Promise<Blob>((resolve, reject) =>
 				canvas.toBlob(
 					(blob) =>

@@ -190,7 +190,11 @@ export function WongojiPager({
 							style={{ transform: `translateY(${item.start}px)` }}
 						>
 							<div className="mx-auto w-full max-w-4xl pb-4">
-								<WongojiSheet page={pages[item.index]} index={item.index} />
+								<WongojiSheet
+									page={pages[item.index]}
+									index={item.index}
+									variant="paper"
+								/>
 							</div>
 						</div>
 					))}

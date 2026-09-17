@@ -1,6 +1,5 @@
 import {
 	TEMPLATE_COLORS,
-	TEMPLATE_NUMBER,
 	TEMPLATE_PAPER,
 	type TemplateOptions,
 	templateLayout,
@@ -30,9 +29,12 @@ export async function buildTemplatePdf(
 		Number.parseInt(hex.slice(5, 7), 16) / 255,
 	);
 	const mm = (value: number) => (value * 72) / 25.4;
-	const { lines } = templateLayout(options.format);
 	for (let index = 0; index < options.pages; index++) {
 		signal?.throwIfAborted();
+		const { lines, number } = templateLayout(
+			options.format,
+			options.start + index,
+		);
 		const page = doc.addPage([
 			mm(TEMPLATE_PAPER.width),
 			mm(TEMPLATE_PAPER.height),
@@ -53,10 +55,10 @@ export async function buildTemplatePdf(
 			});
 		}
 		const label = `No. ${options.start + index}`;
-		const size = mm(TEMPLATE_NUMBER.size);
+		const size = mm(number.size);
 		page.drawText(label, {
-			x: mm(TEMPLATE_NUMBER.x) - font.widthOfTextAtSize(label, size),
-			y: mm(TEMPLATE_PAPER.height - TEMPLATE_NUMBER.y),
+			x: mm(number.x) - font.widthOfTextAtSize(label, size),
+			y: mm(TEMPLATE_PAPER.height - number.y),
 			size,
 			font,
 			color,

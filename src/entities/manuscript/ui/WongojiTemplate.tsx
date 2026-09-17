@@ -3,11 +3,7 @@ import {
 	type TemplateColor,
 	type TemplateFormat,
 } from "../config/templates";
-import {
-	TEMPLATE_NUMBER,
-	TEMPLATE_PAPER,
-	templateLayout,
-} from "../lib/template-layout";
+import { TEMPLATE_PAPER, templateLayout } from "../lib/template-layout";
 
 export function WongojiTemplate({
 	format,
@@ -20,7 +16,7 @@ export function WongojiTemplate({
 	number?: number;
 	className?: string;
 }) {
-	const { lines } = templateLayout(format);
+	const { lines, number: numberPosition } = templateLayout(format, number);
 	const stroke = TEMPLATE_COLORS.find((item) => item.value === color)?.hex;
 	return (
 		<svg
@@ -47,11 +43,11 @@ export function WongojiTemplate({
 				))}
 			</g>
 			<text
-				x={TEMPLATE_NUMBER.x}
-				y={TEMPLATE_NUMBER.y}
+				x={numberPosition.x}
+				y={numberPosition.y}
 				textAnchor="end"
-				fontFamily="Arial, Helvetica, sans-serif"
-				fontSize={TEMPLATE_NUMBER.size}
+				fontFamily="Helvetica, Arial, sans-serif"
+				fontSize={numberPosition.size}
 				fill={stroke}
 			>
 				No. {number}

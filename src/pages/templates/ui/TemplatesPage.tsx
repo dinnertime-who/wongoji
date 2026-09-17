@@ -51,9 +51,9 @@ export function TemplatesPage() {
 						200자·400자·1000자 원고지 양식
 					</h2>
 					<p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-7">
-						모든 양식은 정사각형 칸과 바깥 테두리, 오른쪽 상단의 No. 번호로
-						구성됩니다. 용지 방향은 세로이며, 한 페이지에 원고지 한 장이
-						들어갑니다.
+						모든 양식은 정사각형 칸과 줄 사이 여백, 바깥 테두리, 오른쪽 상단의
+						No. 번호로 구성됩니다. 용지 방향은 세로이며, 한 페이지에 원고지 한
+						장이 들어갑니다.
 					</p>
 					<div className="mt-6 divide-y divide-border">
 						{TEMPLATE_FORMATS.map((item) => (

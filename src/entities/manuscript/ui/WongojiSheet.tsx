@@ -1,3 +1,4 @@
+import { WONGOJI_ROW_GAP_RATIO } from "../lib/template-layout";
 import { type Cell, COLS, type Page, ROWS } from "../lib/typesetting";
 
 /** 온점·반점은 칸의 왼쪽 아래 구석에 치우쳐 쓴다 */
@@ -44,6 +45,7 @@ export function WongojiSheet({
 	index,
 	rows = ROWS,
 	pageNumber = true,
+	variant = "plain",
 }: {
 	page: Page;
 	index: number;
@@ -54,33 +56,60 @@ export function WongojiSheet({
 	 * 함께 따라오면 글이 늘어진다. 그때만 줄여 쓴다.
 	 */
 	rows?: number;
-	/** 오른쪽 아래 쪽 번호. 한 장짜리 예에서는 셀 것이 없다 */
+	/** 원고지 테두리 위 오른쪽의 쪽 번호. 한 장짜리 예에서는 숨긴다 */
 	pageNumber?: boolean;
+	variant?: "plain" | "paper";
 }) {
 	return (
 		<section
-			className="wongoji-sheet rounded-sm border border-[var(--grid)] bg-[var(--paper)] p-4 shadow-sm sm:p-6"
 			aria-label={`원고지 ${index + 1}장`}
+			className={
+				variant === "paper"
+					? "rounded-sm border border-border bg-[var(--paper)] p-4 shadow-sm sm:p-6"
+					: undefined
+			}
 		>
-			<div
-				className="grid border-t border-l border-[var(--grid)] text-[clamp(0.7rem,2.1vw,1.05rem)]"
-				style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}
-			>
-				{Array.from({ length: rows }, (_, row) =>
-					Array.from({ length: COLS }, (_, col) => (
-						<WongojiCell
-							// biome-ignore lint/suspicious/noArrayIndexKey: 격자는 크기가 고정이고 순서가 바뀌지 않는다. 좌표가 곧 칸의 정체성이다.
-							key={`${row}-${col}`}
-							cell={page.lines[row]?.cells[col]}
-						/>
-					)),
-				)}
-			</div>
 			{pageNumber && (
-				<footer className="mt-2 text-right text-[0.7rem] text-muted-foreground tabular-nums">
-					{index + 1}
-				</footer>
+				<header className="mb-3 text-right text-[0.7rem] text-[var(--grid)] tabular-nums">
+					<span className="inline-block border-[var(--grid)] border-b px-1 pb-1">
+						No. {index + 1}
+					</span>
+				</header>
 			)}
+			<div
+				className={`wongoji-sheet border border-[var(--grid)] p-4 sm:p-6 ${
+					variant === "paper"
+						? "bg-[var(--paper)]"
+						: "rounded-sm bg-[var(--paper)] shadow-sm"
+				}`}
+			>
+				<div className="relative text-[clamp(0.7rem,2.1vw,1.05rem)]">
+					{Array.from({ length: rows }, (_, row) => (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: 원고지의 줄 좌표는 고정되어 있다.
+							key={row}
+							className="grid border-t border-l border-[var(--grid)]"
+							style={{
+								gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`,
+								marginTop:
+									row === 0 ? 0 : `${(100 / COLS) * WONGOJI_ROW_GAP_RATIO}%`,
+							}}
+						>
+							{Array.from({ length: COLS }, (_, col) => (
+								<WongojiCell
+									// biome-ignore lint/suspicious/noArrayIndexKey: 격자는 크기가 고정이고 순서가 바뀌지 않는다. 좌표가 곧 칸의 정체성이다.
+									key={`${row}-${col}`}
+									cell={page.lines[row]?.cells[col]}
+								/>
+							))}
+						</div>
+					))}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 border-x border-[var(--grid)]"
+					/>
+				</div>
+			</div>
 		</section>
 	);
 }
