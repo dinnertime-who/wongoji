@@ -5,6 +5,7 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { SaveStatusProvider } from "#/entities/archive";
+import { FeatureAnnouncement } from "#/features/feature-announcement";
 import { ImportPrompt } from "#/features/import-legacy";
 import { FeedbackDialog } from "#/features/send-feedback";
 import { QueryProvider } from "#/shared/api/query";
@@ -21,6 +22,7 @@ import {
 import { Analytics } from "#/shared/ui/analytics";
 import { Toaster } from "#/shared/ui/sonner";
 import appCss from "../styles.css?url";
+import { hideAnnouncement, loadAnnouncement } from "./-announcement";
 import { type Boot, loadBoot } from "./-boot";
 import { sendFeedback } from "./-feedback";
 
@@ -190,7 +192,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 							 * 보관함이 서버 하나가 되면서 붙들 것이 없어졌다.
 							 */}
 							<ImportPrompt />
-							{children}
+							<FeatureAnnouncement
+								load={loadAnnouncement}
+								hide={hideAnnouncement}
+							>
+								{children}
+							</FeatureAnnouncement>
 							<FeedbackDialog send={sendFeedback} />
 							{/*
 							 * 스쳐 가는 알림. **원고를 잃을 수 있는 실패는 여기로 오지

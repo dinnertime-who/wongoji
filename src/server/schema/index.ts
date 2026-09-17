@@ -9,6 +9,7 @@
  *
  * `archive.ts`는 우리 것이다.
  */
+export * from "./announcement";
 export * from "./archive";
 export * from "./auth";
 export * from "./writing";

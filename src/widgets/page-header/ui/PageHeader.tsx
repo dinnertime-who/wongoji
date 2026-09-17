@@ -1,4 +1,5 @@
 import { AuthButton } from "#/features/auth";
+import { FeatureAnnouncementBanner } from "#/features/feature-announcement";
 import { Separator } from "#/shared/ui/separator";
 import { SidebarTrigger } from "#/shared/ui/sidebar";
 
@@ -81,6 +82,7 @@ export function PageHeader({
 					<AuthButton />
 				</div>
 			</div>
+			<FeatureAnnouncementBanner />
 		</header>
 	);
 }
