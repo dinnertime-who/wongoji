@@ -8,12 +8,29 @@ export {
 	writeDoc,
 } from "./api/doc-storage";
 export { NIKL_QNA, TOPIK_PDF, TOPIK_RULES } from "./config/rules";
+export {
+	DEFAULT_TEMPLATE_OPTIONS,
+	MAX_TEMPLATE_PAGES,
+	readTemplateOptions,
+	TEMPLATE_COLORS,
+	TEMPLATE_FORMATS,
+	type TemplateColor,
+	type TemplateFormat,
+	type TemplateOptions,
+	templateFileName,
+	templatePdfUrl,
+} from "./config/templates";
 export { docToFileText, docToPlainText } from "./lib/plain-text";
 export {
 	type Manuscript,
 	parseImported,
 	safeFileName,
 } from "./lib/serialize";
+export {
+	TEMPLATE_NUMBER,
+	TEMPLATE_PAPER,
+	templateLayout,
+} from "./lib/template-layout";
 export {
 	BLANK_ROW_TYPE,
 	blockIndexAt,
@@ -46,3 +63,4 @@ export { WongojiPager } from "./ui/WongojiPager";
  * `WongojiPager`는 여러 장을 가상화하느라 높이를 재야 해서 글 속에 못 넣는다.
  */
 export { WongojiSheet } from "./ui/WongojiSheet";
+export { WongojiTemplate } from "./ui/WongojiTemplate";

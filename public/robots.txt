@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Allow: /guide$
+Allow: /guide/
+Allow: /templates
 Disallow: /api/
 
 Sitemap: https://wongo.dinnertimes.app/sitemap.xml

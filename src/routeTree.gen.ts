@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as AppLibraryRouteImport } from './routes/_app.library'
 import { Route as ApiArchiveRouteImport } from './routes/api.archive'
 import { Route as ApiWritingLogRouteImport } from './routes/api.writing-log'
@@ -20,6 +21,7 @@ import { Route as AppFFolderIdRouteImport } from './routes/_app.f.$folderId'
 import { Route as AppWDocIdRouteImport } from './routes/_app.w.$docId'
 import { Route as ApiArchiveOpsRouteImport } from './routes/api.archive.ops'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as ApiTemplatesPdfRouteImport } from './routes/api.templates.pdf'
 import { Route as ApiArchiveDocDocIdRouteImport } from './routes/api.archive.doc.$docId'
 import { Route as ApiArchiveDocDocIdVersionsRouteImport } from './routes/api.archive.doc.$docId.versions'
 
@@ -30,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppLibraryRoute = AppLibraryRouteImport.update({
@@ -77,6 +84,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTemplatesPdfRoute = ApiTemplatesPdfRouteImport.update({
+  id: '/api/templates/pdf',
+  path: '/api/templates/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiArchiveDocDocIdRoute = ApiArchiveDocDocIdRouteImport.update({
   id: '/doc/$docId',
   path: '/doc/$docId',
@@ -91,6 +103,7 @@ const ApiArchiveDocDocIdVersionsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/templates': typeof TemplatesRoute
   '/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
   '/api/writing-log': typeof ApiWritingLogRoute
@@ -100,11 +113,13 @@ export interface FileRoutesByFullPath {
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/templates/pdf': typeof ApiTemplatesPdfRoute
   '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
   '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/templates': typeof TemplatesRoute
   '/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
   '/api/writing-log': typeof ApiWritingLogRoute
@@ -114,6 +129,7 @@ export interface FileRoutesByTo {
   '/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/templates/pdf': typeof ApiTemplatesPdfRoute
   '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
   '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
@@ -121,6 +137,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/templates': typeof TemplatesRoute
   '/_app/library': typeof AppLibraryRoute
   '/api/archive': typeof ApiArchiveRouteWithChildren
   '/api/writing-log': typeof ApiWritingLogRoute
@@ -130,6 +147,7 @@ export interface FileRoutesById {
   '/_app/w/$docId': typeof AppWDocIdRoute
   '/api/archive/ops': typeof ApiArchiveOpsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/templates/pdf': typeof ApiTemplatesPdfRoute
   '/api/archive/doc/$docId': typeof ApiArchiveDocDocIdRouteWithChildren
   '/api/archive/doc/$docId/versions': typeof ApiArchiveDocDocIdVersionsRoute
 }
@@ -137,6 +155,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/templates'
     | '/library'
     | '/api/archive'
     | '/api/writing-log'
@@ -146,11 +165,13 @@ export interface FileRouteTypes {
     | '/w/$docId'
     | '/api/archive/ops'
     | '/api/auth/$'
+    | '/api/templates/pdf'
     | '/api/archive/doc/$docId'
     | '/api/archive/doc/$docId/versions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/templates'
     | '/library'
     | '/api/archive'
     | '/api/writing-log'
@@ -160,12 +181,14 @@ export interface FileRouteTypes {
     | '/w/$docId'
     | '/api/archive/ops'
     | '/api/auth/$'
+    | '/api/templates/pdf'
     | '/api/archive/doc/$docId'
     | '/api/archive/doc/$docId/versions'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/templates'
     | '/_app/library'
     | '/api/archive'
     | '/api/writing-log'
@@ -175,6 +198,7 @@ export interface FileRouteTypes {
     | '/_app/w/$docId'
     | '/api/archive/ops'
     | '/api/auth/$'
+    | '/api/templates/pdf'
     | '/api/archive/doc/$docId'
     | '/api/archive/doc/$docId/versions'
   fileRoutesById: FileRoutesById
@@ -182,11 +206,13 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  TemplatesRoute: typeof TemplatesRoute
   ApiArchiveRoute: typeof ApiArchiveRouteWithChildren
   ApiWritingLogRoute: typeof ApiWritingLogRoute
   GuideSlugRoute: typeof GuideSlugRoute
   GuideIndexRoute: typeof GuideIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiTemplatesPdfRoute: typeof ApiTemplatesPdfRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -203,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/library': {
@@ -268,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/templates/pdf': {
+      id: '/api/templates/pdf'
+      path: '/api/templates/pdf'
+      fullPath: '/api/templates/pdf'
+      preLoaderRoute: typeof ApiTemplatesPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/archive/doc/$docId': {
       id: '/api/archive/doc/$docId'
       path: '/doc/$docId'
@@ -327,11 +367,13 @@ const ApiArchiveRouteWithChildren = ApiArchiveRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  TemplatesRoute: TemplatesRoute,
   ApiArchiveRoute: ApiArchiveRouteWithChildren,
   ApiWritingLogRoute: ApiWritingLogRoute,
   GuideSlugRoute: GuideSlugRoute,
   GuideIndexRoute: GuideIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiTemplatesPdfRoute: ApiTemplatesPdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

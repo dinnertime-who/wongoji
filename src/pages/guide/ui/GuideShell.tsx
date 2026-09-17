@@ -70,7 +70,18 @@ export function GuideShell({
 				 * 글들의 목적이고, 로그인 없이 바로 써 볼 수 있다는 것을 여기서 처음
 				 * 아는 사람이 있다.
 				 */}
-				<aside className="mt-14 rounded-lg border border-grid bg-[var(--paper)] p-6">
+				<aside className="mt-10 border-border border-t pt-6">
+					<Link
+						to="/templates"
+						className="font-medium text-sm underline underline-offset-4"
+					>
+						200자·400자·1000자 원고지 양식 다운로드
+					</Link>
+					<p className="mt-2 text-muted-foreground text-sm leading-6">
+						손으로 써 보려면 A4 인쇄용 PDF나 PNG 양식을 무료로 받으세요.
+					</p>
+				</aside>
+				<aside className="mt-10 rounded-lg border border-grid bg-[var(--paper)] p-6">
 					<h2 className="font-semibold text-lg">직접 써 보기</h2>
 					<p className="mt-2 text-muted-foreground text-sm leading-6">
 						여기 적힌 규칙은 원고지가 글을 조판할 때 그대로 적용하는 것들입니다.

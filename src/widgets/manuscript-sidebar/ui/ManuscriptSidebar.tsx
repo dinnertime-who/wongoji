@@ -255,6 +255,16 @@ export function ManuscriptSidebar() {
 					variant="ghost"
 					size="sm"
 					className="w-full justify-start text-muted-foreground"
+					asChild
+				>
+					<Link to="/templates" onClick={closeDrawer}>
+						원고지 양식 다운로드
+					</Link>
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="w-full justify-start text-muted-foreground"
 					onClick={() => setSheet({ kind: "trash" })}
 				>
 					<Trash2Icon />

@@ -20,7 +20,8 @@ let previousPath: string | undefined;
 /** 원고 식별자와 검색어, OAuth 파라미터가 GA에 실리지 않도록 경로를 제한한다. */
 export function analyticsPath(path: string): string {
 	const pathname = path.split(/[?#]/)[0];
-	if (pathname === "/" || pathname === "/library") return pathname;
+	if (pathname === "/" || pathname === "/library" || pathname === "/templates")
+		return pathname;
 	if (pathname.startsWith("/w/")) return "/w/:docId";
 	if (pathname.startsWith("/f/")) return "/f/:folderId";
 	if (pathname === "/guide" || pathname.startsWith("/guide/")) return "/guide";
@@ -141,13 +142,15 @@ export function trackWriting(signedIn: boolean): void {
 /** 파일 생성 후 브라우저에 다운로드를 요청한 시점. 디스크 저장 완료는 알 수 없다. */
 export function trackDownload(
 	signedIn: boolean,
-	fileExtension: "txt" | "docx" | "zip",
-	scope: "manuscript" | "folder" | "archive",
+	fileExtension: "txt" | "docx" | "zip" | "pdf" | "png",
+	scope: "manuscript" | "folder" | "archive" | "template",
+	details: Parameters = {},
 ): void {
 	event("file_download", {
 		auth_state: signedIn ? "signed_in" : "guest",
 		file_extension: fileExtension,
 		download_scope: scope,
+		...details,
 	});
 }
 

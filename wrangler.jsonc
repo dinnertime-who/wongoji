@@ -9,6 +9,18 @@
 	"observability": {
 		"enabled": true
 	},
+	"ratelimits": [
+		{
+			"name": "TEMPLATE_PDF_RATE_LIMITER",
+			"namespace_id": "7320185",
+			"simple": { "limit": 30, "period": 60 }
+		},
+		{
+			"name": "TEMPLATE_PDF_LARGE_RATE_LIMITER",
+			"namespace_id": "7320186",
+			"simple": { "limit": 5, "period": 60 }
+		}
+	],
 	"send_email": [
 		{
 			"name": "FEEDBACK_EMAIL",

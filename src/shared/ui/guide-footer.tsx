@@ -37,6 +37,12 @@ export function GuideFooter() {
 					))}
 				</ul>
 				<Link
+					to="/templates"
+					className="mt-5 mr-5 inline-block text-muted-foreground text-xs underline decoration-dotted underline-offset-4 hover:text-foreground"
+				>
+					원고지 양식 다운로드
+				</Link>
+				<Link
 					to="/guide"
 					className="mt-5 inline-block text-muted-foreground text-xs underline decoration-dotted underline-offset-4 hover:text-foreground"
 				>
