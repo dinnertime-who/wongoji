@@ -4,6 +4,7 @@ import {
 	type Manuscript,
 	safeFileName,
 } from "#/entities/manuscript";
+import { trackDownload } from "#/shared/lib/analytics";
 
 /**
  * 원고를 파일로 내보낸다.
@@ -31,11 +32,12 @@ function download(blob: Blob, filename: string) {
  * **조판 블록이 아니라 에디터 문서 원본을 받는다.** 블록은 빈 문단이 버려진
  * 뒤라, 그것으로 적으면 사람이 엔터를 몇 번 쳤는지가 파일에 남지 않는다.
  */
-export function exportText(title: string, content: Content) {
+export function exportText(title: string, content: Content, signedIn: boolean) {
 	const blob = new Blob([docToFileText(title, content)], {
 		type: "text/plain;charset=utf-8",
 	});
 	download(blob, `${safeFileName(title)}.txt`);
+	trackDownload(signedIn, "txt", "manuscript");
 }
 
 /**
@@ -114,9 +116,10 @@ export async function buildDocxBlob(manuscript: Manuscript): Promise<Blob> {
 	return Packer.toBlob(doc);
 }
 
-export async function exportDocx(manuscript: Manuscript) {
+export async function exportDocx(manuscript: Manuscript, signedIn: boolean) {
 	download(
 		await buildDocxBlob(manuscript),
 		`${safeFileName(manuscript.title)}.docx`,
 	);
+	trackDownload(signedIn, "docx", "manuscript");
 }

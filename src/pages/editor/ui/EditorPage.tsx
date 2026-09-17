@@ -31,6 +31,7 @@ import {
 	readPane,
 	writePane,
 } from "#/features/toggle-pane";
+import { useSessionUser } from "#/shared/api/session";
 import { Button } from "#/shared/ui/button";
 import { GuideFooter } from "#/shared/ui/guide-footer";
 import { LandingIntro } from "#/shared/ui/landing-intro";
@@ -57,6 +58,7 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	 * 아래에 읽을거리가 붙고, **쓰는 자리의 높이를 얻는 방식이 다르다.**
 	 */
 	const trial = docId === null;
+	const signedIn = useSessionUser() !== null;
 	const { index } = useArchive();
 	const { registerBackup } = useSaveStatus();
 	const change = useArchiveMutation();
@@ -210,13 +212,13 @@ export function EditorPage({ docId }: { docId: string | null }) {
 	 * **블록이 아니라 문서 원본을 붙든다.** 저장하지 못한 글을 건져 내는 자리라
 	 * 여기서 잃는 것이 가장 뼈아프다 — 블록으로 적으면 사람이 띄운 줄이 빠진다.
 	 */
-	const latest = useRef({ title: doc.title, content });
-	latest.current = { title: doc.title, content };
+	const latest = useRef({ title: doc.title, content, signedIn });
+	latest.current = { title: doc.title, content, signedIn };
 	useEffect(() => {
 		registerBackup(() => {
 			const now = latest.current;
 			// 본문을 아직 앉히지 않았으면 받을 것이 없다
-			if (now.content) exportText(now.title, now.content);
+			if (now.content) exportText(now.title, now.content, now.signedIn);
 		});
 		return () => registerBackup(null);
 	}, [registerBackup]);

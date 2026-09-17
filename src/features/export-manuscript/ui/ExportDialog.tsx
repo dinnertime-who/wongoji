@@ -1,6 +1,7 @@
 import type { Content } from "@tiptap/react";
 import { useRef, useState } from "react";
 import { type Manuscript, parseImported } from "#/entities/manuscript";
+import { useSessionUser } from "#/shared/api/session";
 import { Button } from "#/shared/ui/button";
 import {
 	Dialog,
@@ -31,6 +32,7 @@ export function ExportDialog({
 	content: Content | null;
 	onImport: (next: Manuscript) => void;
 }) {
+	const signedIn = useSessionUser() !== null;
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const fileInput = useRef<HTMLInputElement>(null);
@@ -39,7 +41,7 @@ export function ExportDialog({
 		setBusy(true);
 		setError(null);
 		try {
-			await exportDocx(manuscript);
+			await exportDocx(manuscript, signedIn);
 		} catch (e) {
 			setError(
 				e instanceof Error ? e.message : "Word 파일을 만들지 못했습니다.",
@@ -97,7 +99,9 @@ export function ExportDialog({
 
 					<Button
 						variant="outline"
-						onClick={() => content && exportText(manuscript.title, content)}
+						onClick={() =>
+							content && exportText(manuscript.title, content, signedIn)
+						}
 						disabled={!content}
 						className={ROW}
 					>

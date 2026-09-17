@@ -84,7 +84,7 @@ function event(name: string, params: Parameters): void {
 	try {
 		window.gtag?.("event", name, { ...context(), ...params });
 	} catch {
-		// 수집 실패가 편집이나 로그인을 막아서는 안 된다.
+		// 수집 실패가 사용자 작업을 막아서는 안 된다.
 	}
 }
 
@@ -136,6 +136,19 @@ export function trackWriting(signedIn: boolean): void {
 	if (!signedIn) storage("localStorage", GUEST_WRITE, String(Date.now()));
 	written.add(authState);
 	event("writing_started", { auth_state: authState });
+}
+
+/** 파일 생성 후 브라우저에 다운로드를 요청한 시점. 디스크 저장 완료는 알 수 없다. */
+export function trackDownload(
+	signedIn: boolean,
+	fileExtension: "txt" | "docx" | "zip",
+	scope: "manuscript" | "folder" | "archive",
+): void {
+	event("file_download", {
+		auth_state: signedIn ? "signed_in" : "guest",
+		file_extension: fileExtension,
+		download_scope: scope,
+	});
 }
 
 export async function trackLoginStart(): Promise<void> {

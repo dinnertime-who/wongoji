@@ -6,6 +6,8 @@ import {
 	type FolderEntry,
 	useArchive,
 } from "#/entities/archive";
+import { useSessionUser } from "#/shared/api/session";
+import { trackDownload } from "#/shared/lib/analytics";
 import {
 	type ArchiveZipProgress,
 	archiveFileName,
@@ -50,6 +52,7 @@ const SETTLED = 4000;
 
 export function useArchiveDownload(): ArchiveDownload {
 	const { index } = useArchive();
+	const signedIn = useSessionUser() !== null;
 	const [progress, setProgress] = useState<ArchiveZipProgress | null>(null);
 	const busy = progress !== null;
 
@@ -75,6 +78,11 @@ export function useArchiveDownload(): ArchiveDownload {
 				onProgress?.(p);
 			});
 			downloadZip(blob, archiveFileName(new Date(), name));
+			trackDownload(
+				signedIn,
+				"zip",
+				scope.kind === "all" ? "archive" : "folder",
+			);
 			return { packed: entries.length - missed.length, missed };
 		} finally {
 			setProgress(null);
@@ -156,6 +164,7 @@ export function useArchiveDownload(): ArchiveDownload {
 	const downloadDoc = async (doc: DocEntry) => {
 		try {
 			await downloadDocText(doc.id, doc.title);
+			trackDownload(signedIn, "txt", "manuscript");
 		} catch {
 			toast.error(`'${displayTitle(doc)}' 원고를 받지 못했습니다`);
 		}
