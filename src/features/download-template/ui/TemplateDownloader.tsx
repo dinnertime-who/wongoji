@@ -11,7 +11,7 @@ import {
 	WongojiTemplate,
 } from "#/entities/manuscript";
 import { useSessionUser } from "#/shared/api/session";
-import { trackDownload } from "#/shared/lib/analytics";
+import { trackTemplateDownload } from "#/shared/lib/analytics";
 import { Button } from "#/shared/ui/button";
 import { Input } from "#/shared/ui/input";
 import { buildTemplatePdf } from "../api/build-pdf";
@@ -78,7 +78,8 @@ export function TemplateDownloader() {
 					: await buildTemplatePng(options, onProgress, controller.signal);
 			controller.signal.throwIfAborted();
 			saveTemplate(result.blob, options, result.extension);
-			trackDownload(signedIn, result.extension, "template", {
+			trackTemplateDownload(signedIn, result.extension, {
+				download_format: kind,
 				template_chars: options.format,
 				template_color: options.color,
 				page_count: options.pages,

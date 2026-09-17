@@ -142,14 +142,29 @@ export function trackWriting(signedIn: boolean): void {
 /** 파일 생성 후 브라우저에 다운로드를 요청한 시점. 디스크 저장 완료는 알 수 없다. */
 export function trackDownload(
 	signedIn: boolean,
-	fileExtension: "txt" | "docx" | "zip" | "pdf" | "png",
-	scope: "manuscript" | "folder" | "archive" | "template",
-	details: Parameters = {},
+	fileExtension: "txt" | "docx" | "zip",
+	scope: "manuscript" | "folder" | "archive",
 ): void {
 	event("file_download", {
 		auth_state: signedIn ? "signed_in" : "guest",
 		file_extension: fileExtension,
 		download_scope: scope,
+	});
+}
+
+export function trackTemplateDownload(
+	signedIn: boolean,
+	fileExtension: "pdf" | "png" | "zip",
+	details: {
+		download_format: "pdf" | "png";
+		template_chars: 200 | 400 | 1000;
+		template_color: "red" | "green";
+		page_count: number;
+	},
+): void {
+	event("template_download", {
+		auth_state: signedIn ? "signed_in" : "guest",
+		file_extension: fileExtension,
 		...details,
 	});
 }
