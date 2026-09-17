@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { TEMPLATE_FORMATS } from "#/entities/manuscript";
 import { TemplatesPage } from "#/pages/templates";
 import { SITE_URL } from "#/shared/config/site";
 import {
@@ -24,7 +25,38 @@ export const Route = createFileRoute("/templates")({
 			{
 				"script:ld+json": {
 					"@context": "https://schema.org",
+					"@type": "CollectionPage",
+					"@id": `${TEMPLATE_PAGE_URL}#webpage`,
+					url: TEMPLATE_PAGE_URL,
+					name: TEMPLATE_PAGE_TITLE,
+					description: TEMPLATE_PAGE_DESCRIPTION,
+					inLanguage: "ko-KR",
+					isAccessibleForFree: true,
+					breadcrumb: { "@id": `${TEMPLATE_PAGE_URL}#breadcrumb` },
+					mainEntity: {
+						"@type": "ItemList",
+						numberOfItems: TEMPLATE_FORMATS.length,
+						itemListElement: TEMPLATE_FORMATS.map((format, index) => ({
+							"@type": "ListItem",
+							position: index + 1,
+							item: {
+								"@type": "DigitalDocument",
+								"@id": `${TEMPLATE_PAGE_URL}#template-${format.value}`,
+								url: `${TEMPLATE_PAGE_URL}#template-${format.value}`,
+								name: `${format.value}자 원고지 양식`,
+								description: format.description,
+								encodingFormat: ["application/pdf", "image/png"],
+								isAccessibleForFree: true,
+							},
+						})),
+					},
+				},
+			},
+			{
+				"script:ld+json": {
+					"@context": "https://schema.org",
 					"@type": "BreadcrumbList",
+					"@id": `${TEMPLATE_PAGE_URL}#breadcrumb`,
 					itemListElement: [
 						{
 							"@type": "ListItem",

@@ -2,8 +2,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LegacyNotice } from "#/features/import-legacy";
 import { EditorPage } from "#/pages/editor";
 import { HomePage } from "#/pages/home";
-import { FAQ } from "#/shared/config/landing";
-import { SITE_URL } from "#/shared/config/site";
+import { FAQ, FEATURES } from "#/shared/config/landing";
+import { SITE_SHARE_DESCRIPTION, SITE_URL } from "#/shared/config/site";
 import { pickEntry } from "./-boot";
 
 export const Route = createFileRoute("/")({
@@ -25,12 +25,8 @@ export const Route = createFileRoute("/")({
 		return { entry };
 	},
 	/**
-	 * **색인되는 쪽은 여기 하나다.**
-	 *
-	 * canonical을 `__root`가 아니라 이 쪽에 두는 이유가 있다. 루트에 두면 계정
-	 * 쪽(`_app`)까지 "정본은 홈이다"라고 말하게 되는데, 그 쪽들은 동시에
-	 * `noindex`다. **색인하지 말라는 쪽이 홈을 제 정본으로 가리키면** 구글이 그
-	 * 지시를 홈으로 옮겨 읽어 홈까지 색인에서 뺄 수 있다.
+	 * 홈의 정본 URL과 앱 설명은 이 라우트에만 둔다.
+	 * 사용법과 계정 페이지가 홈의 canonical과 구조화 데이터를 상속하지 않도록 한다.
 	 */
 	head: () => ({
 		links: [{ rel: "canonical", href: SITE_URL }],
@@ -53,6 +49,45 @@ export const Route = createFileRoute("/")({
 			 * 않도록 양쪽 다 제 입으로 말하게 둔다.
 			 */
 			{ name: "robots", content: "index, follow" },
+			{
+				"script:ld+json": {
+					"@context": "https://schema.org",
+					"@type": "WebApplication",
+					name: "원고지",
+					/*
+					 * 이 서비스를 부르는 다른 이름들. 사람마다 다른 말로 찾는데
+					 * `name`은 하나뿐이라, 나머지를 여기 적는다.
+					 */
+					alternateName: [
+						"온라인 원고지",
+						"원고지 작성 사이트",
+						"200자 원고지 조판 에디터",
+					],
+					url: SITE_URL,
+					description: SITE_SHARE_DESCRIPTION,
+					applicationCategory: "WritingApplication",
+					/*
+					 * **브라우저만 있으면 된다는 것을 기계에게도 말한다.** `원고지 작성
+					 * 프로그램`으로 찾는 사람이 재는 것이 이것이고, 검색 결과에서
+					 * "설치가 필요 없음"으로 읽히는 자리가 여기다.
+					 */
+					operatingSystem: "All",
+					browserRequirements: "Requires JavaScript",
+					isAccessibleForFree: true,
+					inLanguage: "ko-KR",
+					/*
+					 * 화면에 적은 것과 같은 목록이다(`shared/config/landing`). 이름만
+					 * 옮기고 설명은 두지 않는다 — schema.org의 `featureList`는 짧은
+					 * 이름을 늘어놓는 자리다.
+					 */
+					featureList: FEATURES.map((f) => f.title),
+					offers: {
+						"@type": "Offer",
+						price: "0",
+						priceCurrency: "KRW",
+					},
+				},
+			},
 			{
 				"script:ld+json": {
 					"@context": "https://schema.org",

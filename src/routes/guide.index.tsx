@@ -12,6 +12,7 @@ export const Route = createFileRoute("/guide/")({
 		meta: [
 			{ title: TITLE },
 			{ name: "description", content: DESCRIPTION },
+			{ property: "og:url", content: `${SITE_URL}${GUIDE_INDEX_PATH}` },
 			{ property: "og:title", content: TITLE },
 			{ property: "og:description", content: DESCRIPTION },
 			{ name: "twitter:title", content: TITLE },

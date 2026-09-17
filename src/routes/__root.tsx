@@ -10,7 +10,6 @@ import { ImportPrompt } from "#/features/import-legacy";
 import { FeedbackDialog } from "#/features/send-feedback";
 import { QueryProvider } from "#/shared/api/query";
 import { SessionProvider } from "#/shared/api/session";
-import { FEATURES } from "#/shared/config/landing";
 import {
 	SITE_DESCRIPTION,
 	SITE_KEYWORDS,
@@ -44,9 +43,8 @@ export const Route = createRootRouteWithContext<{
 	/**
 	 * 검색 엔진과 SNS가 이 서비스를 무엇으로 아는가.
 	 *
-	 * 문구는 `shared/config/site`에 모여 있다. canonical만 여기 없다 — 그것은
-	 * "이 주소가 정본"이라는 선언이라 쪽마다 다르고, 색인되는 쪽(`index`)이
-	 * 제 것을 얹는다.
+	 * 공통 문구는 `shared/config/site`에 모여 있다. canonical과 구조화 데이터는
+	 * 각 페이지를 설명하는 라우트에서 설정한다.
 	 */
 	head: () => ({
 		meta: [
@@ -97,50 +95,6 @@ export const Route = createRootRouteWithContext<{
 			{ name: "twitter:title", content: SITE_TITLE },
 			{ name: "twitter:description", content: SITE_SHARE_DESCRIPTION },
 			{ name: "twitter:image", content: SITE_OG_IMAGE },
-			/*
-			 * 구조화 데이터. **`<script>`를 손으로 끼우지 않는다** — 이 열쇠를
-			 * 보면 라우터가 `application/ld+json`으로 찍어 준다(`HeadContent`).
-			 * 직접 넣으면 하이드레이션 때 문서 머리가 어긋난다.
-			 */
-			{
-				"script:ld+json": {
-					"@context": "https://schema.org",
-					"@type": "WebApplication",
-					name: "원고지",
-					/*
-					 * 이 서비스를 부르는 다른 이름들. 사람마다 다른 말로 찾는데
-					 * `name`은 하나뿐이라, 나머지를 여기 적는다.
-					 */
-					alternateName: [
-						"온라인 원고지",
-						"원고지 작성 사이트",
-						"200자 원고지 조판 에디터",
-					],
-					url: SITE_URL,
-					description: SITE_SHARE_DESCRIPTION,
-					applicationCategory: "WritingApplication",
-					/*
-					 * **브라우저만 있으면 된다는 것을 기계에게도 말한다.** `원고지 작성
-					 * 프로그램`으로 찾는 사람이 재는 것이 이것이고, 검색 결과에서
-					 * "설치가 필요 없음"으로 읽히는 자리가 여기다.
-					 */
-					operatingSystem: "All",
-					browserRequirements: "Requires JavaScript",
-					isAccessibleForFree: true,
-					inLanguage: "ko-KR",
-					/*
-					 * 화면에 적은 것과 같은 목록이다(`shared/config/landing`). 이름만
-					 * 옮기고 설명은 두지 않는다 — schema.org의 `featureList`는 짧은
-					 * 이름을 늘어놓는 자리다.
-					 */
-					featureList: FEATURES.map((f) => f.title),
-					offers: {
-						"@type": "Offer",
-						price: "0",
-						priceCurrency: "KRW",
-					},
-				},
-			},
 		],
 		links: [
 			{

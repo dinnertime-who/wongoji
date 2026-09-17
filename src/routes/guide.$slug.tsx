@@ -34,6 +34,7 @@ export const Route = createFileRoute("/guide/$slug")({
 			meta: [
 				{ title: `${article.title} | 원고지` },
 				{ name: "description", content: article.description },
+				{ property: "og:url", content: articleUrl(article.slug) },
 				{ property: "og:title", content: article.title },
 				{ property: "og:description", content: article.description },
 				{ property: "og:type", content: "article" },
