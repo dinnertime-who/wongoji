@@ -18,7 +18,11 @@ const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 
 describe("sitemap", () => {
 	test("홈과 사용법 글이 빠짐없이 실려 있다", () => {
-		expect(locs).toEqual([`${SITE_URL}/`, ...guideUrls()]);
+		expect(locs).toEqual([
+			`${SITE_URL}/`,
+			...guideUrls(),
+			`${SITE_URL}/templates`,
+		]);
 	});
 
 	test("sitemap에 없는 주소를 싣지 않는다", () => {
