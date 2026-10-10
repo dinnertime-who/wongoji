@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { DownloadIcon, XIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import {
 	createContext,
 	type ReactNode,
@@ -10,10 +9,11 @@ import {
 	useState,
 } from "react";
 import { useUserId } from "#/shared/api/session";
-import { TEMPLATE_DOWNLOAD_ANNOUNCEMENT } from "#/shared/config/announcement";
+import { CURRENT_ANNOUNCEMENT } from "#/shared/config/announcement";
 import { Button } from "#/shared/ui/button";
+import { AnnouncementDetails } from "./AnnouncementDetails";
 
-type Announcement = typeof TEMPLATE_DOWNLOAD_ANNOUNCEMENT;
+type Announcement = typeof CURRENT_ANNOUNCEMENT;
 type LoadAnnouncement = () => Promise<{
 	userId: string;
 	announcement: Announcement | null;
@@ -48,7 +48,7 @@ function AccountAnnouncement({
 	children: ReactNode;
 }) {
 	const client = useQueryClient();
-	const queryKey = ["announcement", userId, TEMPLATE_DOWNLOAD_ANNOUNCEMENT.id];
+	const queryKey = ["announcement", userId, CURRENT_ANNOUNCEMENT.id];
 	const { data, isFetchedAfterMount } = useQuery({
 		queryKey,
 		queryFn: load,
@@ -100,14 +100,7 @@ function AccountAnnouncement({
 					{announcement.title}
 				</p>
 				<div className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-1 sm:ml-auto">
-					<Link
-						to="/templates"
-						onClick={() => setClosed(true)}
-						className="inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs font-medium underline underline-offset-4 outline-none transition-colors hover:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-					>
-						<DownloadIcon aria-hidden="true" className="size-3.5" />
-						양식 다운로드
-					</Link>
+					<AnnouncementDetails announcement={announcement} />
 					<Button
 						variant="ghost"
 						size="sm"
