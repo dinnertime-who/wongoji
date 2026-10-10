@@ -133,6 +133,23 @@ export function tokenizeParagraph(
 	let singleOpen = false;
 	let i = 0;
 
+	/** 온점 바로 뒤의 닫는 따옴표는 온점과 같은 칸에 쓴다. */
+	const addCloser = (glyph: string) => {
+		const previous = tokens.at(-1);
+		const previousCell = previous?.cells[0];
+		if (
+			CLOSING_QUOTES.has(glyph) &&
+			text[i - 1] === "." &&
+			previous?.role === "closer" &&
+			previousCell?.glyphs.length === 1 &&
+			previousCell.glyphs[0] === "."
+		) {
+			previousCell.glyphs.push(glyph);
+			return;
+		}
+		tokens.push(closerToken(glyph));
+	};
+
 	/** 이어지는 공백을 건너뛰고, 건너뛴 게 있으면 true */
 	const skipSpaces = () => {
 		const start = i;
@@ -190,7 +207,8 @@ export function tokenizeParagraph(
 			const open = ch === '"' ? !doubleOpen : !singleOpen;
 			if (ch === '"') doubleOpen = !doubleOpen;
 			else singleOpen = !singleOpen;
-			tokens.push(open ? openerToken(ch) : closerToken(ch));
+			if (open) tokens.push(openerToken(ch));
+			else addCloser(ch);
 			i += 1;
 			if (!open) handlePostCloser(ch);
 			continue;
@@ -203,7 +221,7 @@ export function tokenizeParagraph(
 		}
 
 		if (CLOSERS.has(ch)) {
-			tokens.push(closerToken(ch));
+			addCloser(ch);
 			i += 1;
 			handlePostCloser(ch);
 			continue;

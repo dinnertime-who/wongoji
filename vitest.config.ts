@@ -35,8 +35,8 @@ const migrations = await readD1Migrations("./drizzle");
 /**
  * D1 바인딩이 있어야 도는 것들.
  *
- * `src/routes/`가 함께 든 이유는 API 라우트가 거기 살기 때문이다. 라우트 생성기는
- * `*.test.ts`를 라우트로 치지 않으므로 그 옆에 두어도 된다 — 확인했다.
+ * `src/routes/`가 함께 든 이유는 API 라우트가 거기 살기 때문이다.
+ * `tsr.config.json`에서 `*.test.ts`와 `*.test.tsx`를 라우트 생성 대상에서 제외한다.
  */
 const NEEDS_D1 = ["src/server/**/*.test.ts", "src/routes/**/*.test.ts"];
 
